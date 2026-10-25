@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.expo/
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.dump
+.DS_Store
+.cursor/mcp.json

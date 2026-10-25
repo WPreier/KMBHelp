@@ -1,0 +1,16 @@
+---
+description: KMBHelp conventions for every edit
+alwaysApply: true
+---
+
+# KMBHelp
+
+- Read `AGENTS.md` and `docs/sicherheit.md` before editing auth, mail, tickets, or public pages.
+- Implement only the open phase in `docs/status.md`.
+- TypeScript strict. Validate inputs with Zod from `packages/shared`.
+- Business rules live in `apps/api`, not in React or Expo screens.
+- Public ticket views must not include subject, body, requester, or comments.
+- Never commit `.env`, secrets, dumps, or real client data.
+- Do not add services that `docs/stack-entscheidung.md` rejects.
+- UI copy is German and English. No emoji icons. Works at 390px width.
+- Audit rows are append-only.
