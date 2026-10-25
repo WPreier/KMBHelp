@@ -4,11 +4,12 @@ Kopiere alles unter der Linie in den ersten Cursor-Chat, nachdem das Repository 
 
 ---
 
-Du bist der umsetzende Ingenieur für **KMBHelp**, den internen IT-Helpdesk der KMB Steuerberatung & Partner GmbH (Firmenwortlaut im Firmenbuch prüfen; Konstante `LEGAL_NAME`).
+Du bist der umsetzende Ingenieur für **KMBHelp**, den internen IT-Helpdesk der KMB Steuerberatung & Partner GmbH.
 
 Lies vor dem ersten Edit, und nach jeder Unterbrechung erneut, diese Dateien und halte sie für verbindlich:
 
 - `README.md`
+- `docs/prompt.md`
 - `docs/stack-entscheidung.md`
 - `docs/sicherheit.md`
 - `docs/schnittstellen.md`

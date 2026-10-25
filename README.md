@@ -1,15 +1,16 @@
 # KMBHelp — Spezifikation und Entwicklungsumgebung
 
-Paket für **KMB Steuerberatung & Partner GmbH** (im Auftrag einmal „Partzner“ geschrieben; maßgeblich ist der Firmenwortlaut im Firmenbuch, Konstante `LEGAL_NAME`).
+Paket für **KMB Steuerberatung & Partner GmbH**.
 
 Markenname der Anwendung: **KMBHelp**
 Host und DNS-Name: `helpdesk.kmbcloud.at`
-Postfach: `helpdesk@kmbcloud.at` (im Auftrag steht einmal `helpdek@` — das ist ein Tippfehler und wird nicht verwendet)
+Postfach: `helpdesk@kmbcloud.at`
 
 Dieses Verzeichnis ist **kein laufendes Programm**. Es ist die eingefrorene Vorgabe plus der Prompt, mit dem Cursor und Grok das System in einem privaten GitHub-Repository bauen.
 
 | Datei | Inhalt |
 |---|---|
+| [docs/prompt.md](docs/prompt.md) | Fachliche Anfrage: Umfang, Prozesse, Schnittstellen. |
 | [PROMPT.md](PROMPT.md) | Kopierfertiger Arbeitsauftrag an Grok in Cursor. Phasen, Verbote, Akzeptanz. |
 | [ENTWICKLUNGSUMGEBUNG.md](ENTWICKLUNGSUMGEBUNG.md) | Rechner, GitHub, Cursor, Grok, Geheimnisse, Build, iOS, Android. |
 | [docs/stack-entscheidung.md](docs/stack-entscheidung.md) | Warum TypeScript, PostgreSQL, Fastify, Vite, Expo. |
