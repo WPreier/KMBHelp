@@ -1,0 +1,14 @@
+{
+  "name": "KMBHelp",
+  "slug": "kmbhelp",
+  "scheme": "kmbhelp",
+  "version": "0.0.0",
+  "orientation": "portrait",
+  "userInterfaceStyle": "automatic",
+  "ios": {
+    "bundleIdentifier": "at.kmbcloud.helpdesk"
+  },
+  "android": {
+    "package": "at.kmbcloud.helpdesk"
+  }
+}
