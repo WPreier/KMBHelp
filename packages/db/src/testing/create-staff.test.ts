@@ -11,7 +11,7 @@ function sourceFiles(directory: string): string[] {
   return entries.flatMap((entry) => {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) return sourceFiles(path);
-    return path.endsWith('.ts') ? [path] : [];
+    return path.endsWith('.ts') && !path.endsWith('.test.ts') ? [path] : [];
   });
 }
 

@@ -90,6 +90,7 @@ Ressourcen mindestens:
 - `GET /api/v1/tickets/public` reduzierte Liste
 - `GET /api/v1/tickets/by-token/:token`
 - `GET|PATCH /api/v1/staff/tickets`
+- Bis Phase 3 authentifiziert der Header `X-Kmbhelp-Test-Staff` mit der E-Mail eines Staff-Kontos, und nur wenn `ALLOW_TEST_AUTH=1` gesetzt ist und `NODE_ENV` nicht `production` ist. In Produktion darf die Variable nicht gesetzt sein. Ohne diese Freigabe wird der Header ignoriert.
 - `POST /api/v1/staff/tickets/:id/comments`
 - `POST /api/v1/staff/tickets/:id/close`
 - Katalog, FAQ, Wissen, Dashboard-Zahlen, Admin-Zuordnung, Beschaffung, Änderungen, Backup-Tests, Sicherheitsvorfälle, Assets

@@ -120,8 +120,78 @@ h1 {
 }
 
 p {
-  margin: 0;
+  margin: 0 0 12px;
   color: var(--muted);
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 16px;
+  color: var(--ink);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+
+.search,
+.form,
+.content-nav {
+  margin-top: 20px;
+}
+
+.content-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.content-nav a,
+.ticket-list a {
+  color: var(--green);
+}
+
+button[type='submit'] {
+  margin-top: 16px;
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--on-green);
+}
+
+.ticket-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ticket-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+h2,
+h3 {
+  margin: 28px 0 8px;
+  font-size: 1.15rem;
+  font-weight: 600;
 }
 
 .controls {

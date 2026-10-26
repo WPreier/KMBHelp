@@ -12,7 +12,8 @@ describe('messages', () => {
         expect(value.trim().length).toBeGreaterThan(0);
       }
     }
-    expect(publicErrors.notFound.de).not.toEqual(publicErrors.notFound.en);
-    expect(publicErrors.internal.de).not.toEqual(publicErrors.internal.en);
+    for (const value of Object.values(publicErrors)) {
+      expect(value.de).not.toEqual(value.en);
+    }
   });
 });

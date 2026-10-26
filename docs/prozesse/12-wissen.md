@@ -13,4 +13,4 @@ Dieselben Störungen kehren jeden Monat wieder: ELDA-Fehler, Smartcard, VPN, Sca
 
 ## Suche
 
-Siehe Schnittstelle 6. Die Begründung des Treffers ist ein Satz, plus Link. Kein langer Aufsatz.
+Siehe Schnittstelle 6. Die Begründung des Treffers ist ein Satz, plus Link. Kein langer Aufsatz. Solange kein Modell konfiguriert ist, lautet der Satz „Treffer wegen Kategorie/Titel“. Die Suche läuft über den PostgreSQL-Volltext. Ein späteres Modell ersetzt nur diesen Satz.

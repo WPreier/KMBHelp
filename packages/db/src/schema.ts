@@ -269,6 +269,18 @@ export const faqArticle = pgTable('faq_article', {
   published: boolean('published').notNull().default(false),
 });
 
+export const staffSearch = pgTable('staff_search', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  at: timestamp('at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  staffId: uuid('staff_id')
+    .notNull()
+    .references(() => staff.id),
+  queryHash: text('query_hash').notNull(),
+  sentenceDe: text('sentence_de').notNull(),
+  sentenceEn: text('sentence_en').notNull(),
+  hitIds: jsonb('hit_ids').$type<{ kind: string; id: string }[]>().notNull(),
+});
+
 export const accessLog = pgTable(
   'access_log',
   {

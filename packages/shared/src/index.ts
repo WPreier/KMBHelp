@@ -15,6 +15,38 @@ export {
   type TicketStatus,
   type TicketType,
 } from './domain.js';
+export {
+  categoryListSchema,
+  categoryOptionSchema,
+  createTicketSchema,
+  createdTicketSchema,
+  faqArticleSchema,
+  faqListSchema,
+  faqSummarySchema,
+  knowledgeArticleSchema,
+  publicTicketListSchema,
+  publicTicketSchema,
+  readPublicError,
+  searchHitSchema,
+  searchQuerySchema,
+  searchResultSchema,
+  secretTicketSchema,
+  staffTicketSchema,
+  type CategoryOption,
+  type CreateTicketInput,
+  type CreatedTicket,
+  type FaqArticleView,
+  type PublicTicket,
+  type SearchHit,
+  type SecretTicket,
+  type StaffTicket,
+} from './contracts.js';
+export {
+  departmentLabel,
+  departmentLabels,
+  departmentCodes,
+  type DepartmentCode,
+} from './departments.js';
 export { healthResponseSchema, type HealthResponse } from './health.js';
 export {
   resolvePriority,
