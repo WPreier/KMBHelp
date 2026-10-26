@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, ne } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
@@ -22,11 +22,12 @@ import {
   knowledgeArticleSchema,
   priorities,
   publicErrors,
+  publicTicketActionSchema,
   publicTicketSchema,
+  publicTicketStateSchema,
   resolvePriority,
   searchHitSchema,
   searchQuerySchema,
-  secretTicketSchema,
   staffTicketSchema,
   ticketStatuses,
   type PublicTicket,
@@ -37,7 +38,6 @@ import { staffFromTestHeader } from './auth.js';
 import { categoryTitleExplainer, type SearchExplainer } from './explain.js';
 import {
   createRateLimiter,
-  createSecretToken,
   databaseDown,
   PublicError,
   queryHash,
@@ -45,7 +45,7 @@ import {
   writeAccessLog,
 } from './http.js';
 
-const openStatuses = ['open', 'waiting_approval', 'manual'] as const;
+const openStatuses = ['open', 'inactive', 'expired', 'waiting_approval', 'manual'] as const;
 const recentStatuses = ['in_progress', 'closed'] as const;
 
 export type Phase2Options = {
@@ -62,6 +62,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
   const explainer = options.explainer ?? categoryTitleExplainer;
   const ticketLimiter = createRateLimiter(options.ticketCreateLimit ?? 10, 60_000);
   const searchLimiter = createRateLimiter(options.searchLimit ?? 30, 60_000);
+  const changeLimiter = createRateLimiter(30, 60_000);
 
   function db(): Database {
     if (!options.database) throw databaseDown();
@@ -81,7 +82,6 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
       today,
       clientPriority: input.clientPriority ?? null,
     });
-    const secretToken = input.requesterEmail ? createSecretToken() : null;
     const created = await database.db.transaction(async (tx) => {
       const known = await tx
         .select({ code: category.code })
@@ -100,10 +100,8 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
           source: input.source,
           subject: input.subject,
           body: input.body,
-          requesterEmail: input.requesterEmail ?? null,
           requesterName: input.requesterName ?? null,
           dueOn: input.dueOn ?? null,
-          secretToken,
         })
         .returning({ id: ticket.id, number: ticket.number });
       const row = rows[0];
@@ -120,12 +118,13 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
       number: created.number,
       priority: decision.priority,
       priorityReason: decision.reason,
-      secretPath: secretToken ? `/t/${secretToken}` : null,
     });
   });
 
   app.get('/api/v1/tickets/public', async (request) => {
     const database = db();
+    const current = now();
+    await expireDueTickets(database, calendarDate(current));
     const rows = await database.db
       .select({
         number: ticket.number,
@@ -133,8 +132,10 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         categoryCode: category.code,
         categoryLabelDe: category.labelDe,
         categoryLabelEn: category.labelEn,
+        subject: ticket.subject,
         status: ticket.status,
         priority: ticket.priority,
+        dueOn: ticket.dueOn,
         createdAt: ticket.createdAt,
       })
       .from(ticket)
@@ -142,55 +143,35 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
       .where(ne(ticket.status, 'closed'))
       .orderBy(asc(category.groupCode), asc(ticket.priority), asc(ticket.createdAt));
     await writeAccessLog(database, request);
-    const current = now();
     return {
-      tickets: rows.map((row) =>
-        publicTicketSchema.parse({
-          number: row.number,
-          groupCode: row.groupCode,
-          groupLabelDe: departmentLabel(row.groupCode).de,
-          groupLabelEn: departmentLabel(row.groupCode).en,
-          categoryCode: row.categoryCode,
-          categoryLabelDe: row.categoryLabelDe,
-          categoryLabelEn: row.categoryLabelEn,
-          status: enumValue(ticketStatuses, row.status),
-          priority: enumValue(priorities, row.priority),
-          ageSeconds: elapsedSeconds(row.createdAt, current),
-        }),
-      ),
+      tickets: rows.map((row) => publicFields(row, current)),
     };
   });
 
-  app.get<{ Params: { token: string } }>('/api/v1/tickets/by-token/:token', async (request) => {
-    if (!/^[A-Za-z0-9_-]{43,128}$/.test(request.params.token)) {
+  app.post<{ Params: { number: string } }>('/api/v1/tickets/public/:number', async (request) => {
+    const number = Number(request.params.number);
+    if (!Number.isInteger(number) || number < 1) {
       throw new PublicError(404, 'not_found', publicErrors.notFound);
     }
+    const parsed = publicTicketActionSchema.safeParse(request.body);
+    if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+    if (!changeLimiter.allow(request.ip || 'unknown')) throw rateLimited();
     const database = db();
+    const current = now();
+    await expireDueTickets(database, calendarDate(current));
     const rows = await database.db
       .select({
         id: ticket.id,
-        number: ticket.number,
-        groupCode: category.groupCode,
-        categoryCode: category.code,
-        categoryLabelDe: category.labelDe,
-        categoryLabelEn: category.labelEn,
         status: ticket.status,
         priority: ticket.priority,
-        subject: ticket.subject,
-        body: ticket.body,
-        createdAt: ticket.createdAt,
       })
       .from(ticket)
-      .innerJoin(category, eq(ticket.categoryCode, category.code))
-      .where(eq(ticket.secretToken, request.params.token));
+      .where(eq(ticket.number, number));
     const row = rows[0];
-    await writeAccessLog(database, request, row?.id);
     if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
-    return secretTicketSchema.parse({
-      ...publicFields(row, now()),
-      subject: row.subject,
-      body: row.body,
-    });
+    const next = await applyPublicAction(database, row, parsed.data, current);
+    await writeAccessLog(database, request, row.id);
+    return publicTicketStateSchema.parse({ number, ...next });
   });
 
   app.get('/api/v1/staff/tickets', async (request) => {
@@ -337,8 +318,10 @@ function publicFields(
     categoryCode: string;
     categoryLabelDe: string;
     categoryLabelEn: string;
+    subject: string;
     status: string;
     priority: string;
+    dueOn: string | null;
     createdAt: Date;
   },
   current: Date,
@@ -352,10 +335,101 @@ function publicFields(
     categoryCode: row.categoryCode,
     categoryLabelDe: row.categoryLabelDe,
     categoryLabelEn: row.categoryLabelEn,
+    subject: row.subject,
     status: enumValue(ticketStatuses, row.status),
     priority: enumValue(priorities, row.priority),
     ageSeconds: elapsedSeconds(row.createdAt, current),
+    dueOn: row.dueOn,
   });
+}
+
+async function expireDueTickets(database: Database, today: string): Promise<void> {
+  const due = await database.db
+    .update(ticket)
+    .set({ status: 'expired', updatedAt: new Date() })
+    .where(
+      and(
+        eq(ticket.status, 'open'),
+        sql`${ticket.dueOn} is not null and ${ticket.dueOn} < ${today}`,
+      ),
+    )
+    .returning({ id: ticket.id });
+  if (due.length === 0) return;
+  await database.db.insert(ticketEvent).values(
+    due.map((row) => ({
+      ticketId: row.id,
+      kind: 'expired',
+      payload: { reason: 'due_date' },
+    })),
+  );
+}
+
+async function applyPublicAction(
+  database: Database,
+  row: { id: string; status: string; priority: string },
+  action: { action: 'toggle' | 'close' | 'priority'; priority?: 'p1' | 'p2' | 'p3' },
+  current: Date,
+): Promise<{ status: string; priority: string }> {
+  if (row.status === 'closed') {
+    throw new PublicError(409, 'cannot_reopen', publicErrors.cannotReopen);
+  }
+  if (action.action === 'close') {
+    await database.db.transaction(async (tx) => {
+      await tx
+        .update(ticket)
+        .set({ status: 'closed', closedAt: current, updatedAt: current })
+        .where(eq(ticket.id, row.id));
+      await tx.insert(ticketEvent).values({
+        ticketId: row.id,
+        kind: 'closed',
+        payload: { source: 'web' },
+      });
+    });
+    return { status: 'closed', priority: row.priority };
+  }
+  if (action.action === 'priority') {
+    const priority = action.priority ?? row.priority;
+    await database.db.transaction(async (tx) => {
+      await tx
+        .update(ticket)
+        .set({ priority, priorityReason: 'manual', updatedAt: current })
+        .where(eq(ticket.id, row.id));
+      await tx.insert(ticketEvent).values({
+        ticketId: row.id,
+        kind: 'priority_changed',
+        payload: { priority },
+      });
+    });
+    return { status: row.status, priority };
+  }
+  if (row.status === 'open') {
+    await database.db.transaction(async (tx) => {
+      await tx
+        .update(ticket)
+        .set({ status: 'inactive', updatedAt: current })
+        .where(eq(ticket.id, row.id));
+      await tx.insert(ticketEvent).values({
+        ticketId: row.id,
+        kind: 'deactivated',
+        payload: {},
+      });
+    });
+    return { status: 'inactive', priority: row.priority };
+  }
+  if (row.status === 'inactive') {
+    await database.db.transaction(async (tx) => {
+      await tx
+        .update(ticket)
+        .set({ status: 'open', updatedAt: current })
+        .where(eq(ticket.id, row.id));
+      await tx.insert(ticketEvent).values([
+        { ticketId: row.id, kind: 'reopened', payload: {} },
+        { ticketId: row.id, kind: 'notification', payload: { audience: 'all' } },
+      ]);
+    });
+    return { status: 'open', priority: row.priority };
+  }
+  throw new PublicError(409, 'not_toggleable', publicErrors.notToggleable);
 }
 
 function staffColumns() {

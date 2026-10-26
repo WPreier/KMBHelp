@@ -125,7 +125,7 @@ export const ticket = pgTable(
     check('ticket_priority', sql`${table.priority} in ('p1', 'p2', 'p3')`),
     check(
       'ticket_status',
-      sql`${table.status} in ('open', 'in_progress', 'waiting_approval', 'manual', 'closed')`,
+      sql`${table.status} in ('open', 'inactive', 'expired', 'in_progress', 'waiting_approval', 'manual', 'closed')`,
     ),
     check(
       'ticket_source',

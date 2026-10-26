@@ -55,7 +55,7 @@ Namen wie auf GitHub üblich: kleingeschrieben, Bindestriche in Dateinamen, Engl
 ## Verboten
 
 - Mandantenbelege, Lohnzettel oder Ausweise als vorgesehener Anhang. Hinweis anzeigen, gefährliche Dateitypen abweisen.
-- Ticketbetreff, Beschreibung, Absender oder Kommentare auf einer Seite ohne Anmeldung und ohne Geheimlink.
+- Beschreibung, Absender oder Kommentare auf einer Seite ohne Anmeldung. Der Betreff darf in der Arbeitsliste stehen. Einen Geheimlink gibt es nicht.
 - AD-Passwörter, Lizenzschlüssel oder Portalpasswörter speichern oder loggen.
 - KI-Aufruf, bevor die Felder des Anbieters (Endpunkt, Region, AVV) in der Umgebung gesetzt sind. Bis dahin Zuordnung nur über Regeln: Kategorie-Skill, erste freie Person. Das muss ohne KI funktionieren.
 - Direktes SQL aus dem MCP oder aus der Weboberfläche.
@@ -113,7 +113,7 @@ Schema für Tickets, Ereignisse, Kategorien, Katalog, Staff, Skills, Freeze-Fens
 
 ### Phase 2 — Öffentliches Web und Staff-Liste als API
 
-Ticket anlegen, reduzierte öffentliche Liste, Geheimlink, FAQ-Seiten leer aber fertig, KI-Suche vorerst nur Datenbank-Volltext mit einem Satz „Treffer wegen Kategorie/Titel“, Schnittstelle so, dass Phase 6 den Satz durch ein Modell ersetzen kann. Staff-API für die Arbeitsliste (offen, plus höchstens 10 in Arbeit oder zuletzt geschlossen, mit Dauer). Auth in dieser Phase ein Test-Header, der in Produktion ohne `ALLOW_TEST_AUTH=1` ignoriert wird. `ALLOW_TEST_AUTH` darf in Produktion nicht gesetzt sein; Test dafür.
+Ticket anlegen ohne Geheimlink, öffentliche Liste als einzeilige Tabelle, FAQ-Seiten leer aber fertig, KI-Suche vorerst nur Datenbank-Volltext mit einem Satz „Treffer wegen Kategorie/Titel“, Schnittstelle so, dass Phase 6 den Satz durch ein Modell ersetzen kann. Staff-API für die Arbeitsliste (offen, plus höchstens 10 in Arbeit oder zuletzt geschlossen, mit Dauer). Auth in dieser Phase ein Test-Header, der in Produktion ohne `ALLOW_TEST_AUTH=1` ignoriert wird. `ALLOW_TEST_AUTH` darf in Produktion nicht gesetzt sein; Test dafür. Datumseingaben `dd.MM.yyyy`.
 
 ### Phase 3 — Staff-Anmeldung
 

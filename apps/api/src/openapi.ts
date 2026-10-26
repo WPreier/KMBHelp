@@ -25,7 +25,7 @@ export const openApiDocument = {
       post: {
         operationId: 'createTicket',
         responses: {
-          '200': { description: 'Ticket number. Secret path only when an email was given.' },
+          '200': { description: 'Ticket number. Due dates are accepted as dd.MM.yyyy.' },
         },
       },
     },
@@ -35,15 +35,18 @@ export const openApiDocument = {
         responses: {
           '200': {
             description:
-              'Number, category, status, priority and age. No subject, body or requester.',
+              'Number, subject, status, priority, age and due date. No body, requester or comments.',
           },
         },
       },
     },
-    '/api/v1/tickets/by-token/{token}': {
-      get: {
-        operationId: 'readTicketByToken',
-        responses: { '200': { description: 'Requester view. No comments.' } },
+    '/api/v1/tickets/public/{number}': {
+      post: {
+        operationId: 'changePublicTicket',
+        responses: {
+          '200': { description: 'Inactive, reopened, priority change, or permanently closed.' },
+          '409': { description: 'A closed ticket cannot be opened again.' },
+        },
       },
     },
     '/api/v1/staff/tickets': {

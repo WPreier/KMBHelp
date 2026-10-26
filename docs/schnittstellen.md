@@ -12,7 +12,7 @@ Gesundheit: `https://helpdesk.kmbcloud.at/api/health`
 - Idempotenz über `internetMessageId`. Dieselbe Mail erzeugt nie ein zweites Ticket.
 - Bewertung durch den KI-Dienst: Kategorie, Priorität, benötigte Kenntnis, ob eine FAQ-Antwort erlaubt ist.
 - Zuordnung eines Menschen mit passender Kenntnis und freiem Kalenderfenster.
-- Antwort an den Absender mit Ticketnummer und Geheimlink.
+- Antwort an den Absender mit Ticketnummer. Einen Geheimlink gibt es nicht.
 - Kalendereintrag beim Bearbeiter: Betreff ohne Mandantendetails wenn möglich, Körper mit Beschreibung und Link auf die Staff-Ticketseite, Dauer aus der Kategorie-Vorgabe.
 - Einfache, erlaubte Antworten: Ticket auf erledigt, Mail an den Absender, Info-Mail an den IT-Mitarbeiter, Ereignis im Audit.
 - Der Worker ist ein eigener systemd-Dienst `kmbhelp-worker`. Die Webseite funktioniert weiter, wenn der Worker steht; der Gesundheitsstatus zeigt das.
@@ -24,7 +24,8 @@ Gesundheit: `https://helpdesk.kmbcloud.at/api/health`
 - Sprache aus `Accept-Language`, umschaltbar Deutsch / Englisch, weitere Sprachen als zusätzliche JSON-Dateien ohne Codeänderung. Wahl in einem Cookie `kmbhelp_lang`.
 - Helligkeit in Cookie `kmbhelp_theme` (`light` oder `dark`), zusätzlich `prefers-color-scheme` als Startwert.
 - Kein Cookie-Banner. Es werden nur technisch nötige Cookies gesetzt (Sprache, Theme). Das ist eine Produktentscheidung der Kanzlei; die Software lädt keine Tracker.
-- Kopfzeile: links Logo KMB, Links auf konfigurierbare Ziele `www`, `Home`, `Wiki`. Rechts Logo Malama, Ziel `https://malama.at`.
+- Kopfzeile: links Logo KMB, dann `www` nach `https://kmb-steuerberatung.at`, `Home` nach `https://home.kmbcloud.at`, `Wiki` nach `https://wiki.kmbcloud.at`. Rechts von Wiki ein kleines Suchfeld ohne Beschriftung, der Knopf ist eine Lupe. Rechts das Logo Malama, Ziel `https://malama.at`. Externe Links öffnen ein neues Fenster. Dieselbe Hintergrundfarbe trägt den Balken darunter mit `KMBHelp` und dem Satz „IT Helpdesk für die KMB Steuerberatung“. Darunter liegen „Ticket erfassen“ und „Anleitungen“.
+- Datumseingaben im Format `dd.MM.yyyy`. Die öffentliche Liste ist eine einzeilige Tabelle mit abwechselnder Spaltenfarbe.
 - Bedienbar mit Tastatur, auf schmalen Displays eine Spalte, Touch-Ziele mindestens 44px.
 
 ## 3. IT-Mitarbeiter-Web
@@ -87,8 +88,8 @@ Alle fachlichen Aktionen, die Web, App, Worker oder MCP auslösen, gehen durch `
 Ressourcen mindestens:
 
 - `POST /api/v1/tickets` anonym, begrenzt
-- `GET /api/v1/tickets/public` reduzierte Liste
-- `GET /api/v1/tickets/by-token/:token`
+- `GET /api/v1/tickets/public` Arbeitsliste mit Nummer, Betreff, Status, Priorität, Alter und Fälligkeit. Kein Beschreibungstext, kein Absender, keine Kommentare
+- `POST /api/v1/tickets/public/:number` schaltet offen und inaktiv, ändert die Priorität oder schließt dauerhaft
 - `GET|PATCH /api/v1/staff/tickets`
 - Bis Phase 3 authentifiziert der Header `X-Kmbhelp-Test-Staff` mit der E-Mail eines Staff-Kontos, und nur wenn `ALLOW_TEST_AUTH=1` gesetzt ist und `NODE_ENV` nicht `production` ist. In Produktion darf die Variable nicht gesetzt sein. Ohne diese Freigabe wird der Header ignoriert.
 - `POST /api/v1/staff/tickets/:id/comments`

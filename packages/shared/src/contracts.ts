@@ -1,12 +1,18 @@
 import { z } from 'zod';
+import { displayDateToIso } from './dates.js';
 import { impacts, priorities, ticketStatuses } from './domain.js';
-
-const calendarDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 function emptyToUndefined(value: unknown): unknown {
   if (typeof value !== 'string') return value;
   const trimmed = value.trim();
   return trimmed === '' ? undefined : trimmed;
+}
+
+function displayDateInput(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (trimmed === '') return undefined;
+  return displayDateToIso(trimmed) ?? trimmed;
 }
 
 export const createTicketSchema = z
@@ -18,9 +24,14 @@ export const createTicketSchema = z
     impact: z.enum(impacts),
     subject: z.string().trim().min(1).max(200),
     body: z.string().trim().min(1).max(8000),
-    requesterEmail: z.preprocess(emptyToUndefined, z.string().email().max(200).optional()),
     requesterName: z.preprocess(emptyToUndefined, z.string().max(200).optional()),
-    dueOn: z.preprocess(emptyToUndefined, calendarDay.optional()),
+    dueOn: z.preprocess(
+      displayDateInput,
+      z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/)
+        .optional(),
+    ),
     clientPriority: z.preprocess(emptyToUndefined, z.enum(priorities).optional()),
     source: z.enum(['web', 'app']).default('web'),
   })
@@ -37,9 +48,11 @@ export const publicTicketSchema = z
     categoryCode: z.string(),
     categoryLabelDe: z.string(),
     categoryLabelEn: z.string(),
+    subject: z.string(),
     status: z.enum(ticketStatuses),
     priority: z.enum(priorities),
     ageSeconds: z.number().int().nonnegative(),
+    dueOn: z.string().nullable(),
   })
   .strict();
 
@@ -56,20 +69,30 @@ export const createdTicketSchema = z
       'single_workplace',
       'no_deadline',
     ]),
-    secretPath: z.string().nullable(),
   })
   .strict();
 
 export type CreatedTicket = z.infer<typeof createdTicketSchema>;
 
-export const secretTicketSchema = publicTicketSchema
-  .extend({
-    subject: z.string(),
-    body: z.string(),
+export const publicTicketActionSchema = z
+  .object({
+    action: z.enum(['toggle', 'close', 'priority']),
+    priority: z.enum(priorities).optional(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (value.action === 'priority' && !value.priority) {
+      context.addIssue({ code: 'custom', message: 'priority', path: ['priority'] });
+    }
+  });
+
+export const publicTicketStateSchema = z
+  .object({
+    number: z.number().int().positive(),
+    status: z.enum(ticketStatuses),
+    priority: z.enum(priorities),
   })
   .strict();
-
-export type SecretTicket = z.infer<typeof secretTicketSchema>;
 
 export const categoryOptionSchema = z
   .object({

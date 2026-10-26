@@ -20,7 +20,7 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
     await database.pool.end();
   });
 
-  it('files a ticket, hides the public text, and opens the secret link', async () => {
+  it('files a ticket and hides the description on the public list', async () => {
     await applyMigrations(database);
     await seedCatalog(database);
     const app = buildApp({
@@ -40,15 +40,14 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
         impact: 'payroll',
         subject,
         body: 'Der Lauf steht.',
-        requesterEmail: 'melder@example.invalid',
         requesterName: 'Melder',
-        dueOn: '2026-03-04',
+        dueOn: '04.03.2026',
         clientPriority: 'p3',
       });
     expect(created.status).toBe(200);
     expect(created.body.priority).toBe('p1');
     expect(created.body.priorityReason).toBe('deadline_today_or_overdue');
-    expect(created.body.secretPath).toMatch(/^\/t\/[A-Za-z0-9_-]{43,}$/);
+    expect(created.body.secretPath).toBeUndefined();
     expect(JSON.stringify(created.body)).not.toContain(subject);
 
     const listed = await request(app.server).get('/api/v1/tickets/public');
@@ -58,35 +57,16 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
     );
     expect(visible.categoryCode).toBe('payroll_run');
     expect(visible.priority).toBe('p1');
-    expect(Object.keys(visible).sort()).toEqual([
-      'ageSeconds',
-      'categoryCode',
-      'categoryLabelDe',
-      'categoryLabelEn',
-      'groupCode',
-      'groupLabelDe',
-      'groupLabelEn',
-      'number',
-      'priority',
-      'status',
-    ]);
-    expect(JSON.stringify(listed.body)).not.toContain(subject);
-    expect(JSON.stringify(listed.body)).not.toContain('melder@example.invalid');
-
-    const token = String(created.body.secretPath).slice(3);
-    const secret = await request(app.server).get(`/api/v1/tickets/by-token/${token}`);
-    expect(secret.status).toBe(200);
-    expect(secret.body.subject).toBe(subject);
-    expect(secret.body.body).toBe('Der Lauf steht.');
-    expect(secret.body.requesterEmail).toBeUndefined();
-    expect(JSON.stringify(secret.body)).not.toContain('melder@example.invalid');
+    expect(visible.subject).toBe(subject);
+    expect(visible.dueOn).toBe('2026-03-04');
+    expect(JSON.stringify(listed.body)).not.toContain('Der Lauf steht.');
+    expect(JSON.stringify(listed.body)).not.toContain('Melder');
 
     const logged = await database.pool.query<{ path: string; user_agent: string }>(
-      `select path, user_agent from access_log where path like '%by-token%' or user_agent = $1`,
+      `select path, user_agent from access_log where user_agent = $1`,
       ['a'.repeat(160)],
     );
-    expect(logged.rows.some((row) => row.path === '/api/v1/tickets/by-token/:token')).toBe(true);
-    expect(logged.rows.some((row) => row.path.includes(token))).toBe(false);
+    expect(logged.rows.some((row) => row.path === '/api/v1/tickets')).toBe(true);
     expect(logged.rows.some((row) => row.user_agent === 'a'.repeat(160))).toBe(true);
 
     const withoutEmail = await request(app.server)
@@ -100,7 +80,7 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
       });
     expect(withoutEmail.status).toBe(200);
     expect(withoutEmail.body.priority).toBe('p2');
-    expect(withoutEmail.body.secretPath).toBeNull();
+    expect(withoutEmail.body.secretPath).toBeUndefined();
 
     const blocked = await request(app.server).post('/api/v1/tickets').send({
       categoryCode: 'scanner',
@@ -134,7 +114,6 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
       impact: 'cosmetic',
       subject: marker,
       body: 'nur ein Test',
-      requesterEmail: 'melder@example.invalid',
     });
     expect(created.status).toBe(200);
 
@@ -248,5 +227,67 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
         [draft.rows[0]?.id, published.rows[0]?.id],
       ]);
     }
+  });
+
+  it('expires a past due date, toggles inactive, and keeps a closed ticket closed', async () => {
+    await applyMigrations(database);
+    await seedCatalog(database);
+    const app = buildApp({
+      database,
+      now: () => new Date('2026-04-10T08:00:00.000Z'),
+    });
+    apps.push(app);
+    await app.ready();
+    const overdue = await request(app.server)
+      .post('/api/v1/tickets')
+      .send({
+        categoryCode: 'scanner',
+        impact: 'workplace',
+        subject: `Frist ${randomUUID()}`,
+        body: 'vorbei',
+        dueOn: '01.04.2026',
+      });
+    const listed = await request(app.server).get('/api/v1/tickets/public');
+    const expired = listed.body.tickets.find(
+      (entry: { number: number }) => entry.number === overdue.body.number,
+    );
+    expect(expired.status).toBe('expired');
+
+    const fresh = await request(app.server)
+      .post('/api/v1/tickets')
+      .send({
+        categoryCode: 'scanner',
+        impact: 'cosmetic',
+        subject: `Aktiv ${randomUUID()}`,
+        body: 'noch da',
+      });
+    const number = fresh.body.number as number;
+    const off = await request(app.server)
+      .post(`/api/v1/tickets/public/${number}`)
+      .send({ action: 'toggle' });
+    expect(off.body.status).toBe('inactive');
+    const on = await request(app.server)
+      .post(`/api/v1/tickets/public/${number}`)
+      .send({ action: 'toggle' });
+    expect(on.body.status).toBe('open');
+    const priority = await request(app.server)
+      .post(`/api/v1/tickets/public/${number}`)
+      .send({ action: 'priority', priority: 'p1' });
+    expect(priority.body.priority).toBe('p1');
+    const events = await database.pool.query<{ kind: string }>(
+      `select kind from ticket_event where ticket_id = (select id from ticket where number = $1)`,
+      [number],
+    );
+    expect(events.rows.map((row) => row.kind)).toEqual(
+      expect.arrayContaining(['deactivated', 'reopened', 'notification', 'priority_changed']),
+    );
+    const closed = await request(app.server)
+      .post(`/api/v1/tickets/public/${number}`)
+      .send({ action: 'close' });
+    expect(closed.body.status).toBe('closed');
+    const again = await request(app.server)
+      .post(`/api/v1/tickets/public/${number}`)
+      .send({ action: 'toggle' });
+    expect(again.status).toBe(409);
   });
 });

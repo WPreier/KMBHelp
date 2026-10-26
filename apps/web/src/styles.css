@@ -64,14 +64,26 @@ button {
   top: 12px;
 }
 
+.band {
+  background: var(--surface);
+}
+
 header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
   padding: 12px 16px;
-  background: var(--surface);
+}
+
+.identity {
+  padding: 4px 16px 16px;
   border-bottom: 1px solid var(--line);
+}
+
+.identity h1,
+.identity p {
+  margin: 0;
 }
 
 .brand {
@@ -108,7 +120,7 @@ nav span {
 }
 
 main {
-  max-width: 40rem;
+  max-width: 52rem;
   margin: 0 auto;
   padding: 32px 16px 64px;
 }
@@ -135,13 +147,32 @@ label {
 input,
 select,
 textarea {
+  border: 1px solid #d9d0c2;
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 252, 247, 0.9),
+    inset -1px -1px 0 rgba(88, 78, 62, 0.08),
+    0 2px 5px rgba(28, 36, 48, 0.12);
+}
+
+input,
+select,
+textarea {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 2px;
-  background: var(--bg);
-  color: var(--ink);
+}
+
+:root[data-theme='dark'] input,
+:root[data-theme='dark'] select,
+:root[data-theme='dark'] textarea {
+  border-color: #46505b;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.06),
+    inset -1px -1px 0 rgba(0, 0, 0, 0.28),
+    0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 textarea {
@@ -149,10 +180,80 @@ textarea {
   resize: vertical;
 }
 
+header .search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+header .search input {
+  width: 11rem;
+}
+
+header .search button {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .search,
 .form,
 .content-nav {
   margin-top: 20px;
+}
+
+.ticket-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ticket-table {
+  width: 100%;
+  min-width: 52rem;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.ticket-table td {
+  padding: 8px 12px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.ticket-table td:nth-child(odd) {
+  background: rgba(28, 36, 48, 0.045);
+}
+
+.ticket-table td:nth-child(even) {
+  background: rgba(29, 107, 69, 0.08);
+}
+
+:root[data-theme='dark'] .ticket-table td:nth-child(odd) {
+  background: rgba(255, 252, 247, 0.04);
+}
+
+:root[data-theme='dark'] .ticket-table td:nth-child(even) {
+  background: rgba(47, 143, 98, 0.16);
+}
+
+.ticket-table label {
+  margin: 0;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.ticket-table select {
+  width: auto;
+  min-width: 12rem;
+}
+
+.ticket-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 .content-nav {
@@ -173,18 +274,11 @@ button[type='submit'] {
   color: var(--on-green);
 }
 
-.ticket-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
 .ticket-list li {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 0;
 }
 
 h2,

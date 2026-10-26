@@ -11,12 +11,21 @@ export function formatAge(seconds: number, copy: Copy): string {
   return `${Math.floor(hours / 24)} ${copy.days}`;
 }
 
+export function priorityLabel(priority: string, copy: Copy): string {
+  if (priority === 'p1') return copy.priorityP1;
+  if (priority === 'p2') return copy.priorityP2;
+  if (priority === 'p3') return copy.priorityP3;
+  return priority;
+}
+
 export function statusLabel(status: string, copy: Copy): string {
   if (status === 'open') return copy.statusOpen;
   if (status === 'in_progress') return copy.statusInProgress;
   if (status === 'waiting_approval') return copy.statusWaiting;
   if (status === 'manual') return copy.statusManual;
   if (status === 'closed') return copy.statusClosed;
+  if (status === 'inactive') return copy.statusInactive;
+  if (status === 'expired') return copy.statusExpired;
   return status;
 }
 

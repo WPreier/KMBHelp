@@ -3,11 +3,12 @@ import {
   createdTicketSchema,
   faqArticleSchema,
   faqListSchema,
+  isoDateToDisplay,
   knowledgeArticleSchema,
   publicLinkTargets,
   publicTicketListSchema,
+  publicTicketStateSchema,
   searchResultSchema,
-  secretTicketSchema,
   type CategoryOption,
   type CreatedTicket,
   type PriorityReason,
@@ -16,7 +17,7 @@ import {
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getJson, postJson, RequestFailed } from './api.js';
-import { formatAge, reasonLabel, statusLabel } from './format.js';
+import { formatAge, priorityLabel, reasonLabel } from './format.js';
 import { useLocale } from './locale.js';
 
 const firmLinks = publicLinkTargets({
@@ -34,6 +35,8 @@ export function HomePage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedTicket | null>(null);
   const [pending, setPending] = useState(false);
+  const [revision, setRevision] = useState(0);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -53,7 +56,7 @@ export function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [created]);
+  }, [created, revision]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -69,7 +72,6 @@ export function HomePage() {
           impact: String(data.get('impact') ?? ''),
           subject: String(data.get('subject') ?? ''),
           body: String(data.get('body') ?? ''),
-          requesterEmail: String(data.get('requesterEmail') ?? ''),
           requesterName: String(data.get('requesterName') ?? ''),
           dueOn: String(data.get('dueOn') ?? ''),
           clientPriority: String(data.get('clientPriority') ?? ''),
@@ -87,6 +89,19 @@ export function HomePage() {
     }
   }
 
+  async function changeTicket(number: number, body: { action: string; priority?: string }) {
+    setActionError(null);
+    try {
+      await postJson(`/api/v1/tickets/public/${number}`, body, (value) =>
+        publicTicketStateSchema.parse(value),
+      );
+      setRevision((value) => value + 1);
+    } catch (error) {
+      const text = error instanceof RequestFailed ? error.text : null;
+      setActionError(text ? text[lang] : copy.sendFailed);
+    }
+  }
+
   const groups = new Map<string, PublicTicket[]>();
   for (const entry of tickets) {
     const list = groups.get(entry.groupCode) ?? [];
@@ -96,8 +111,6 @@ export function HomePage() {
 
   return (
     <>
-      <h1>{copy.documentTitle}</h1>
-      <p>{copy.lead}</p>
       {firmLinksMissing ? <p>{copy.linksMissing}</p> : null}
       <h2>{copy.fileTicket}</h2>
       <form className="form" onSubmit={onSubmit}>
@@ -137,11 +150,13 @@ export function HomePage() {
         </label>
         <label>
           {copy.dueOn}
-          <input name="dueOn" type="date" />
-        </label>
-        <label>
-          {copy.email}
-          <input name="requesterEmail" type="email" maxLength={200} autoComplete="email" />
+          <input
+            name="dueOn"
+            inputMode="numeric"
+            placeholder="dd.MM.yyyy"
+            maxLength={10}
+            pattern="\d{2}\.\d{2}\.\d{4}"
+          />
         </label>
         <label>
           {copy.name}
@@ -151,9 +166,9 @@ export function HomePage() {
           {copy.reportedPriority}
           <select name="clientPriority" defaultValue="">
             <option value="">{copy.priorityUnset}</option>
-            <option value="p1">P1</option>
-            <option value="p2">P2</option>
-            <option value="p3">P3</option>
+            <option value="p1">{copy.priorityP1}</option>
+            <option value="p2">{copy.priorityP2}</option>
+            <option value="p3">{copy.priorityP3}</option>
           </select>
         </label>
         <p>{copy.priorityHint}</p>
@@ -168,44 +183,85 @@ export function HomePage() {
             {copy.ticketCreated} {created.number}
           </h2>
           <p>
-            {created.priority.toUpperCase()}.{' '}
+            {priorityLabel(created.priority, copy)}.{' '}
             {reasonLabel(created.priorityReason as PriorityReason, copy)}
           </p>
-          {created.secretPath ? (
-            <>
-              <p>
-                <Link to={created.secretPath}>{copy.secretLink}</Link>
-              </p>
-              <p>{copy.secretOnce}</p>
-            </>
-          ) : (
-            <p>{copy.numberOnly}</p>
-          )}
         </section>
       ) : null}
       <h2>{copy.openTickets}</h2>
       {loadError ? <p role="alert">{copy.loadFailed}</p> : null}
+      {actionError ? <p role="alert">{actionError}</p> : null}
       {tickets.length === 0 && !loadError ? <p>{copy.noOpenTickets}</p> : null}
       {[...groups.entries()].map(([groupCode, entries]) => (
         <section className="group" key={groupCode}>
           <h3>{lang === 'de' ? entries[0]?.groupLabelDe : entries[0]?.groupLabelEn}</h3>
-          <ul className="ticket-list">
-            {entries.map((entry) => (
-              <li key={entry.number}>
-                <span>{entry.number}</span>
-                <span>{lang === 'de' ? entry.categoryLabelDe : entry.categoryLabelEn}</span>
-                <span>
-                  {copy.status}: {statusLabel(entry.status, copy)}
-                </span>
-                <span>
-                  {copy.priority}: {entry.priority.toUpperCase()}
-                </span>
-                <span>
-                  {copy.age}: {formatAge(entry.ageSeconds, copy)}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="ticket-scroll">
+            <table className="ticket-table">
+              <tbody>
+                {entries.map((entry) => {
+                  const switchTitle =
+                    entry.status === 'inactive' ? copy.reopenTitle : copy.deactivateTitle;
+                  const locked = entry.status === 'closed' || entry.status === 'expired';
+                  return (
+                    <tr key={entry.number}>
+                      <td>{entry.number}</td>
+                      <td>{entry.subject}</td>
+                      <td>{formatAge(entry.ageSeconds, copy)}</td>
+                      <td>
+                        {copy.dueUntil}: {entry.dueOn ? isoDateToDisplay(entry.dueOn) : copy.noDue}
+                      </td>
+                      <td>
+                        <label className="check">
+                          <input
+                            type="checkbox"
+                            checked={entry.status === 'open'}
+                            disabled={locked}
+                            title={switchTitle}
+                            aria-label={switchTitle}
+                            onChange={() => {
+                              void changeTicket(entry.number, { action: 'toggle' });
+                            }}
+                          />
+                          {copy.markOpen}
+                        </label>
+                      </td>
+                      <td>
+                        <select
+                          value={entry.priority}
+                          title={copy.priorityTitle}
+                          aria-label={copy.priorityTitle}
+                          disabled={entry.status === 'closed'}
+                          onChange={(event) => {
+                            void changeTicket(entry.number, {
+                              action: 'priority',
+                              priority: event.target.value,
+                            });
+                          }}
+                        >
+                          <option value="p1">{copy.priorityP1}</option>
+                          <option value="p2">{copy.priorityP2}</option>
+                          <option value="p3">{copy.priorityP3}</option>
+                        </select>
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          title={copy.closeTitle}
+                          aria-label={copy.done}
+                          disabled={entry.status === 'closed'}
+                          onClick={() => {
+                            void changeTicket(entry.number, { action: 'close' });
+                          }}
+                        >
+                          <CheckIcon />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </section>
       ))}
     </>
@@ -317,64 +373,6 @@ export function ArticlePage() {
   );
 }
 
-export function SecretPage() {
-  const { token = '' } = useParams();
-  const { lang, copy } = useLocale();
-  const [ticket, setTicket] = useState<{
-    number: number;
-    subject: string;
-    body: string;
-    category: string;
-    status: string;
-    priority: string;
-  } | null>(null);
-  const [missing, setMissing] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    getJson(`/api/v1/tickets/by-token/${encodeURIComponent(token)}`, (value) =>
-      secretTicketSchema.parse(value),
-    )
-      .then((body) => {
-        if (!cancelled) {
-          setTicket({
-            number: body.number,
-            subject: body.subject,
-            body: body.body,
-            category: lang === 'de' ? body.categoryLabelDe : body.categoryLabelEn,
-            status: body.status,
-            priority: body.priority,
-          });
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setMissing(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [lang, token]);
-
-  if (missing) return <MissingPage />;
-  if (!ticket) return null;
-  return (
-    <>
-      <h1>
-        {copy.ticketCreated} {ticket.number}
-      </h1>
-      <p>{ticket.category}</p>
-      <p>
-        {copy.status}: {statusLabel(ticket.status, copy)}
-      </p>
-      <p>
-        {copy.priority}: {ticket.priority.toUpperCase()}
-      </p>
-      <h2>{ticket.subject}</h2>
-      <p>{ticket.body}</p>
-    </>
-  );
-}
-
 export function SearchPage() {
   const { lang, copy } = useLocale();
   const [params] = useSearchParams();
@@ -422,6 +420,21 @@ export function SearchPage() {
         ))}
       </ul>
     </>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path
+        d="M5 12.5 9.2 17 19 7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

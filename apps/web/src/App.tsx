@@ -8,15 +8,7 @@ import {
 import { useEffect, useState, type FormEvent } from 'react';
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom';
 import { LocaleProvider, useLocale } from './locale.js';
-import {
-  ArticlePage,
-  FaqListPage,
-  FaqPage,
-  HomePage,
-  MissingPage,
-  SearchPage,
-  SecretPage,
-} from './pages.js';
+import { ArticlePage, FaqListPage, FaqPage, HomePage, MissingPage, SearchPage } from './pages.js';
 import { readClientPreferences, writeClientPreference } from './preferences.js';
 
 const targets = publicLinkTargets({
@@ -71,7 +63,7 @@ function Shell({
       <a className="skip" href="#content">
         {copy.skip}
       </a>
-      <header>
+      <header className="band">
         <div className="brand">
           <Link className="wordmark" to="/">
             {copy.kmb}
@@ -81,13 +73,17 @@ function Shell({
             <SiteLink href={targets.home}>{copy.home}</SiteLink>
             <SiteLink href={targets.wiki}>{copy.wiki}</SiteLink>
           </nav>
+          <SearchForm />
         </div>
-        <a className="wordmark" href="https://malama.at" rel="noreferrer">
+        <a className="wordmark" href="https://malama.at" target="_blank" rel="noopener noreferrer">
           {copy.malama}
         </a>
       </header>
+      <div className="band identity">
+        <h1>{copy.documentTitle}</h1>
+        <p>{copy.lead}</p>
+      </div>
       <main id="content">
-        <SearchForm />
         <nav className="content-nav" aria-label={copy.contentNav}>
           <Link to="/">{copy.fileTicket}</Link>
           <Link to="/faq">{copy.guides}</Link>
@@ -97,7 +93,6 @@ function Shell({
           <Route path="/faq" element={<FaqListPage />} />
           <Route path="/faq/:slug" element={<FaqPage />} />
           <Route path="/wissen/:id" element={<ArticlePage />} />
-          <Route path="/t/:token" element={<SecretPage />} />
           <Route path="/suche" element={<SearchPage />} />
           <Route path="*" element={<MissingPage />} />
         </Routes>
@@ -138,16 +133,28 @@ function SearchForm() {
 
   return (
     <form className="search" role="search" onSubmit={onSubmit}>
-      <label>
-        {copy.searchLabel}
-        <input name="q" type="search" maxLength={80} />
-      </label>
-      <button type="submit">{copy.searchSubmit}</button>
+      <input name="q" type="search" maxLength={80} aria-label={copy.searchSubmit} />
+      <button type="submit" title={copy.searchTitle} aria-label={copy.searchSubmit}>
+        <SearchIcon />
+      </button>
     </form>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path d="M16 16.5 20 20.5" stroke="currentColor" strokeWidth="2" />
+    </svg>
   );
 }
 
 function SiteLink({ href, children }: { href: string; children: string }) {
   if (!href) return <span>{children}</span>;
-  return <a href={href}>{children}</a>;
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer">
+      {children}
+    </a>
+  );
 }

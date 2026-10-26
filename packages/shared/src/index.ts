@@ -24,13 +24,14 @@ export {
   faqListSchema,
   faqSummarySchema,
   knowledgeArticleSchema,
+  publicTicketActionSchema,
   publicTicketListSchema,
   publicTicketSchema,
+  publicTicketStateSchema,
   readPublicError,
   searchHitSchema,
   searchQuerySchema,
   searchResultSchema,
-  secretTicketSchema,
   staffTicketSchema,
   type CategoryOption,
   type CreateTicketInput,
@@ -38,7 +39,6 @@ export {
   type FaqArticleView,
   type PublicTicket,
   type SearchHit,
-  type SecretTicket,
   type StaffTicket,
 } from './contracts.js';
 export {
@@ -54,7 +54,8 @@ export {
   type PriorityInput,
   type PriorityReason,
 } from './priority.js';
-export { publicLinkTargets, type PublicLinkTargets } from './links.js';
+export { displayDateToIso, isoDateToDisplay } from './dates.js';
+export { defaultPublicLinks, publicLinkTargets, type PublicLinkTargets } from './links.js';
 export { messages, publicErrors, type Lang, type MessageKey } from './messages.js';
 export {
   LANG_COOKIE,

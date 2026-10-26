@@ -58,9 +58,11 @@ describe('placeholder page', () => {
                 categoryCode: 'payroll_run',
                 categoryLabelDe: 'Abrechnungslauf',
                 categoryLabelEn: 'Payroll run',
+                subject: 'Payroll run text',
                 status: 'open',
                 priority: 'p1',
                 ageSeconds: 120,
+                dueOn: '2026-10-26',
               },
             ],
           });
@@ -80,14 +82,37 @@ describe('placeholder page', () => {
     expect(screen.getByRole('link', { name: 'KMB Steuerberatung' })).toBeTruthy();
     const malama = screen.getByRole('link', { name: 'Malama' });
     expect(malama.getAttribute('href')).toBe('https://malama.at');
-    expect(screen.getByText('www').tagName).toBe('SPAN');
-    expect(screen.getByText('Home').tagName).toBe('SPAN');
-    expect(screen.getByText('Wiki').tagName).toBe('SPAN');
-    expect(screen.getByText(/not set yet/i)).toBeTruthy();
-    expect(screen.getByRole('search')).toBeTruthy();
+    expect(malama.getAttribute('target')).toBe('_blank');
+    for (const [name, href] of [
+      ['www', 'https://kmb-steuerberatung.at'],
+      ['Home', 'https://home.kmbcloud.at'],
+      ['Wiki', 'https://wiki.kmbcloud.at'],
+    ] as const) {
+      const link = screen.getByRole('link', { name });
+      expect(link.getAttribute('href')).toBe(href);
+      expect(link.getAttribute('target')).toBe('_blank');
+    }
+    const search = screen.getByRole('search');
+    expect(search.closest('header')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Search' }).getAttribute('title')).toBe(
+      'Searches the published guides.',
+    );
+    expect(screen.getByRole('heading', { name: 'KMBHelp' })).toBeTruthy();
+    expect(screen.getByText('IT helpdesk for KMB Steuerberatung')).toBeTruthy();
+    expect(screen.queryByText('Search')).toBeNull();
+    expect(screen.queryByLabelText('Email for the secret link')).toBeNull();
     expect(screen.getByRole('heading', { name: 'File a ticket' })).toBeTruthy();
-    expect(await screen.findByText('7')).toBeTruthy();
-    expect(screen.getByText('Payroll run')).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: 'Priority' })).toBeTruthy();
+    expect(await screen.findByText(/Payroll run text/)).toBeTruthy();
+    expect(screen.getByText('7')).toBeTruthy();
+    expect(screen.getByText(/Due by: 26.10.2026/)).toBeTruthy();
+    expect(screen.getAllByRole('option', { name: 'Very important' }).length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toMatch(/Age:/);
+    expect(document.body.textContent).not.toMatch(/Text:/);
+    expect(screen.getByRole('checkbox').getAttribute('title')).toContain('inactive');
+    expect(screen.getByRole('button', { name: 'Done' }).getAttribute('title')).toContain(
+      'cannot be opened',
+    );
     expect(document.body.textContent).not.toContain('secret subject');
   });
 

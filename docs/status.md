@@ -43,8 +43,11 @@ Start: `pnpm db:migrate`, danach `pnpm db:seed`. Die Datenbank heißt `kmbhelp`.
 
 ## Phase 2 — Abnahme
 
-- [x] Ticket anlegen, Priorität aus Frist und Wirkung, Geheimlink nur mit E-Mail
-- [x] Öffentliche Liste ohne Betreff, Text, Absender und Kommentare
+- [x] Ticket anlegen, Priorität aus Frist und Wirkung. Kein Geheimlink und keine E-Mail dafür
+- [x] Öffentliche Liste als einzeilige Tabelle: Nummer, Betreff, Alter, Ablauf bis, Offen, Priorität, Erledigt
+- [x] Datum `dd.MM.yyyy`. Priorität: Sehr wichtig, bitte heute noch, bei Gelegenheit
+- [x] Offen, inaktiv, abgelaufen, geschlossen. Geschlossen bleibt geschlossen. Wiederöffnen informiert alle als Ereignis
+- [x] Links www, Home, Wiki und übrige externe Links in einem neuen Fenster. Suche rechts von Wiki
 - [x] FAQ-Seiten, leer bis die Kanzlei veröffentlicht
 - [x] Suche über den Datenbank-Volltext, Satz „Treffer wegen Kategorie/Titel“, austauschbar
 - [x] Staff-Liste: offen, plus höchstens 10 in Arbeit oder zuletzt geschlossen, mit Dauer
@@ -53,14 +56,13 @@ Start: `pnpm db:migrate`, danach `pnpm db:seed`. Die Datenbank heißt `kmbhelp`.
 
 Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Seite auf `http://127.0.0.1:5173`.
 
-Die Logo-Dateien und die Adressen für www, Home und Wiki fehlen. Die Kopfzeile zeigt die Wortmarken; die drei Links bleiben ohne Ziel.
+Die Logo-Dateien fehlen. Die Kopfzeile verlinkt www, Home und Wiki.
 
 ## Offene Rückfragen
 
 - Graph Admin-Consent und Kalender-Reichweite
 - LDAPS-Dienstkonto und Gruppen-DN
 - KI-Anbieter mit AVV, EU
-- URLs für www, Home, Wiki
 - Logos in `brand/`
 - Apple- und Google-Konten der GmbH
 - `ADMIN_IP_ALLOWLIST`
