@@ -104,8 +104,15 @@ describe('placeholder page', () => {
     expect(screen.getByRole('heading', { name: 'File a ticket' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Priority' })).toBeTruthy();
     expect(await screen.findByText(/Payroll run text/)).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'ID' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Text' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Age' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Due by:' })).toBeTruthy();
     expect(screen.getByText('7')).toBeTruthy();
-    expect(screen.getByText(/Due by: 26.10.2026/)).toBeTruthy();
+    expect(screen.getByText('26.10.2026')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Deutsch' }).closest('header')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Light' }).closest('header')).toBeTruthy();
     expect(screen.getAllByRole('option', { name: 'Very important' }).length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toMatch(/Age:/);
     expect(document.body.textContent).not.toMatch(/Text:/);

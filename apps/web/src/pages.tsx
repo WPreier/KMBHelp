@@ -122,6 +122,7 @@ export function HomePage() {
             required
             defaultValue={categories[0]?.code ?? ''}
           >
+            <option value=""></option>
             {categories.map((entry) => (
               <option key={entry.code} value={entry.code}>
                 {lang === 'de' ? entry.groupLabelDe : entry.groupLabelEn}
@@ -134,6 +135,7 @@ export function HomePage() {
         <label>
           {copy.impact}
           <select name="impact" required defaultValue="workplace">
+            <option value=""></option>
             <option value="filing">{copy.impactFiling}</option>
             <option value="payroll">{copy.impactPayroll}</option>
             <option value="workplace">{copy.impactWorkplace}</option>
@@ -173,9 +175,29 @@ export function HomePage() {
         </label>
         <p>{copy.priorityHint}</p>
         {formError ? <p role="alert">{formError}</p> : null}
-        <button type="submit" disabled={pending}>
-          {copy.submit}
-        </button>
+        <div className="form-actions">
+          <button type="submit" disabled={pending}>
+            {copy.submit}
+          </button>
+          <button
+            type="button"
+            onClick={(event) => {
+              const form = event.currentTarget.form;
+              if (!form) return;
+              for (const field of form.elements) {
+                if (
+                  field instanceof HTMLInputElement ||
+                  field instanceof HTMLTextAreaElement ||
+                  field instanceof HTMLSelectElement
+                ) {
+                  field.value = '';
+                }
+              }
+            }}
+          >
+            {copy.reset}
+          </button>
+        </div>
       </form>
       {created ? (
         <section aria-live="polite">
@@ -195,8 +217,25 @@ export function HomePage() {
       {[...groups.entries()].map(([groupCode, entries]) => (
         <section className="group" key={groupCode}>
           <h3>{lang === 'de' ? entries[0]?.groupLabelDe : entries[0]?.groupLabelEn}</h3>
-          <div className="ticket-scroll">
+          <div className="ticket-panel">
             <table className="ticket-table">
+              <thead>
+                <tr>
+                  <th scope="col">{copy.ticketId}</th>
+                  <th scope="col">{copy.ticketText}</th>
+                  <th scope="col">{copy.age}</th>
+                  <th scope="col">{copy.dueUntil}:</th>
+                  <th scope="col">
+                    <span className="visually-hidden">{copy.markOpen}</span>
+                  </th>
+                  <th scope="col">
+                    <span className="visually-hidden">{copy.priority}</span>
+                  </th>
+                  <th scope="col">
+                    <span className="visually-hidden">{copy.done}</span>
+                  </th>
+                </tr>
+              </thead>
               <tbody>
                 {entries.map((entry) => {
                   const switchTitle =
@@ -205,11 +244,11 @@ export function HomePage() {
                   return (
                     <tr key={entry.number}>
                       <td>{entry.number}</td>
-                      <td>{entry.subject}</td>
-                      <td>{formatAge(entry.ageSeconds, copy)}</td>
-                      <td>
-                        {copy.dueUntil}: {entry.dueOn ? isoDateToDisplay(entry.dueOn) : copy.noDue}
+                      <td className="ticket-text" title={entry.subject}>
+                        {entry.subject}
                       </td>
+                      <td>{formatAge(entry.ageSeconds, copy)}</td>
+                      <td>{entry.dueOn ? isoDateToDisplay(entry.dueOn) : copy.noDue}</td>
                       <td>
                         <label className="check">
                           <input

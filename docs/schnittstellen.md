@@ -24,9 +24,9 @@ Gesundheit: `https://helpdesk.kmbcloud.at/api/health`
 - Sprache aus `Accept-Language`, umschaltbar Deutsch / Englisch, weitere Sprachen als zusätzliche JSON-Dateien ohne Codeänderung. Wahl in einem Cookie `kmbhelp_lang`.
 - Helligkeit in Cookie `kmbhelp_theme` (`light` oder `dark`), zusätzlich `prefers-color-scheme` als Startwert.
 - Kein Cookie-Banner. Es werden nur technisch nötige Cookies gesetzt (Sprache, Theme). Das ist eine Produktentscheidung der Kanzlei; die Software lädt keine Tracker.
-- Kopfzeile: links Logo KMB, dann `www` nach `https://kmb-steuerberatung.at`, `Home` nach `https://home.kmbcloud.at`, `Wiki` nach `https://wiki.kmbcloud.at`. Rechts von Wiki ein kleines Suchfeld ohne Beschriftung, der Knopf ist eine Lupe. Rechts das Logo Malama, Ziel `https://malama.at`. Externe Links öffnen ein neues Fenster. Dieselbe Hintergrundfarbe trägt den Balken darunter mit `KMBHelp` und dem Satz „IT Helpdesk für die KMB Steuerberatung“. Darunter liegen „Ticket erfassen“ und „Anleitungen“.
-- Datumseingaben im Format `dd.MM.yyyy`. Die öffentliche Liste ist eine einzeilige Tabelle mit abwechselnder Spaltenfarbe.
-- Bedienbar mit Tastatur, auf schmalen Displays eine Spalte, Touch-Ziele mindestens 44px.
+- Kopfzeile: links Logo KMB, dann `www` nach `https://kmb-steuerberatung.at`, `Home` nach `https://home.kmbcloud.at`, `Wiki` nach `https://wiki.kmbcloud.at`. Rechts von Wiki ein kleines Suchfeld ohne Beschriftung, der Knopf ist eine Lupe. Danach kleine Flaggen für Deutsch und Englisch, dann Sonne und Mond für Hell und Dunkel, links von Malama. Ziel von Malama ist `https://malama.at`. Externe Links öffnen ein neues Fenster. Dieselbe Hintergrundfarbe trägt den Balken darunter mit `KMBHelp` und dem Satz „IT Helpdesk für die KMB Steuerberatung“. Darunter, nah am Balken, liegen „Ticket erfassen“ und „Anleitungen“.
+- Datumseingaben im Format `dd.MM.yyyy`. Die öffentliche Liste ist eine einzeilige Tabelle mit den Köpfen ID, Text, Alter und Ablauf bis. Die Zeilen wechseln hell und dunkel. Die Tabelle hat denselben leichten Rahmen und Schatten wie die Eingabefelder. Neben „Ticket anlegen“ steht „Zurücksetzen“ und leert das Formular.
+- Bedienbar mit Tastatur, auf schmalen Displays eine Spalte. Touch-Ziele sind mindestens 44px, die Flaggen- und Darstellungs-Knöpfe in der Kopfzeile sind kleiner.
 
 ## 3. IT-Mitarbeiter-Web
 

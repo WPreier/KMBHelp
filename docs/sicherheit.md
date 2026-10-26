@@ -15,7 +15,7 @@ Verbindlich für die Umsetzung:
 | Oberfläche | Ohne Anmeldung | Mit Staff-Anmeldung |
 |---|---|---|
 | Ticket anlegen (Web, App) | ja, mit Ratenlimit | ja |
-| Liste offener Tickets nach Abteilung | Eine Zeile je Ticket: Nummer, Betreff, Alter, „Ablauf bis“, Offen, Priorität, Erledigt. Kein Beschreibungstext, kein Absender, keine Kommentare | volle Arbeitsliste |
+| Liste offener Tickets nach Abteilung | Eine Zeile je Ticket mit Köpfen ID, Text, Alter, Ablauf bis, dazu Offen, Priorität und Erledigt. Kein Beschreibungstext, kein Absender, keine Kommentare | volle Arbeitsliste |
 | Ticketdetail mit Beschreibung | nein. Es gibt keinen Geheimlink | ja |
 | Kommentare, Anhänge, KI-Begründung | niemals öffentlich | ja, nach Rolle |
 | FAQ | ja, redaktionell freigegeben | ja |

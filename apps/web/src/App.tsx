@@ -75,9 +75,60 @@ function Shell({
           </nav>
           <SearchForm />
         </div>
-        <a className="wordmark" href="https://malama.at" target="_blank" rel="noopener noreferrer">
-          {copy.malama}
-        </a>
+        <div className="header-end">
+          <div className="header-tools" role="group" aria-label={copy.language}>
+            <button
+              type="button"
+              className="icon-button"
+              aria-pressed={lang === 'de'}
+              aria-label={copy.langDe}
+              title={copy.langDe}
+              onClick={() => onLang('de')}
+            >
+              <GermanFlag />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-pressed={lang === 'en'}
+              aria-label={copy.langEn}
+              title={copy.langEn}
+              onClick={() => onLang('en')}
+            >
+              <EnglishFlag />
+            </button>
+          </div>
+          <div className="header-tools" role="group" aria-label={copy.theme}>
+            <button
+              type="button"
+              className="icon-button"
+              aria-pressed={theme === 'light'}
+              aria-label={copy.themeLight}
+              title={copy.themeLight}
+              onClick={() => onTheme('light')}
+            >
+              <SunIcon />
+            </button>
+            <button
+              type="button"
+              className="icon-button"
+              aria-pressed={theme === 'dark'}
+              aria-label={copy.themeDark}
+              title={copy.themeDark}
+              onClick={() => onTheme('dark')}
+            >
+              <MoonIcon />
+            </button>
+          </div>
+          <a
+            className="wordmark"
+            href="https://malama.at"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {copy.malama}
+          </a>
+        </div>
       </header>
       <div className="band identity">
         <h1>{copy.documentTitle}</h1>
@@ -96,26 +147,6 @@ function Shell({
           <Route path="/suche" element={<SearchPage />} />
           <Route path="*" element={<MissingPage />} />
         </Routes>
-        <div className="controls">
-          <div role="group" aria-label={copy.language}>
-            <span className="control-label">{copy.language}</span>
-            <button type="button" aria-pressed={lang === 'de'} onClick={() => onLang('de')}>
-              {copy.langDe}
-            </button>
-            <button type="button" aria-pressed={lang === 'en'} onClick={() => onLang('en')}>
-              {copy.langEn}
-            </button>
-          </div>
-          <div role="group" aria-label={copy.theme}>
-            <span className="control-label">{copy.theme}</span>
-            <button type="button" aria-pressed={theme === 'light'} onClick={() => onTheme('light')}>
-              {copy.themeLight}
-            </button>
-            <button type="button" aria-pressed={theme === 'dark'} onClick={() => onTheme('dark')}>
-              {copy.themeDark}
-            </button>
-          </div>
-        </div>
       </main>
     </>
   );
@@ -138,6 +169,57 @@ function SearchForm() {
         <SearchIcon />
       </button>
     </form>
+  );
+}
+
+function GermanFlag() {
+  return (
+    <svg viewBox="0 0 5 3" width="22" height="14" aria-hidden="true">
+      <rect width="5" height="1" fill="#000" />
+      <rect y="1" width="5" height="1" fill="#dd0000" />
+      <rect y="2" width="5" height="1" fill="#ffce00" />
+    </svg>
+  );
+}
+
+function EnglishFlag() {
+  return (
+    <svg viewBox="0 0 60 30" width="22" height="14" aria-hidden="true">
+      <rect width="60" height="30" fill="#012169" />
+      <path d="M0 0 L60 30 M60 0 L0 30" stroke="#fff" strokeWidth="6" />
+      <path d="M0 0 L60 30 M60 0 L0 30" stroke="#c8102e" strokeWidth="3" />
+      <path d="M30 0 V30 M0 15 H60" stroke="#fff" strokeWidth="10" />
+      <path d="M30 0 V30 M0 15 H60" stroke="#c8102e" strokeWidth="6" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5 5l1.8 1.8M17.2 17.2 19 19M19 5l-1.8 1.8M6.8 17.2 5 19"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        d="M15.5 3.5a8.5 8.5 0 1 0 5 14.5 7 7 0 0 1-5-14.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
