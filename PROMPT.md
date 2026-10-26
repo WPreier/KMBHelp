@@ -31,7 +31,7 @@ Host: `helpdesk.kmbcloud.at`. Postfach: `helpdesk@kmbcloud.at`. Active Directory
 
 ## Stack, bereits entschieden
 
-TypeScript strict, Node 22, pnpm-Workspace, Fastify, PostgreSQL 16, Drizzle, Zod, React/Vite als statischer Build, Expo für iOS und Android, Microsoft Graph für Mail und Kalender, LDAPS für die erste Passwortprüfung, WebAuthn oder TOTP danach. nginx- und Apache-Beispiele gehören zum Lieferumfang. Begründung steht in `docs/stack-entscheidung.md`. Nicht neu verhandeln, außer ein harter technischer Blocker ist nachgewiesen.
+TypeScript strict, Node 22, pnpm-Workspace, Fastify, PostgreSQL 17, Drizzle, Zod, React/Vite als statischer Build, Expo für iOS und Android, Microsoft Graph für Mail und Kalender, LDAPS für die erste Passwortprüfung, WebAuthn oder TOTP danach. nginx- und Apache-Beispiele gehören zum Lieferumfang. Begründung steht in `docs/stack-entscheidung.md`. Nicht neu verhandeln, außer ein harter technischer Blocker ist nachgewiesen.
 
 Lege die Monorepo-Struktur so an:
 

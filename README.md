@@ -33,7 +33,7 @@ docker run -d --name kmbhelp-pg \
   -e POSTGRES_PASSWORD=kmbhelp-dev-only \
   -e POSTGRES_DB=kmbhelp \
   -p 5432:5432 \
-  postgres:16
+  postgres:17
 
 pnpm install
 cp .env.example .env

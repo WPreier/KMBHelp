@@ -11,7 +11,7 @@ Status: entschieden. Der umsetzende Agent ändert das nur mit einer neuen ADR un
 | API und Mail-Worker | Fastify 5 | NestJS (zu viel Gerüst für diese KMU), Django |
 | Web | React 19, Vite, React Router, statischer Build | Next.js als Pflicht (Node-only Hosting erschwert Apache/nginx-Dateien) |
 | Mobile | Expo (React Native), eine Codebasis | zwei native Projekte, Flutter |
-| Datenbank | PostgreSQL 16 | MySQL, SQL Server, MongoDB, SQLite in Produktion |
+| Datenbank | PostgreSQL 17 | MySQL, SQL Server, MongoDB, SQLite in Produktion |
 | SQL-Zugriff | Drizzle ORM + SQL-Migrationen in Git | Prisma |
 | Validierung | Zod, daraus OpenAPI | handgeschriebene DTOs |
 | Staff-Auth | LDAPS gegen `MADC1.kmbcloud.at`, Gruppe `Helpdesk`, danach Passkey (WebAuthn) oder TOTP | Passwörter in der App speichern, „Vertrau der E-Mail“ |
@@ -30,7 +30,7 @@ Grok und Cursor erzeugen in TypeScript die verlässlichsten Diffs: eine Sprache 
 
 ## Warum PostgreSQL
 
-Gefordert sind relationale Daten, ein weit verbreitetes System, Linux oder Windows, und bis zu 100 Zugriffe pro Sekunde.
+Gefordert sind relationale Daten, ein weit verbreitetes System, Linux oder Windows, und bis zu 100 Zugriffe pro Sekunde. Produktion und Arbeitsplatz verwenden Major-Version 17.
 
 100 Zugriffe pro Sekunde sind für PostgreSQL keine Sonderlast. Eine einzelne Instanz mit Pool (Größenordnung 20 Verbindungen) und normalen Indizes liegt darüber, solange keine Volltextsuche über Anhänge in derselben Transaktion passiert. PostgreSQL läuft auf Linux (Produktion, `helpdesk.kmbcloud.at`) und auf Windows (falls ein Admin lokal prüft). JSONB hält KI-Rohentscheidungen, ohne eine zweite Datenbank. Deutscher Volltext (`german`) reicht für FAQ und gelöste Tickets, bis ein Suchdienst wirklich nötig wird. Den gibt es in Phase 1 nicht.
 
