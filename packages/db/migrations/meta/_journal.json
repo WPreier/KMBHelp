@@ -8,6 +8,20 @@
       "when": 1792972827415,
       "tag": "0000_empty",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793013751186,
+      "tag": "0001_phase1_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793013891735,
+      "tag": "0002_ticket_type_check",
+      "breakpoints": true
     }
   ]
 }

@@ -86,7 +86,7 @@ Die KI schlägt die Stufe vor. Ein Mensch kann sie ändern. Die Änderung ist ei
 
 Zusätzlich das Feld `impact`: `filing` (Abgabe), `payroll` (Lohnlauf), `workplace` (ein Platz), `cosmetic`.
 
-`impact` in `filing` oder `payroll` und Fälligkeit heute oder überfällig erzwingt P1, auch wenn die KI P3 sagt.
+`impact` in `filing` oder `payroll` und Fälligkeit heute oder überfällig erzwingt P1, auch wenn der Melder oder die KI P3 sendet. Liegt dieselbe Fälligkeit nach heute, oder fehlt sie, bleibt die Stufe P2. `workplace` ist P2, `cosmetic` ist P3. Die mitgeschickte Stufe ändert diese Regel nicht. Eine spätere Änderung durch einen Menschen ist ein eigenes Ereignis mit Begründung.
 
 ## Standardkatalog für Requests
 

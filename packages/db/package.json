@@ -7,12 +7,17 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./testing": {
+      "types": "./src/testing/create-staff.ts",
+      "default": "./src/testing/create-staff.ts"
     }
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "db:migrate": "tsx src/migrate.ts",
+    "db:seed": "tsx src/seed.ts",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

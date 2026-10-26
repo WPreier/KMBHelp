@@ -19,6 +19,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @kmbhelp/db db:migrate",
+    "db:seed": "pnpm --filter @kmbhelp/db db:seed",
     "db:generate": "pnpm --filter @kmbhelp/db db:generate",
     "install:helpdesk": "tsx scripts/install.ts"
   },
