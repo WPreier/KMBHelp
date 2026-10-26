@@ -6,7 +6,7 @@ Markenname der Anwendung: **KMBHelp**
 Host und DNS-Name: `helpdesk.kmbcloud.at`
 Postfach: `helpdesk@kmbcloud.at`
 
-Dieses Verzeichnis ist **kein laufendes Programm**. Es ist die eingefrorene Vorgabe plus der Prompt, mit dem Cursor und Grok das System in einem privaten GitHub-Repository bauen.
+Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 0 ist das lauffähige Gerüst: API-Gesundheit, leere Datenbankmigration, Platzhalterseite.
 
 | Datei | Inhalt |
 |---|---|
@@ -19,12 +19,42 @@ Dieses Verzeichnis ist **kein laufendes Programm**. Es ist die eingefrorene Vorg
 | [docs/ticketkatalog.md](docs/ticketkatalog.md) | Fachfälle, Priorität, Katalog. |
 | [docs/prozesse/](docs/prozesse/) | Ein Markdown pro Prozess. |
 
-## So wird daraus Software
+## Entwicklung
 
-1. Entwicklungsumgebung nach [ENTWICKLUNGSUMGEBUNG.md](ENTWICKLUNGSUMGEBUNG.md) aufsetzen.
-2. Dieses Verzeichnis als ersten Commit in das private Repo `kmbhelp` legen.
-3. In Cursor das Modell Grok wählen und [PROMPT.md](PROMPT.md) als ersten Auftrag verwenden.
-4. Nur eine Phase pro Sitzung mergen. Externe Zugänge (AD, Graph, KI-Anbieter) nicht raten — der Prompt verlangt Rückfrage.
+Werkzeuge und der lokale PostgreSQL-Container stehen in [ENTWICKLUNGSUMGEBUNG.md](ENTWICKLUNGSUMGEBUNG.md). Node 22 und pnpm 10.
+
+```bash
+node -v
+pnpm -v
+git --version
+docker --version
+
+docker run -d --name kmbhelp-pg \
+  -e POSTGRES_PASSWORD=kmbhelp-dev-only \
+  -e POSTGRES_DB=kmbhelp \
+  -p 5432:5432 \
+  postgres:16
+
+pnpm install
+cp .env.example .env
+```
+
+Unter Windows PowerShell heißt der Kopierbefehl ebenfalls `cp .env.example .env`.
+
+In `.env` das Passwort des lokalen Containers eintragen. Die Datei bleibt außerhalb von Git.
+
+```bash
+pnpm db:migrate
+pnpm test
+pnpm typecheck
+pnpm dev
+```
+
+`pnpm dev` startet die API auf `http://127.0.0.1:3000` und die Seite auf `http://127.0.0.1:5173`. Gesundheit: `GET /api/health`. Ohne erreichbare Datenbank antwortet die API mit 503.
+
+Der Mail-Worker (`pnpm dev:worker`) protokolliert `not_configured`, solange Graph-Zugangsdaten fehlen, und stürzt nicht ab.
+
+Nur eine Phase pro Branch. Externe Zugänge (AD, Graph, KI-Anbieter) nicht raten.
 
 ## Logos
 
