@@ -1,10 +1,10 @@
 # Status
 
-Noch keine Phase umgesetzt. Der nächste Auftrag in Cursor lautet: Phase 0 aus `PROMPT.md`.
+Phase 0 ist umgesetzt. Der nächste Auftrag lautet: Phase 1 aus `PROMPT.md`.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
-| 0 | Gerüst, Health, Platzhalterseite | offen |
+| 0 | Gerüst, Health, Platzhalterseite | erledigt |
 | 1 | Schema, Katalog, Priorität | offen |
 | 2 | Öffentliches Web, Staff-API, Test-Auth nur außerhalb Produktion | offen |
 | 3 | AD, MFA, lokaler Admin | offen |
@@ -17,6 +17,19 @@ Noch keine Phase umgesetzt. Der nächste Auftrag in Cursor lautet: Phase 0 aus `
 | 10 | Installation Linux, nginx, Apache | offen |
 | 11 | Expo, Store-Dokumentation | offen |
 | 12 | Härtung, Betrieb, Notfallblatt | offen |
+
+## Phase 0 — Abnahme
+
+- [x] pnpm-Workspace, TypeScript strict, ESLint, Prettier, Vitest
+- [x] Drizzle-Anbindung und leere Migration
+- [x] `GET /api/health`
+- [x] `.env.example` ohne Geheimnisse
+- [x] Platzhalterseite mit Wortmarken, `kmbhelp_lang`, `kmbhelp_theme`
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm install`, PostgreSQL wie in `ENTWICKLUNGSUMGEBUNG.md`, `.env` aus `.env.example`, `pnpm db:migrate`, `pnpm dev`.
+
+Die Logo-Dateien und die Adressen für www, Home und Wiki fehlen. Die Kopfzeile zeigt die Wortmarken; die drei Links bleiben ohne Ziel.
 
 ## Offene Rückfragen
 

@@ -9,3 +9,5 @@ dist/
 *.dump
 .DS_Store
 .cursor/mcp.json
+coverage/
+*.tsbuildinfo

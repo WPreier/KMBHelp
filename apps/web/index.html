@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KMBHelp</title>
+    <script>
+      (function () {
+        function read(name) {
+          var parts = document.cookie.split(';');
+          for (var i = 0; i < parts.length; i += 1) {
+            var trimmed = parts[i].trim();
+            var mark = trimmed.indexOf('=');
+            if (mark === -1) continue;
+            if (trimmed.slice(0, mark) === name) return decodeURIComponent(trimmed.slice(mark + 1));
+          }
+          return '';
+        }
+        var lang = read('kmbhelp_lang');
+        if (lang !== 'de' && lang !== 'en') {
+          lang = (navigator.language || '').toLowerCase().indexOf('en') === 0 ? 'en' : 'de';
+        }
+        var theme = read('kmbhelp_theme');
+        if (theme !== 'light' && theme !== 'dark') {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.lang = lang;
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
