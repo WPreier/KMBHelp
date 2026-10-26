@@ -15,15 +15,17 @@ Verbindlich für die Umsetzung:
 | Oberfläche | Ohne Anmeldung | Mit Staff-Anmeldung |
 |---|---|---|
 | Ticket anlegen (Web, App) | ja, mit Ratenlimit | ja |
-| Liste offener Tickets nach Abteilung | nur Nummer, Kategorie, Status, Priorität, Alter. Kein Betreff, kein Text, kein Absender | volle Arbeitsliste |
-| Ticketdetail | nur mit Geheimlink (Token in der Mail an den Absender), Token mindestens 32 Byte, rotierbar | ja |
+| Liste offener Tickets nach Abteilung | Eine Zeile je Ticket mit Köpfen ID, Text, Alter, Ablauf bis, dazu Offen, Priorität und Erledigt. Kein Beschreibungstext, kein Absender, keine Kommentare | volle Arbeitsliste |
+| Ticketdetail mit Beschreibung | nein. Es gibt keinen Geheimlink | ja |
 | Kommentare, Anhänge, KI-Begründung | niemals öffentlich | ja, nach Rolle |
 | FAQ | ja, redaktionell freigegeben | ja |
 | Gelöste Tickets als Wissen | nur redigierte Artikel, nie der Roh-Tickettext | Rohtext nur Staff |
 | Dashboard, Admin, Zuordnung, Kalender | nein | ja |
-| API-Schreibzugriffe auf fremde Tickets | nein | ja |
+| API-Schreibzugriffe auf fremde Tickets | nur Status und Priorität der öffentlichen Liste, siehe unten | ja |
 
-Anonim anlegen bleibt möglich. Die IP wird gespeichert. Der Melder sieht sein Ticket danach nur über den Link, der an die angegebene Adresse geht. Ohne Adresse erhält er die Nummer einmalig auf dem Bildschirm und keinen späteren Lesezugriff.
+Anonim anlegen bleibt möglich. Die IP wird gespeichert. Eine E-Mail für einen Geheimlink wird nicht abgefragt. Den Geheimlink gibt es nicht. Die Nummer steht in der öffentlichen Liste. Beschreibung, Absender und Kommentare bleiben dort unsichtbar. Datumseingaben haben die Form `dd.MM.yyyy`. Die Prioritäten heißen in der Oberfläche „Sehr wichtig“, „bitte heute noch“ und „bei Gelegenheit“.
+
+Die öffentliche Arbeitsliste kennt die Status `open`, `inactive`, `expired` und `closed`. Weitere Status bleiben für spätere Prozesse. Ein offenes Ticket mit Fälligkeit vor heute wird `expired`. Die Checkbox setzt `open` auf `inactive`. Ist es `inactive`, öffnet sie es wieder und speichert, dass alle zu informieren sind. Der Versand dieser Nachricht folgt mit der Mail in Phase 4. `expired` und `closed` schaltet die Checkbox nicht um. Der Knopf Erledigt setzt `closed`. Ein geschlossenes Ticket kann nicht wieder geöffnet werden. Die Priorität in der Liste ist eine spätere menschliche Änderung und wird als Ereignis festgehalten.
 
 ## IP-Adressen
 

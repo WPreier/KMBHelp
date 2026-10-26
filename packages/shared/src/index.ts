@@ -15,6 +15,38 @@ export {
   type TicketStatus,
   type TicketType,
 } from './domain.js';
+export {
+  categoryListSchema,
+  categoryOptionSchema,
+  createTicketSchema,
+  createdTicketSchema,
+  faqArticleSchema,
+  faqListSchema,
+  faqSummarySchema,
+  knowledgeArticleSchema,
+  publicTicketActionSchema,
+  publicTicketListSchema,
+  publicTicketSchema,
+  publicTicketStateSchema,
+  readPublicError,
+  searchHitSchema,
+  searchQuerySchema,
+  searchResultSchema,
+  staffTicketSchema,
+  type CategoryOption,
+  type CreateTicketInput,
+  type CreatedTicket,
+  type FaqArticleView,
+  type PublicTicket,
+  type SearchHit,
+  type StaffTicket,
+} from './contracts.js';
+export {
+  departmentLabel,
+  departmentLabels,
+  departmentCodes,
+  type DepartmentCode,
+} from './departments.js';
 export { healthResponseSchema, type HealthResponse } from './health.js';
 export {
   resolvePriority,
@@ -22,7 +54,8 @@ export {
   type PriorityInput,
   type PriorityReason,
 } from './priority.js';
-export { publicLinkTargets, type PublicLinkTargets } from './links.js';
+export { displayDateToIso, isoDateToDisplay } from './dates.js';
+export { defaultPublicLinks, publicLinkTargets, type PublicLinkTargets } from './links.js';
 export { messages, publicErrors, type Lang, type MessageKey } from './messages.js';
 export {
   LANG_COOKIE,

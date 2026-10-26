@@ -1,0 +1,2 @@
+ALTER TABLE "ticket" DROP CONSTRAINT "ticket_status";--> statement-breakpoint
+ALTER TABLE "ticket" ADD CONSTRAINT "ticket_status" CHECK ("ticket"."status" in ('open', 'inactive', 'expired', 'in_progress', 'waiting_approval', 'manual', 'closed'));

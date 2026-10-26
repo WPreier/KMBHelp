@@ -30,6 +30,8 @@ export type TicketSource = (typeof ticketSources)[number];
 
 export const ticketStatuses = [
   'open',
+  'inactive',
+  'expired',
   'in_progress',
   'waiting_approval',
   'manual',

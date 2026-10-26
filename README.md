@@ -6,7 +6,7 @@ Markenname der Anwendung: **KMBHelp**
 Host und DNS-Name: `helpdesk.kmbcloud.at`
 Postfach: `helpdesk@kmbcloud.at`
 
-Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 1 legt das Schema, den Katalog und die Priorität an. Die Oberfläche bleibt der Platzhalter aus Phase 0.
+Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 2 erfasst Tickets, zeigt die reduzierte öffentliche Liste, FAQ und Suche. Die Staff-Anmeldung folgt in Phase 3.
 
 | Datei | Inhalt |
 |---|---|

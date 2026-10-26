@@ -125,7 +125,7 @@ export const ticket = pgTable(
     check('ticket_priority', sql`${table.priority} in ('p1', 'p2', 'p3')`),
     check(
       'ticket_status',
-      sql`${table.status} in ('open', 'in_progress', 'waiting_approval', 'manual', 'closed')`,
+      sql`${table.status} in ('open', 'inactive', 'expired', 'in_progress', 'waiting_approval', 'manual', 'closed')`,
     ),
     check(
       'ticket_source',
@@ -267,6 +267,18 @@ export const faqArticle = pgTable('faq_article', {
   bodyDe: text('body_de').notNull().default(''),
   bodyEn: text('body_en').notNull().default(''),
   published: boolean('published').notNull().default(false),
+});
+
+export const staffSearch = pgTable('staff_search', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  at: timestamp('at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  staffId: uuid('staff_id')
+    .notNull()
+    .references(() => staff.id),
+  queryHash: text('query_hash').notNull(),
+  sentenceDe: text('sentence_de').notNull(),
+  sentenceEn: text('sentence_en').notNull(),
+  hitIds: jsonb('hit_ids').$type<{ kind: string; id: string }[]>().notNull(),
 });
 
 export const accessLog = pgTable(

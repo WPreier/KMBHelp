@@ -9,8 +9,8 @@
       "default": "./src/index.ts"
     },
     "./testing": {
-      "types": "./src/testing/create-staff.ts",
-      "default": "./src/testing/create-staff.ts"
+      "types": "./src/testing/index.ts",
+      "default": "./src/testing/index.ts"
     }
   },
   "scripts": {

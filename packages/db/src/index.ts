@@ -1,4 +1,5 @@
 export { createDatabase, databaseReachable, type Database } from './client.js';
+export { seedCatalog } from './seed.js';
 export {
   accessLog,
   appSetting,
@@ -20,6 +21,7 @@ export {
   securityIncidentDetail,
   session,
   skill,
+  staffSearch,
   staff,
   staffSkill,
   supplier,

@@ -1,12 +1,12 @@
 # Status
 
-Phase 1 ist umgesetzt. Der nächste Auftrag lautet: Phase 2 aus `PROMPT.md`.
+Phase 2 ist umgesetzt. Der nächste Auftrag lautet: Phase 3 aus `PROMPT.md`.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
 | 0 | Gerüst, Health, Platzhalterseite | erledigt |
 | 1 | Schema, Katalog, Priorität | erledigt |
-| 2 | Öffentliches Web, Staff-API, Test-Auth nur außerhalb Produktion | offen |
+| 2 | Öffentliches Web, Staff-API, Test-Auth nur außerhalb Produktion | erledigt |
 | 3 | AD, MFA, lokaler Admin | offen |
 | 4 | Graph Mail und Kalender | offen |
 | 5 | Übrige Prozessregeln | offen |
@@ -41,14 +41,29 @@ Start: `pnpm install`, PostgreSQL wie in `ENTWICKLUNGSUMGEBUNG.md`, `.env` aus `
 
 Start: `pnpm db:migrate`, danach `pnpm db:seed`. Die Datenbank heißt `kmbhelp`.
 
-Die Logo-Dateien und die Adressen für www, Home und Wiki fehlen. Die Kopfzeile zeigt die Wortmarken; die drei Links bleiben ohne Ziel.
+## Phase 2 — Abnahme
+
+- [x] Ticket anlegen, Priorität aus Frist und Wirkung. Kein Geheimlink und keine E-Mail dafür
+- [x] Öffentliche Liste als einzeilige Tabelle mit Köpfen ID, Text, Alter, Ablauf bis, dazu Offen, Priorität, Erledigt. Zeilen hell und dunkel, Rahmen wie die Eingabefelder
+- [x] Zurücksetzen leert das Formular. Sprache und Darstellung sitzen als Flagge, Sonne und Mond in der Kopfzeile
+- [x] Datum `dd.MM.yyyy`. Priorität: Sehr wichtig, bitte heute noch, bei Gelegenheit
+- [x] Offen, inaktiv, abgelaufen, geschlossen. Geschlossen bleibt geschlossen. Wiederöffnen informiert alle als Ereignis
+- [x] Links www, Home, Wiki und übrige externe Links in einem neuen Fenster. Suche rechts von Wiki
+- [x] FAQ-Seiten, leer bis die Kanzlei veröffentlicht
+- [x] Suche über den Datenbank-Volltext, Satz „Treffer wegen Kategorie/Titel“, austauschbar
+- [x] Staff-Liste: offen, plus höchstens 10 in Arbeit oder zuletzt geschlossen, mit Dauer
+- [x] Test-Header nur außerhalb Produktion und nur mit `ALLOW_TEST_AUTH=1`
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Seite auf `http://127.0.0.1:5173`.
+
+Die Logo-Dateien fehlen. Die Kopfzeile verlinkt www, Home und Wiki.
 
 ## Offene Rückfragen
 
 - Graph Admin-Consent und Kalender-Reichweite
 - LDAPS-Dienstkonto und Gruppen-DN
 - KI-Anbieter mit AVV, EU
-- URLs für www, Home, Wiki
 - Logos in `brand/`
 - Apple- und Google-Konten der GmbH
 - `ADMIN_IP_ALLOWLIST`

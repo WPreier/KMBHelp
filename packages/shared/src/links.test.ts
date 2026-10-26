@@ -2,13 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { publicLinkTargets } from './links.js';
 
 describe('publicLinkTargets', () => {
-  it('leaves unknown addresses empty', () => {
-    expect(publicLinkTargets({})).toEqual({ www: '', home: '', wiki: '' });
-    expect(publicLinkTargets({ www: '   ', home: undefined, wiki: '' })).toEqual({
-      www: '',
-      home: '',
-      wiki: '',
+  it('uses the firm addresses when none are configured', () => {
+    expect(publicLinkTargets({})).toEqual({
+      www: 'https://kmb-steuerberatung.at',
+      home: 'https://home.kmbcloud.at',
+      wiki: 'https://wiki.kmbcloud.at',
     });
+    expect(publicLinkTargets({ www: '   ', home: undefined, wiki: '' }).www).toBe(
+      'https://kmb-steuerberatung.at',
+    );
   });
 
   it('keeps an address the firm configured', () => {

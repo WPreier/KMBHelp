@@ -9,7 +9,7 @@ alwaysApply: true
 - Implement only the open phase in `docs/status.md`.
 - TypeScript strict. Validate inputs with Zod from `packages/shared`.
 - Business rules live in `apps/api`, not in React or Expo screens.
-- Public ticket views must not include subject, body, requester, or comments.
+- Public ticket views must not include the body, the requester, or comments. The working list may show the subject.
 - Never commit `.env`, secrets, dumps, or real client data.
 - Do not add services that `docs/stack-entscheidung.md` rejects.
 - UI copy is German and English. No emoji icons. Works at 390px width.
