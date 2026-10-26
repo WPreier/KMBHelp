@@ -1,0 +1,1 @@
+ALTER TABLE "ticket" ADD CONSTRAINT "ticket_type" CHECK ("ticket"."type" in ('incident', 'request', 'access', 'remote_support', 'change', 'backup_test', 'security_incident', 'asset', 'data_exchange', 'retention', 'supplier', 'knowledge', 'procurement'));

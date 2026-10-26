@@ -6,7 +6,7 @@ Markenname der Anwendung: **KMBHelp**
 Host und DNS-Name: `helpdesk.kmbcloud.at`
 Postfach: `helpdesk@kmbcloud.at`
 
-Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 0 ist das lauffähige Gerüst: API-Gesundheit, leere Datenbankmigration, Platzhalterseite.
+Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 1 legt das Schema, den Katalog und die Priorität an. Die Oberfläche bleibt der Platzhalter aus Phase 0.
 
 | Datei | Inhalt |
 |---|---|
@@ -33,7 +33,7 @@ docker run -d --name kmbhelp-pg \
   -e POSTGRES_PASSWORD=kmbhelp-dev-only \
   -e POSTGRES_DB=kmbhelp \
   -p 5432:5432 \
-  postgres:16
+  postgres:17
 
 pnpm install
 cp .env.example .env
@@ -45,6 +45,7 @@ In `.env` das Passwort des lokalen Containers eintragen. Die Datei bleibt außer
 
 ```bash
 pnpm db:migrate
+pnpm db:seed
 pnpm test
 pnpm typecheck
 pnpm dev

@@ -10,10 +10,10 @@ Zielrechner der Entwicklung: ein Arbeitsplatz der IT, nicht der Produktivserver.
 | Git | 2.45 oder neuer | |
 | Node.js | 22 LTS | identisch zu Produktion |
 | pnpm | 9 oder 10 | `corepack enable` |
-| Docker Desktop oder Docker Engine | aktuell | nur für lokale PostgreSQL 16, nicht als Produktionspflicht |
+| Docker Desktop oder Docker Engine | aktuell | nur für lokale PostgreSQL 17, nicht als Produktionspflicht |
 | Cursor | aktuelle stabile Ausgabe | Editor und Agent |
 | Grok als Modell in Cursor | das stärkste dort angebotene Grok-Modell für Code | nicht nebenbei ein zweites Modell im selben Branch wechseln |
-| PostgreSQL-Client `psql` | 16 | Fehlersuche |
+| PostgreSQL-Client `psql` | 17 | Fehlersuche |
 | Ein Browser | aktuell | Firefox oder Chromium |
 
 Nicht nötig auf diesem Platz: Android Studio für den Alltag (EAS baut in der Cloud), ein Domänencontroller, ein Copy von BMD.
@@ -34,7 +34,7 @@ docker run -d --name kmbhelp-pg \
   -e POSTGRES_PASSWORD=kmbhelp-dev-only \
   -e POSTGRES_DB=kmbhelp \
   -p 5432:5432 \
-  postgres:16
+  postgres:17
 ```
 
 Dieses Passwort ist nur für den Entwicklungscontainer. Es kommt nicht auf den Server und nicht ins GitHub.
@@ -116,7 +116,7 @@ Vorlage der Variablennamen, ohne Werte, ist `.env.example` und wird in Phase 0 e
 
 ## 6. Produktion, kurz
 
-Linux, Node 22, PostgreSQL 16 auf demselben Rechner oder einem internen Datenbankrechner, nginx oder Apache davor, TLS mit dem Zertifikat der Kanzlei. Zwei systemd-Einheiten: `kmbhelp-api`, `kmbhelp-worker`. Die genaue Anleitung schreibt Phase 10 nach `docs/installation-linux.md`. Bis dahin nicht „schnell per scp“ deployen.
+Linux, Node 22, PostgreSQL 17 auf demselben Rechner oder einem internen Datenbankrechner, nginx oder Apache davor, TLS mit dem Zertifikat der Kanzlei. Zwei systemd-Einheiten: `kmbhelp-api`, `kmbhelp-worker`. Die genaue Anleitung schreibt Phase 10 nach `docs/installation-linux.md`. Bis dahin nicht „schnell per scp“ deployen.
 
 Der Server braucht ausgehende Verbindungen zu Microsoft Graph und zum später gewählten KI-Anbieter, und eine eingehende LDAPS-Verbindung zu `MADC1.kmbcloud.at:636`. Port 443 öffentlich nur, wenn anonyme Meldungen von außen gewollt sind. Staff- und Admin-Pfade bleiben per Allowlist auf das Kanzleinetz beschränkt, auch wenn die API denselben Host hat.
 

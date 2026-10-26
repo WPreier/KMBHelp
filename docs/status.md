@@ -1,11 +1,11 @@
 # Status
 
-Phase 0 ist umgesetzt. Der nächste Auftrag lautet: Phase 1 aus `PROMPT.md`.
+Phase 1 ist umgesetzt. Der nächste Auftrag lautet: Phase 2 aus `PROMPT.md`.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
 | 0 | Gerüst, Health, Platzhalterseite | erledigt |
-| 1 | Schema, Katalog, Priorität | offen |
+| 1 | Schema, Katalog, Priorität | erledigt |
 | 2 | Öffentliches Web, Staff-API, Test-Auth nur außerhalb Produktion | offen |
 | 3 | AD, MFA, lokaler Admin | offen |
 | 4 | Graph Mail und Kalender | offen |
@@ -28,6 +28,18 @@ Phase 0 ist umgesetzt. Der nächste Auftrag lautet: Phase 1 aus `PROMPT.md`.
 - [x] `pnpm test` und `pnpm typecheck`
 
 Start: `pnpm install`, PostgreSQL wie in `ENTWICKLUNGSUMGEBUNG.md`, `.env` aus `.env.example`, `pnpm db:migrate`, `pnpm dev`.
+
+## Phase 1 — Abnahme
+
+- [x] Schema für Tickets, Ereignisse, Katalog, Staff, Skills, Freeze, Lieferanten, Assets, Lizenzen, Zertifikate, Portale, Beschaffung, Wissen, FAQ, Access-Log, Sessions, WebAuthn
+- [x] `ticket_event` ist nur anhängbar
+- [x] `internet_message_id` ist eindeutig
+- [x] Katalog, FAQ-Stubs, Freeze-Fenster und Beschaffungsgrenzen aus `docs/ticketkatalog.md`
+- [x] Priorität: Lohn oder Finanzamt fällig oder überfällig ist P1, auch wenn P3 gemeldet wird
+- [x] Test-Fabrik für Staff, in Produktion nicht erreichbar und von der API nicht importiert
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm db:migrate`, danach `pnpm db:seed`. Die Datenbank heißt `kmbhelp`.
 
 Die Logo-Dateien und die Adressen für www, Home und Wiki fehlen. Die Kopfzeile zeigt die Wortmarken; die drei Links bleiben ohne Ziel.
 

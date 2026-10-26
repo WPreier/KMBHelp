@@ -78,7 +78,7 @@ Bei `scripts/install.ts` einmalig abgefragt oder über Umgebungsvariable, die da
 
 ## 12. Datenbank
 
-PostgreSQL 16. Eine Instanz, benutzt von API und Worker. Schema nur über Migrationen.
+PostgreSQL 17. Eine Instanz, benutzt von API und Worker. Schema nur über Migrationen.
 
 ## 13. HTTP-API
 
