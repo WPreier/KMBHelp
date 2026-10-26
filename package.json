@@ -24,6 +24,8 @@
     "install:helpdesk": "tsx scripts/install.ts"
   },
   "devDependencies": {
+    "@kmbhelp/db": "workspace:*",
+    "@kmbhelp/shared": "workspace:*",
     "@eslint/js": "^9.39.1",
     "@types/node": "catalog:",
     "eslint": "^9.39.1",

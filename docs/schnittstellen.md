@@ -24,7 +24,7 @@ Gesundheit: `https://helpdesk.kmbcloud.at/api/health`
 - Sprache aus `Accept-Language`, umschaltbar Deutsch / Englisch, weitere Sprachen als zusätzliche JSON-Dateien ohne Codeänderung. Wahl in einem Cookie `kmbhelp_lang`.
 - Helligkeit in Cookie `kmbhelp_theme` (`light` oder `dark`), zusätzlich `prefers-color-scheme` als Startwert.
 - Kein Cookie-Banner. Es werden nur technisch nötige Cookies gesetzt (Sprache, Theme). Das ist eine Produktentscheidung der Kanzlei; die Software lädt keine Tracker.
-- Kopfzeile: links Logo KMB, dann `www` nach `https://kmb-steuerberatung.at`, `Home` nach `https://home.kmbcloud.at`, `Wiki` nach `https://wiki.kmbcloud.at`. Rechts von Wiki ein kleines Suchfeld ohne Beschriftung, der Knopf ist eine Lupe. Danach kleine Flaggen für Deutsch und Englisch, dann Sonne und Mond für Hell und Dunkel, links von Malama. Ziel von Malama ist `https://malama.at`. Externe Links öffnen ein neues Fenster. Dieselbe Hintergrundfarbe trägt den Balken darunter mit `KMBHelp` und dem Satz „IT Helpdesk für die KMB Steuerberatung“. Darunter, nah am Balken, liegen „Ticket erfassen“ und „Anleitungen“.
+- Kopfzeile: links das KMB-Logo, dann `www` nach `https://kmb-steuerberatung.at`, `Home` nach `https://home.kmbcloud.at`, `Wiki` nach `https://wiki.kmbcloud.at`. Rechts von Wiki ein kleines Suchfeld ohne Beschriftung, der Knopf ist eine Lupe. Danach kleine Flaggen für Deutsch und Englisch, dann Sonne und Mond für Hell und Dunkel, links vom Malama-Logo. Ziel von Malama ist `https://malama.at`. Hell nutzt `kmb-logo--light.png` und `malama-logo-light.svg`, Dunkel nutzt `kmb-logo-dark.png` und `malama-logo-dark.svg`. Externe Links öffnen ein neues Fenster. Dieselbe Hintergrundfarbe trägt den Balken darunter mit `KMBHelp` und dem Satz „IT Helpdesk für die KMB Steuerberatung“. Darunter, nah am Balken, liegen „Ticket erfassen“ und „Anleitungen“.
 - Datumseingaben im Format `dd.MM.yyyy`. Die öffentliche Liste ist eine einzeilige Tabelle mit den Köpfen ID, Text, Alter und Ablauf bis. Die Zeilen wechseln hell und dunkel. Die Tabelle hat denselben leichten Rahmen und Schatten wie die Eingabefelder. Neben „Ticket anlegen“ steht „Zurücksetzen“ und leert das Formular.
 - Bedienbar mit Tastatur, auf schmalen Displays eine Spalte. Touch-Ziele sind mindestens 44px, die Flaggen- und Darstellungs-Knöpfe in der Kopfzeile sind kleiner.
 
@@ -71,11 +71,29 @@ Siehe Sicherheitsdokument. Anonym ist erlaubt. IP-Log ist Pflicht.
 
 ## 10. Staff-Anmeldung
 
-Wie in `docs/sicherheit.md`. Domäne `kmbcloud.at`, Server `MADC1.kmbcloud.at`, Gruppe `Helpdesk`.
+Wie in `docs/sicherheit.md`. Domäne `kmbcloud.at`, Server `MADC1.kmbcloud.at`, Gruppe `HelpdeskAdmins` unter `kmb/Sicherheitsgruppen`. Das Dienstkonto und das Zertifikat von MADC1 liegen nur in der lokalen Datei außerhalb des Projektordners.
+
+`POST /api/v1/auth/login` prüft beim ersten Mal das Passwort. Für AD-Konten ruft das die Verzeichnis-Schnittstelle auf. Fehlen `LDAPS_URL`, Bind-DN, Bind-Passwort, Basis-DN oder Gruppen-DN, antwortet die API mit 503 und speichert nichts. Ein Test-Double ersetzt das Verzeichnis in den Tests. Das Passwort steht weder in der Datenbank noch im Audit. `login_audit` ist nur anhängbar. Wird ein Konto gelöscht, bleibt die Zeile und der Verweis wird leer.
+
+Ist MFA eingerichtet, genügen E-Mail und TOTP oder Passkey. Die Mitgliedschaft wird dabei erneut geprüft. Wer nicht mehr in HelpdeskAdmins ist, erhält dieselbe öffentliche Ablehnung wie bei einem falschen Passwort. Das Audit nennt `not_member`.
+
+Die Sitzung heißt `kmbhelp_session`, `HttpOnly`, `SameSite=Lax`, `Secure` nur über https. Der CSRF-Wert heißt `kmbhelp_csrf` und ist für die Seite lesbar. Änderungen senden ihn als `x-kmbhelp-csrf`. Eine Sitzung mit offener MFA-Einrichtung darf keine Staff-Tickets lesen.
+
+Passkey und TOTP: `POST /api/v1/auth/totp/setup`, `POST /api/v1/auth/totp/confirm`, `POST /api/v1/auth/webauthn/register/options`, `POST /api/v1/auth/webauthn/register/verify`, `POST /api/v1/auth/webauthn/login/options`, `POST /api/v1/auth/webauthn/login/verify`. Abmelden: `POST /api/v1/auth/logout`.
+
+`WEBAUTHN_RP_ID` und `WEBAUTHN_ORIGIN` überschreiben die Vorgaben. Sonst gilt in Produktion `helpdesk.kmbcloud.at`, lokal `127.0.0.1` und `http://127.0.0.1:5173`.
 
 ## 11. Lokaler Admin
 
-Bei `scripts/install.ts` einmalig abgefragt oder über Umgebungsvariable, die danach aus der Shell-History entfernt wird. Es gibt genau einen solchen Account.
+Bei `scripts/install.ts` einmalig abgefragt oder über Umgebungsvariable, die danach aus der Shell-History entfernt wird. Es gibt genau einen solchen Account. Das Passwort liegt als Argon2id-Hash.
+
+`GET /api/v1/admin/staff` listet Konten, Skills und Kategorien ohne Passwort-Hash und ohne TOTP-Geheimnis. `POST /api/v1/admin/password` ändert das eigene Passwort. `POST /api/v1/admin/staff/:id/mfa/reset` löscht TOTP, Passkeys und Sitzungen. `POST /api/v1/admin/staff/:id/access` ersetzt Skills und Kategorien.
+
+Diese Routen verlangen den lokalen Admin, eine fertige Sitzung, den CSRF-Header und eine Adresse aus `192.168.36.0/24` oder `192.168.191.0/24`. Eine leere Liste verweigert jeden Zugriff. `127.0.0.1` gehört nicht dazu.
+
+`GET /api/v1/auth/session` sagt nur, ob die eigene Sitzung fertig ist und ob sie der lokale Admin ist.
+
+`GET /api/v1/admin/notices` und `PATCH /api/v1/admin/notices/:code` pflegen den Meldungskatalog. `GET /api/v1/admin/configuration` zeigt Werte und Prüfungen, Geheimnisse nur als gesetzt oder fehlend. `POST /api/v1/admin/configuration/check` prüft erneut und löst die fehlgeschlagenen Meldungen aus. Syslog ist UDP 514 im BSD-Format. Die Auslieferung steht in `ConfigDefaults.md`.
 
 ## 12. Datenbank
 
@@ -91,7 +109,7 @@ Ressourcen mindestens:
 - `GET /api/v1/tickets/public` Arbeitsliste mit Nummer, Betreff, Status, Priorität, Alter und Fälligkeit. Kein Beschreibungstext, kein Absender, keine Kommentare
 - `POST /api/v1/tickets/public/:number` schaltet offen und inaktiv, ändert die Priorität oder schließt dauerhaft
 - `GET|PATCH /api/v1/staff/tickets`
-- Bis Phase 3 authentifiziert der Header `X-Kmbhelp-Test-Staff` mit der E-Mail eines Staff-Kontos, und nur wenn `ALLOW_TEST_AUTH=1` gesetzt ist und `NODE_ENV` nicht `production` ist. In Produktion darf die Variable nicht gesetzt sein. Ohne diese Freigabe wird der Header ignoriert.
+- Der Header `X-Kmbhelp-Test-Staff` mit der E-Mail eines Staff-Kontos gilt nur, wenn `ALLOW_TEST_AUTH=1` gesetzt ist und `NODE_ENV` nicht `production` ist. In Produktion darf die Variable nicht gesetzt sein. Ohne diese Freigabe wird der Header ignoriert. Eine fertige Sitzung gilt auch ohne den Header.
 - `POST /api/v1/staff/tickets/:id/comments`
 - `POST /api/v1/staff/tickets/:id/close`
 - Katalog, FAQ, Wissen, Dashboard-Zahlen, Admin-Zuordnung, Beschaffung, Änderungen, Backup-Tests, Sicherheitsvorfälle, Assets

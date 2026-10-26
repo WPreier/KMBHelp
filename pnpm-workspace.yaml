@@ -3,6 +3,7 @@ packages:
   - 'packages/*'
 
 onlyBuiltDependencies:
+  - argon2
   - esbuild
 
 catalog:

@@ -105,6 +105,7 @@ Grok außerhalb von Cursor (grok.com) nur für Fragen ohne Codeausschnitte aus d
 | Geheimnis | Wo es liegt | Wo es nicht liegt |
 |---|---|---|
 | PostgreSQL-Produktion | `/etc/kmbhelp/api.env`, Modus 0600, User `kmbhelp` | Git, Cursor-Chat, Issue |
+| Dieser Arbeitsplatz | `%LOCALAPPDATA%\kmbhelp\secrets.json` für Konten, Passwörter und Zertifikate, dazu `dev.env` für die Datenbank-URL. Nur der Benutzer. Die API liest beide, solange `NODE_ENV` nicht `production` ist | Projektordner, Git |
 | Graph Client-Secret | dieselbe Datei | |
 | AD-Dienstkonto | dieselbe Datei | kein Domänenadmin |
 | Session-Schlüssel | dieselbe Datei, lange Zufallswerte | |

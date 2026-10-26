@@ -18,7 +18,7 @@ Artikel, Begründung, Betrag netto, Lieferant (muss nicht freigegeben sein, wenn
 
 ## Vorgesetzter
 
-Die erste Version fragt die E-Mail ab und schickt einen Link mit Einmal-Token. Der Vorgesetzte ist nicht zwingend in der AD-Gruppe Helpdesk. Der Link erlaubt nur diese eine Entscheidung, kein Ticketlesen darüber hinaus. Gültigkeit 7 Tage.
+Die erste Version fragt die E-Mail ab und schickt einen Link mit Einmal-Token. Der Vorgesetzte ist nicht zwingend in der AD-Gruppe HelpdeskAdmins. Der Link erlaubt nur diese eine Entscheidung, kein Ticketlesen darüber hinaus. Gültigkeit 7 Tage.
 
 ## Nachweis
 

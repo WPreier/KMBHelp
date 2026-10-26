@@ -49,6 +49,49 @@ export const openApiDocument = {
         },
       },
     },
+    '/api/v1/auth/login': {
+      post: {
+        operationId: 'signIn',
+        responses: {
+          '200': { description: 'Enroll, MFA challenge, or a full staff session.' },
+          '401': { description: 'Denied. The body does not say whether the account exists.' },
+          '503': { description: 'Directory is not configured.' },
+        },
+      },
+    },
+    '/api/v1/auth/logout': {
+      post: {
+        operationId: 'signOut',
+        responses: { '200': { description: 'Session revoked and cookies cleared.' } },
+      },
+    },
+    '/api/v1/auth/session': {
+      get: {
+        operationId: 'sessionView',
+        responses: { '200': { description: 'Whether this browser has a finished local-admin session.' } },
+      },
+    },
+    '/api/v1/admin/notices': {
+      get: {
+        operationId: 'listNotices',
+        responses: { '200': { description: 'Message catalog for the local admin.' } },
+      },
+    },
+    '/api/v1/admin/configuration': {
+      get: {
+        operationId: 'readConfiguration',
+        responses: { '200': { description: 'Configuration values and checks. Secrets are not returned.' } },
+      },
+    },
+    '/api/v1/admin/staff': {
+      get: {
+        operationId: 'listAdminStaff',
+        responses: {
+          '200': { description: 'Staff, skills and categories. No password hash and no TOTP secret.' },
+          '403': { description: 'Not the local admin or the address is outside the allowlist.' },
+        },
+      },
+    },
     '/api/v1/staff/tickets': {
       get: {
         operationId: 'listStaffTickets',

@@ -37,13 +37,15 @@ Die öffentliche Arbeitsliste kennt die Status `open`, `inactive`, `expired` und
 
 ## Anmeldung Staff
 
-1. Erste Anmeldung: E-Mail, Passwortprüfung per LDAPS gegen `kmbcloud.at` auf `MADC1.kmbcloud.at`, Konto aktiv, Mitglied der Gruppe `Helpdesk`.
+1. Erste Anmeldung: E-Mail, Passwortprüfung per LDAPS gegen `kmbcloud.at` auf `MADC1.kmbcloud.at`, Konto aktiv, Mitglied der Gruppe `HelpdeskAdmins`. Der Gruppenpfad ist `kmbcloud.at/kmb/Sicherheitsgruppen/HelpdeskAdmins`, der LDAP-DN `CN=HelpdeskAdmins,OU=Sicherheitsgruppen,OU=kmb,DC=kmbcloud,DC=at`.
 2. Unmittelbar danach Passkey (WebAuthn) oder TOTP. Ohne abgeschlossene MFA kein Zugang zu Admin, Dashboard oder Ticketinhalt.
-3. Jede spätere Anmeldung: E-Mail plus Passkey oder TOTP. Zusätzlich prüft ein Dienstkonto, dass das AD-Konto noch aktiv und in `Helpdesk` ist. Sonst bleibt ein ausgeschiedener Mitarbeiter über seinen Passkey im System.
+3. Jede spätere Anmeldung: E-Mail plus Passkey oder TOTP. Zusätzlich prüft ein Dienstkonto, dass das AD-Konto noch aktiv und in `HelpdeskAdmins` ist. Sonst bleibt ein ausgeschiedener Mitarbeiter über seinen Passkey im System.
 4. AD-Passwörter werden nie gespeichert, nie geloggt, nie an die KI gegeben.
 5. Ein lokales Admin-Konto, Benutzername bei der Installation festgelegt, Passwort Argon2id. Es setzt MFA zurück und pflegt Kenntnisse. Es ist kein Alltags-Agent.
 
-Admin-Oberflächen zusätzlich nur aus dem internen Netz (`ADMIN_IP_ALLOWLIST`). Authentifizierung bleibt Pflicht. Ein IP-Filter allein ist kein Zugangsschutz.
+Admin-Oberflächen zusätzlich nur aus `192.168.36.0/24` und `192.168.191.0/24`. Authentifizierung bleibt Pflicht. Ein IP-Filter allein ist kein Zugangsschutz. Meldungskatalog und Konfiguration sieht nur der lokale Admin.
+
+Systemmeldungen gehen zusätzlich als BSD-Syslog, Facility `local0`, an `SYSLOG_HOST` Port `514` UDP. Kategorien sind Informational, Warning und Error. Eine ignorierte Meldung wird nicht ausgelöst. Der Text enthält kein Passwort und kein Zertifikat.
 
 ## KI
 

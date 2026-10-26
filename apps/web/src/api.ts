@@ -1,4 +1,4 @@
-import { readPublicError } from '@kmbhelp/shared';
+import { readCookie, readPublicError } from '@kmbhelp/shared';
 
 export class RequestFailed extends Error {
   readonly text: { de: string; en: string } | null;
@@ -10,22 +10,29 @@ export class RequestFailed extends Error {
 }
 
 export async function getJson<T>(url: string, parse: (value: unknown) => T): Promise<T> {
-  return readResponse(await fetch(url), parse);
+  return readResponse(await fetch(url, { credentials: 'include' }), parse);
 }
 
 export async function postJson<T>(
   url: string,
   payload: unknown,
   parse: (value: unknown) => T,
+  method: 'POST' | 'PATCH' = 'POST',
 ): Promise<T> {
   return readResponse(
     await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      method,
+      credentials: 'include',
+      headers: { 'content-type': 'application/json', ...csrfHeader() },
       body: JSON.stringify(payload),
     }),
     parse,
   );
+}
+
+function csrfHeader(): { 'x-kmbhelp-csrf'?: string } {
+  const token = readCookie(document.cookie, 'kmbhelp_csrf');
+  return token ? { 'x-kmbhelp-csrf': token } : {};
 }
 
 async function readResponse<T>(response: Response, parse: (value: unknown) => T): Promise<T> {

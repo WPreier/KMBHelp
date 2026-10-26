@@ -1,10 +1,22 @@
 import type { FastifyRequest } from 'fastify';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { publicErrors } from '@kmbhelp/shared';
-import { staff, type Database } from '@kmbhelp/db';
+import { session, staff, type Database } from '@kmbhelp/db';
 import { PublicError } from './http.js';
 
 export const TEST_STAFF_HEADER = 'x-kmbhelp-test-staff';
+export const SESSION_COOKIE = 'kmbhelp_session';
+export const CSRF_COOKIE = 'kmbhelp_csrf';
+export const CSRF_HEADER = 'x-kmbhelp-csrf';
+
+export type StaffSession = {
+  id: string;
+  staffId: string;
+  email: string;
+  isLocalAdmin: boolean;
+  mfaPending: boolean;
+  csrfToken: string;
+};
 
 export function readRuntimeAuth(env: NodeJS.ProcessEnv): { testAuthEnabled: boolean } {
   const flag = env.ALLOW_TEST_AUTH?.trim() ?? '';
@@ -12,6 +24,18 @@ export function readRuntimeAuth(env: NodeJS.ProcessEnv): { testAuthEnabled: bool
     throw new Error('ALLOW_TEST_AUTH must not be set in production');
   }
   return { testAuthEnabled: env.NODE_ENV !== 'production' && flag === '1' };
+}
+
+export function readRequestCookie(request: FastifyRequest, name: string): string | null {
+  const header = request.headers.cookie;
+  if (typeof header !== 'string') return null;
+  for (const part of header.split(';')) {
+    const separator = part.indexOf('=');
+    if (separator < 0) continue;
+    if (part.slice(0, separator).trim() !== name) continue;
+    return decodeURIComponent(part.slice(separator + 1).trim());
+  }
+  return null;
 }
 
 export async function staffFromTestHeader(
@@ -34,4 +58,70 @@ export async function staffFromTestHeader(
   const found = rows[0];
   if (!found) throw new PublicError(401, 'unauthorized', publicErrors.unauthorized);
   return found;
+}
+
+export async function staffFromSession(
+  database: Database,
+  request: FastifyRequest,
+  now: Date,
+): Promise<StaffSession | null> {
+  const sessionId = readRequestCookie(request, SESSION_COOKIE);
+  if (!sessionId) return null;
+  const rows = await database.db
+    .select({
+      id: session.id,
+      staffId: staff.id,
+      email: staff.email,
+      isLocalAdmin: staff.isLocalAdmin,
+      mfaPending: session.mfaPending,
+      csrfToken: session.csrfToken,
+    })
+    .from(session)
+    .innerJoin(staff, eq(session.staffId, staff.id))
+    .where(
+      and(
+        eq(session.id, sessionId),
+        isNull(session.revokedAt),
+        gt(session.expiresAt, now),
+        eq(staff.active, true),
+      ),
+    );
+  return rows[0] ?? null;
+}
+
+export function assertCsrf(current: StaffSession, request: FastifyRequest): void {
+  const header = request.headers[CSRF_HEADER];
+  if (typeof header !== 'string' || header === '' || header !== current.csrfToken) {
+    throw new PublicError(403, 'csrf_invalid', publicErrors.csrfInvalid);
+  }
+}
+
+export async function requireStaff(
+  database: Database,
+  request: FastifyRequest,
+  testAuthEnabled: boolean,
+  now: Date,
+): Promise<{ id: string }> {
+  const current = await staffFromSession(database, request, now);
+  if (current && !current.mfaPending) return { id: current.staffId };
+  if (!testAuthEnabled) throw new PublicError(401, 'unauthorized', publicErrors.unauthorized);
+  const header = request.headers[TEST_STAFF_HEADER];
+  if (typeof header !== 'string' || header.trim() === '') {
+    throw new PublicError(401, 'unauthorized', publicErrors.unauthorized);
+  }
+  return staffFromTestHeader(database, request, testAuthEnabled);
+}
+
+export async function optionalStaff(
+  database: Database,
+  request: FastifyRequest,
+  testAuthEnabled: boolean,
+  now: Date,
+): Promise<{ id: string } | null> {
+  const current = await staffFromSession(database, request, now);
+  if (current && !current.mfaPending) return { id: current.staffId };
+  if (!testAuthEnabled) return null;
+  const header = request.headers[TEST_STAFF_HEADER];
+  if (typeof header !== 'string' || header.trim() === '') return null;
+  return staffFromTestHeader(database, request, testAuthEnabled);
 }

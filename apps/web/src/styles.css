@@ -94,13 +94,19 @@ header {
   min-width: 0;
 }
 
-.wordmark {
+.logo-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--ink);
-  font-weight: 600;
   text-decoration: none;
+}
+
+.logo-link img {
+  display: block;
+  height: 40px;
+  width: auto;
+  max-width: 9.5rem;
+  object-fit: contain;
 }
 
 nav {
@@ -228,6 +234,27 @@ header .search button {
   align-items: center;
   gap: 12px;
   margin-top: 16px;
+}
+
+.check-line {
+  flex-direction: row;
+  align-items: center;
+}
+
+.check-line input {
+  width: 1.25rem;
+  min-height: 1.25rem;
+}
+
+fieldset.check-list label {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+fieldset.check-list input {
+  width: 1.25rem;
+  min-height: 1.25rem;
 }
 
 .form-actions button[type='submit'] {

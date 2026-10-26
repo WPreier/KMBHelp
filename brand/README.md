@@ -1,8 +1,10 @@
 # Marken
 
-Vor Phase 2 hier ablegen:
+Die Kopfzeile schaltet mit der Darstellung:
 
-- `kmb-logo.svg` — Kopfzeile links, Links daneben auf www, Home und Wiki
-- `malama-logo.svg` — Kopfzeile rechts, verlinkt auf https://malama.at
+- `kmb-logo--light.png` — helle Seite, links
+- `kmb-logo-dark.png` — dunkle Seite, links
+- `malama-logo-light.svg` — helle Seite, rechts, Linkziel `https://malama.at`
+- `malama-logo-dark.svg` — dunkle Seite, rechts
 
-Bis die Dateien liegen, zeigt die Oberfläche die Wortmarke „KMB Steuerberatung“ und „Malama“ als Text. Keine Logos von fremden Webseiten herunterladen.
+Die weißen Flächen und das dunkle Malama-Zeichen sind noch nicht fein ausgearbeitet. Keine Logos von fremden Webseiten herunterladen.

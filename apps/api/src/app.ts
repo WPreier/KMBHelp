@@ -1,10 +1,14 @@
+import { randomBytes } from 'node:crypto';
 import { createDatabase, databaseReachable, type Database } from '@kmbhelp/db';
 import { healthResponseSchema, publicErrors } from '@kmbhelp/shared';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { directoryFromEnv, type Directory } from './directory.js';
 import type { SearchExplainer } from './explain.js';
 import { PublicError } from './http.js';
 import { openApiDocument } from './openapi.js';
 import { registerPhase2 } from './phase2.js';
+import { registerOperations } from './operations.js';
+import { registerPhase3 } from './phase3.js';
 
 export type BuildAppOptions = {
   databaseUrl?: string | undefined;
@@ -16,6 +20,11 @@ export type BuildAppOptions = {
   explainer?: SearchExplainer | undefined;
   ticketCreateLimit?: number | undefined;
   searchLimit?: number | undefined;
+  directory?: Directory | undefined;
+  sessionSecret?: string | undefined;
+  adminAllowlist?: string | undefined;
+  webauthnRpId?: string | undefined;
+  webauthnOrigin?: string | undefined;
 };
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -26,6 +35,11 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
             'req.headers.authorization',
             'req.headers.cookie',
             'req.headers["x-kmbhelp-test-staff"]',
+            'req.headers["x-kmbhelp-csrf"]',
+            'req.body.password',
+            'req.body.currentPassword',
+            'req.body.newPassword',
+            'req.body.code',
             'req.query',
           ],
         }
@@ -69,6 +83,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     return reply.code(payload.code).send(payload.body);
   });
 
+  const webauthn = webauthnFromEnv(process.env);
   registerPhase2(app, {
     database,
     testAuthEnabled: options.testAuthEnabled ?? false,
@@ -76,6 +91,20 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     explainer: options.explainer,
     ticketCreateLimit: options.ticketCreateLimit,
     searchLimit: options.searchLimit,
+  });
+  registerPhase3(app, {
+    database,
+    directory: options.directory ?? directoryFromEnv(process.env),
+    sessionSecret: resolveSessionSecret(options.sessionSecret, process.env),
+    adminAllowlist: options.adminAllowlist ?? process.env.ADMIN_IP_ALLOWLIST ?? '',
+    rpId: options.webauthnRpId ?? webauthn.rpId,
+    origin: options.webauthnOrigin ?? webauthn.origin,
+    now: options.now,
+  });
+  registerOperations(app, {
+    database,
+    adminAllowlist: options.adminAllowlist ?? process.env.ADMIN_IP_ALLOWLIST ?? '',
+    now: options.now,
   });
 
   app.get('/api/docs', async () => openApiDocument);
@@ -99,4 +128,23 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   return app;
+}
+
+const ephemeralSessionSecret = randomBytes(32).toString('base64url');
+
+function resolveSessionSecret(override: string | undefined, env: NodeJS.ProcessEnv): string {
+  const given = (override ?? env.SESSION_SECRET ?? '').trim();
+  if (given.length >= 16) return given;
+  if (env.NODE_ENV === 'production') throw new Error('SESSION_SECRET must be set in production');
+  return ephemeralSessionSecret;
+}
+
+function webauthnFromEnv(env: NodeJS.ProcessEnv): { rpId: string; origin: string } {
+  const production = env.NODE_ENV === 'production';
+  return {
+    rpId: env.WEBAUTHN_RP_ID?.trim() || (production ? 'helpdesk.kmbcloud.at' : '127.0.0.1'),
+    origin:
+      env.WEBAUTHN_ORIGIN?.trim() ||
+      (production ? 'https://helpdesk.kmbcloud.at' : 'http://127.0.0.1:5173'),
+  };
 }

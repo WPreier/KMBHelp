@@ -14,7 +14,7 @@ Status: entschieden. Der umsetzende Agent ändert das nur mit einer neuen ADR un
 | Datenbank | PostgreSQL 17 | MySQL, SQL Server, MongoDB, SQLite in Produktion |
 | SQL-Zugriff | Drizzle ORM + SQL-Migrationen in Git | Prisma |
 | Validierung | Zod, daraus OpenAPI | handgeschriebene DTOs |
-| Staff-Auth | LDAPS gegen `MADC1.kmbcloud.at`, Gruppe `Helpdesk`, danach Passkey (WebAuthn) oder TOTP | Passwörter in der App speichern, „Vertrau der E-Mail“ |
+| Staff-Auth | LDAPS gegen `MADC1.kmbcloud.at`, Gruppe `HelpdeskAdmins`, danach Passkey (WebAuthn) oder TOTP | Passwörter in der App speichern, „Vertrau der E-Mail“ |
 | Break-glass | ein lokaler Admin, Argon2id, nur Installationsgeheimnis | AD-Konto als einziger Admin |
 | Mail und Kalender | Microsoft Graph, getrennte App-Registration | IMAP-Polling, wenn das Postfach in M365 liegt |
 | KI | austauschbarer Provider hinter `packages/ai`, EU-Verarbeitung, kein Training auf Tickets | Tickettext ungefiltert an ein US-Modell |

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadEnvFileIfPresent } from './env.js';
+import { fillBlankEnvFromFile, fillBlankEnvFromJson, loadEnvFileIfPresent } from './env.js';
 
 const secretKeys = [
   'GRAPH_CLIENT_SECRET',
@@ -43,6 +43,30 @@ describe('loadEnvFileIfPresent', () => {
     const directory = mkdtempSync(join(tmpdir(), 'kmbhelp-env-'));
     directories.push(directory);
     expect(() => loadEnvFileIfPresent(pathToFileURL(join(directory, 'missing.env')))).not.toThrow();
+  });
+
+  it('fills only blank keys from a present file', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'kmbhelp-env-'));
+    directories.push(directory);
+    const file = join(directory, 'dev.env');
+    writeFileSync(file, 'KMBHELP_ENV_PROBE=from-file\nKEPT=from-file\n');
+    process.env.KEPT = 'already';
+    fillBlankEnvFromFile(pathToFileURL(file));
+    expect(process.env.KMBHELP_ENV_PROBE).toBe('from-file');
+    expect(process.env.KEPT).toBe('already');
+    delete process.env.KEPT;
+  });
+
+  it('fills blank keys from json and keeps an existing value', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'kmbhelp-env-'));
+    directories.push(directory);
+    const file = join(directory, 'secrets.json');
+    writeFileSync(file, '{"KMBHELP_ENV_PROBE":"from-json","KEPT":"from-json"}\n');
+    process.env.KEPT = 'already';
+    fillBlankEnvFromJson(pathToFileURL(file));
+    expect(process.env.KMBHELP_ENV_PROBE).toBe('from-json');
+    expect(process.env.KEPT).toBe('already');
+    delete process.env.KEPT;
   });
 
   it('loads a present file', () => {

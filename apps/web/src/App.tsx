@@ -2,12 +2,20 @@ import {
   LANG_COOKIE,
   THEME_COOKIE,
   publicLinkTargets,
+  sessionViewSchema,
   type Lang,
   type ThemeName,
 } from '@kmbhelp/shared';
 import { useEffect, useState, type FormEvent } from 'react';
 import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom';
+import kmbDark from '../../../brand/kmb-logo-dark.png';
+import kmbLight from '../../../brand/kmb-logo--light.png';
+import malamaDark from '../../../brand/malama-logo-dark.svg';
+import malamaLight from '../../../brand/malama-logo-light.svg';
 import { LocaleProvider, useLocale } from './locale.js';
+import { AdminPage, SignInPage } from './auth-pages.js';
+import { getJson } from './api.js';
+import { ConfigurationPage, NoticesPage } from './operations-pages.js';
 import { ArticlePage, FaqListPage, FaqPage, HomePage, MissingPage, SearchPage } from './pages.js';
 import { readClientPreferences, writeClientPreference } from './preferences.js';
 
@@ -51,6 +59,21 @@ function Shell({
   onTheme: (theme: ThemeName) => void;
 }) {
   const { lang, copy } = useLocale();
+  const [localAdmin, setLocalAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getJson('/api/v1/auth/session', sessionViewSchema.parse)
+      .then((view) => {
+        if (!cancelled) setLocalAdmin(view.isLocalAdmin);
+      })
+      .catch(() => {
+        if (!cancelled) setLocalAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     document.title = copy.documentTitle;
@@ -65,8 +88,8 @@ function Shell({
       </a>
       <header className="band">
         <div className="brand">
-          <Link className="wordmark" to="/">
-            {copy.kmb}
+          <Link className="logo-link" to="/">
+            <img src={theme === 'dark' ? kmbDark : kmbLight} alt={copy.kmb} />
           </Link>
           <nav aria-label={copy.navigation}>
             <SiteLink href={targets.www}>{copy.www}</SiteLink>
@@ -121,12 +144,12 @@ function Shell({
             </button>
           </div>
           <a
-            className="wordmark"
+            className="logo-link"
             href="https://malama.at"
             target="_blank"
             rel="noopener noreferrer"
           >
-            {copy.malama}
+            <img src={theme === 'dark' ? malamaDark : malamaLight} alt={copy.malama} />
           </a>
         </div>
       </header>
@@ -138,6 +161,8 @@ function Shell({
         <nav className="content-nav" aria-label={copy.contentNav}>
           <Link to="/">{copy.fileTicket}</Link>
           <Link to="/faq">{copy.guides}</Link>
+          <Link to="/anmelden">{copy.signIn}</Link>
+          {localAdmin ? <Link to="/verwaltung">{copy.adminTitle}</Link> : null}
         </nav>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -145,6 +170,10 @@ function Shell({
           <Route path="/faq/:slug" element={<FaqPage />} />
           <Route path="/wissen/:id" element={<ArticlePage />} />
           <Route path="/suche" element={<SearchPage />} />
+          <Route path="/anmelden" element={<SignInPage />} />
+          <Route path="/verwaltung" element={<AdminPage />} />
+          <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
+          <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
           <Route path="*" element={<MissingPage />} />
         </Routes>
       </main>

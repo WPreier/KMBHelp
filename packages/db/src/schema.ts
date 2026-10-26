@@ -40,6 +40,7 @@ export const staff = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     email: text('email').notNull().unique(),
+    username: text('username').unique(),
     displayName: text('display_name').notNull(),
     role: text('role').notNull().default('agent'),
     active: boolean('active').notNull().default(true),
@@ -47,6 +48,7 @@ export const staff = pgTable(
     // Argon2id hash of the break-glass admin only. Active Directory passwords are never stored.
     passwordHash: text('password_hash'),
     adObjectId: text('ad_object_id'),
+    totpCipher: text('totp_cipher'),
     mfaEnrolledAt: timestamp('mfa_enrolled_at', { withTimezone: true, mode: 'date' }),
     createdAt: createdAtColumn(),
   },
@@ -64,6 +66,19 @@ export const staffSkill = pgTable(
       .references(() => skill.code),
   },
   (table) => [primaryKey({ columns: [table.staffId, table.skillCode] })],
+);
+
+export const staffCategory = pgTable(
+  'staff_category',
+  {
+    staffId: uuid('staff_id')
+      .notNull()
+      .references(() => staff.id),
+    categoryCode: text('category_code')
+      .notNull()
+      .references(() => category.code),
+  },
+  (table) => [primaryKey({ columns: [table.staffId, table.categoryCode] })],
 );
 
 export const catalogItem = pgTable('catalog_item', {
@@ -300,10 +315,62 @@ export const session = pgTable('session', {
   staffId: uuid('staff_id')
     .notNull()
     .references(() => staff.id),
+  mfaPending: boolean('mfa_pending').notNull().default(false),
+  csrfToken: text('csrf_token').notNull().default(''),
   createdAt: createdAtColumn(),
   expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
 });
+
+export const webauthnCredential = pgTable('webauthn_credential', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  staffId: uuid('staff_id')
+    .notNull()
+    .references(() => staff.id),
+  credentialId: text('credential_id').notNull().unique(),
+  publicKey: text('public_key').notNull(),
+  counter: integer('counter').notNull().default(0),
+  createdAt: createdAtColumn(),
+});
+
+export const loginAudit = pgTable(
+  'login_audit',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    at: timestamp('at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    staffId: uuid('staff_id').references(() => staff.id, { onDelete: 'set null' }),
+    email: text('email').notNull(),
+    method: text('method').notNull(),
+    outcome: text('outcome').notNull(),
+    ip: text('ip').notNull(),
+  },
+  (table) => [
+    check(
+      'login_audit_method',
+      sql`${table.method} in ('ad_password', 'local_password', 'totp', 'webauthn', 'admin')`,
+    ),
+    check(
+      'login_audit_outcome',
+      sql`${table.outcome} in ('ok', 'denied', 'not_member', 'mfa_reset')`,
+    ),
+  ],
+);
+
+export const noticeSetting = pgTable(
+  'notice_setting',
+  {
+    code: text('code').primaryKey(),
+    category: text('category').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      'notice_setting_category',
+      sql`${table.category} in ('informational', 'warning', 'error')`,
+    ),
+  ],
+);
 
 export const webauthnChallenge = pgTable(
   'webauthn_challenge',

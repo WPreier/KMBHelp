@@ -1,13 +1,13 @@
 # Status
 
-Phase 2 ist umgesetzt. Der nächste Auftrag lautet: Phase 3 aus `PROMPT.md`.
+Phase 3 ist umgesetzt. Der nächste Auftrag lautet: Phase 4 aus `PROMPT.md`.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
 | 0 | Gerüst, Health, Platzhalterseite | erledigt |
 | 1 | Schema, Katalog, Priorität | erledigt |
 | 2 | Öffentliches Web, Staff-API, Test-Auth nur außerhalb Produktion | erledigt |
-| 3 | AD, MFA, lokaler Admin | offen |
+| 3 | AD, MFA, lokaler Admin | erledigt |
 | 4 | Graph Mail und Kalender | offen |
 | 5 | Übrige Prozessregeln | offen |
 | 6 | KI hinter Provider | offen |
@@ -57,13 +57,26 @@ Start: `pnpm db:migrate`, danach `pnpm db:seed`. Die Datenbank heißt `kmbhelp`.
 
 Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Seite auf `http://127.0.0.1:5173`.
 
-Die Logo-Dateien fehlen. Die Kopfzeile verlinkt www, Home und Wiki.
+Die Kopfzeile zeigt die Logos aus `brand/`, hell und dunkel. Weiße Flächen und das dunkle Malama-Zeichen sind noch nicht fein ausgearbeitet. Die Kopfzeile verlinkt www, Home und Wiki.
+
+## Phase 3 — Abnahme
+
+- [x] Erste Anmeldung prüft das AD-Passwort über die Verzeichnis-Schnittstelle. Das Passwort wird nicht gespeichert
+- [x] Danach Passkey oder TOTP. Eine wartende Sitzung erreicht keine Ticketinhalte
+- [x] Spätere Anmeldung mit E-Mail plus Code oder Passkey, ohne erneutes AD-Passwort, solange das Konto aktiv und in HelpdeskAdmins ist
+- [x] Genau ein lokaler Admin, Passwort Argon2id. Anlegen über `pnpm install:helpdesk`
+- [x] Admin-Seiten: Passwort, MFA zurücksetzen, Skills und Kategorien. Leere Adressliste verweigert jeden Zugriff
+- [x] `login_audit` nur anhängbar, ohne Passwort oder Code
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Anmeldung auf `http://127.0.0.1:5173/anmelden`. Den lokalen Admin legt `pnpm install:helpdesk` an, wenn `LOCAL_ADMIN_USERNAME` und `LOCAL_ADMIN_PASSWORD` in der Shell stehen. Danach die Werte aus der History entfernen.
+
+Die Gruppe ist `HelpdeskAdmins`. Die Verwaltung gilt für `192.168.36.0/24` und `192.168.191.0/24`. Dienstkonto, Passwort und das MADC1-Zertifikat liegen in `%LOCALAPPDATA%\kmbhelp\secrets.json`, nicht im Git und nicht im Projektordner.
+
+Der Start prüft `MADC1.kmbcloud` und den konfigurierten Domänencontroller. Ist einer nicht erreichbar, geht die Meldung `directory.unreachable` ins Prozesslog und per Syslog an UDP 514. Meldungen und Konfiguration sieht nur der lokale Admin, unter `/verwaltung/meldungen` und `/verwaltung/konfiguration`. Die Auslieferung steht in `ConfigDefaults.md`.
 
 ## Offene Rückfragen
 
 - Graph Admin-Consent und Kalender-Reichweite
-- LDAPS-Dienstkonto und Gruppen-DN
 - KI-Anbieter mit AVV, EU
-- Logos in `brand/`
 - Apple- und Google-Konten der GmbH
-- `ADMIN_IP_ALLOWLIST`

@@ -58,6 +58,27 @@ export { displayDateToIso, isoDateToDisplay } from './dates.js';
 export { defaultPublicLinks, publicLinkTargets, type PublicLinkTargets } from './links.js';
 export { messages, publicErrors, type Lang, type MessageKey } from './messages.js';
 export {
+  configurationSchema,
+  noticeCategories,
+  noticeListSchema,
+  noticeUpdateSchema,
+  sessionViewSchema,
+  type ConfigurationReport,
+  type NoticeList,
+  type SessionView,
+} from './operations.js';
+export {
+  adminAccessSchema,
+  adminPasswordSchema,
+  adminStaffSchema,
+  loginRequestSchema,
+  loginResultSchema,
+  totpConfirmSchema,
+  totpSetupSchema,
+  type AdminStaffList,
+  type LoginResult,
+} from './auth.js';
+export {
   LANG_COOKIE,
   THEME_COOKIE,
   readCookie,

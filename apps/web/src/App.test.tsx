@@ -83,6 +83,13 @@ describe('placeholder page', () => {
     const malama = screen.getByRole('link', { name: 'Malama' });
     expect(malama.getAttribute('href')).toBe('https://malama.at');
     expect(malama.getAttribute('target')).toBe('_blank');
+    expect(
+      screen
+        .getByRole('link', { name: 'KMB Steuerberatung' })
+        .querySelector('img')
+        ?.getAttribute('src'),
+    ).toContain('kmb-logo--light');
+    expect(malama.querySelector('img')?.getAttribute('src')).toContain('malama-logo-light');
     for (const [name, href] of [
       ['www', 'https://kmb-steuerberatung.at'],
       ['Home', 'https://home.kmbcloud.at'],
@@ -132,6 +139,15 @@ describe('placeholder page', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Dunkel' }));
     expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(
+      screen
+        .getByRole('link', { name: 'KMB Steuerberatung' })
+        .querySelector('img')
+        ?.getAttribute('src'),
+    ).toContain('kmb-logo-dark');
+    expect(
+      screen.getByRole('link', { name: 'Malama' }).querySelector('img')?.getAttribute('src'),
+    ).toContain('malama-logo-dark');
     expect(document.cookie).toContain('kmbhelp_theme=dark');
     expect(screen.getByRole('button', { name: 'Dunkel' }).getAttribute('aria-pressed')).toBe(
       'true',

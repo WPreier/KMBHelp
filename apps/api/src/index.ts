@@ -1,9 +1,13 @@
-import { loadEnvFileIfPresent } from '@kmbhelp/shared/env';
+import { createDatabase } from '@kmbhelp/db';
+import { loadEnvFileIfPresent, loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { readRuntimeAuth } from './auth.js';
 import { buildApp } from './app.js';
+import { inspectConfiguration } from './configuration.js';
+import { reportChecks } from './operations.js';
 import { readPort } from './port.js';
 
 loadEnvFileIfPresent(new URL('../../../.env', import.meta.url));
+loadWorkstationEnv();
 
 let testAuthEnabled = false;
 try {
@@ -27,4 +31,25 @@ try {
 } catch (error) {
   app.log.error({ err: error }, 'api failed to start');
   process.exit(1);
+}
+
+const startupDatabase = process.env.DATABASE_URL?.trim()
+  ? createDatabase(process.env.DATABASE_URL)
+  : undefined;
+try {
+  const report = await inspectConfiguration(process.env);
+  await reportChecks({
+    database: startupDatabase,
+    env: process.env,
+    checks: report.checks,
+    log: (category, text) => {
+      if (category === 'error') app.log.error(text);
+      else if (category === 'warning') app.log.warn(text);
+      else app.log.info(text);
+    },
+  });
+} catch (error) {
+  app.log.error({ err: error }, 'startup checks failed');
+} finally {
+  await startupDatabase?.pool.end();
 }

@@ -27,7 +27,7 @@ Die Kanzlei verarbeitet fremde Steuer- und Lohndaten unter Verschwiegenheit (Ös
 
 Sprache der Oberfläche: Deutsch und Englisch, weitere Sprachen nur als zusätzliche Katalogdateien. Startwert aus der Browsersprache. Umschalter speichert `kmbhelp_lang`. Hell/Dunkel speichert `kmbhelp_theme`. Kein Cookie-Banner, keine Analysewerkzeuge.
 
-Host: `helpdesk.kmbcloud.at`. Postfach: `helpdesk@kmbcloud.at`. Active Directory: Domäne `kmbcloud.at`, Server `MADC1.kmbcloud.at`, Gruppe `Helpdesk`.
+Host: `helpdesk.kmbcloud.at`. Postfach: `helpdesk@kmbcloud.at`. Active Directory: Domäne `kmbcloud.at`, Server `MADC1.kmbcloud.at`, Gruppe `HelpdeskAdmins`.
 
 ## Stack, bereits entschieden
 
@@ -83,12 +83,12 @@ Steht in `docs/sicherheit.md`. Kurz: anonyme Erfassung ja; öffentliches Mitlese
 Nicht raten und keine Platzhalter-Zugangsdaten erfinden. Die Phase ohne diese Daten bauen, die Anbindung hinter einem Interface lassen, und genau diese Fragen stellen:
 
 1. Microsoft-365-Tenant: wer erteilt Admin-Consent für Mail und Kalender? Application Access Policy nur auf Helpdesk-Postfächer möglich?
-2. LDAPS: Zertifikat von `MADC1`, Dienstkonto (kein Domänenadmin), DN der Gruppe `Helpdesk`, Port 636 erreichbar vom Helpdesk-Server?
+2. LDAPS: Zertifikat von `MADC1`, Dienstkonto (kein Domänenadmin), DN der Gruppe `HelpdeskAdmins`, Port 636 erreichbar vom Helpdesk-Server? Beantwortet: Gruppe `CN=HelpdeskAdmins,OU=Sicherheitsgruppen,OU=kmb,DC=kmbcloud,DC=at`, Netze `192.168.36.0/24` und `192.168.191.0/24`. Zugangsdaten nur lokal.
 3. KI-Anbieter mit AVV und EU-Verarbeitung. Welcher?
 4. Echte URLs für www, Home und Wiki.
 5. Logo-Dateien unter `brand/`, sonst Textwortmarke, kein heruntergeladenes Fremdlogo.
 6. Apple-Developer-Team und Google-Play-Konto, sobald Phase 11 beginnt. Wer besitzt sie?
-7. Internes Subnetz für `ADMIN_IP_ALLOWLIST`.
+7. Internes Subnetz für `ADMIN_IP_ALLOWLIST`. Beantwortet: `192.168.36.0/24` und `192.168.191.0/24`.
 
 ## Arbeitsweise
 
@@ -157,7 +157,7 @@ Rate-Limits, Helmet-äquivalente Header, CSRF, Anhangsfilter, Abhängigkeitsaudi
 
 ## Definition of Done für das Ganze
 
-Ein neuer Mitarbeiter kann ohne Konto ein Ticket im Browser anlegen und sieht die Nummer. Er kann fremde Beschreibungen nicht lesen. Ein Helpdesk-Mitarbeiter der Gruppe `Helpdesk` richtet einmalig einen Passkey ein und bearbeitet das Ticket. Eine Mail an `helpdesk@kmbcloud.at` wird innerhalb von zwei Minuten ein Ticket, wenn Graph konfiguriert ist, und landet im Kalender. P1 durch Lohnlauf ist nicht wegklickbar ohne Begründung. `pnpm test` und `pnpm typecheck` sind grün. Installation auf einem frischen Debian mit nginx ist mit `docs/installation-linux.md` nachvollziehbar.
+Ein neuer Mitarbeiter kann ohne Konto ein Ticket im Browser anlegen und sieht die Nummer. Er kann fremde Beschreibungen nicht lesen. Ein Helpdesk-Mitarbeiter der Gruppe `HelpdeskAdmins` richtet einmalig einen Passkey ein und bearbeitet das Ticket. Eine Mail an `helpdesk@kmbcloud.at` wird innerhalb von zwei Minuten ein Ticket, wenn Graph konfiguriert ist, und landet im Kalender. P1 durch Lohnlauf ist nicht wegklickbar ohne Begründung. `pnpm test` und `pnpm typecheck` sind grün. Installation auf einem frischen Debian mit nginx ist mit `docs/installation-linux.md` nachvollziehbar.
 
 ## Was du am Ende jeder Phase ausgibst
 

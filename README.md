@@ -6,7 +6,7 @@ Markenname der Anwendung: **KMBHelp**
 Host und DNS-Name: `helpdesk.kmbcloud.at`
 Postfach: `helpdesk@kmbcloud.at`
 
-Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 2 erfasst Tickets, zeigt die reduzierte öffentliche Liste, FAQ und Suche. Die Staff-Anmeldung folgt in Phase 3.
+Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 3 meldet Staff an: Verzeichnis, Passkey oder TOTP, lokaler Admin. Der Start prüft den Domänencontroller und schreibt Syslog. Die Auslieferung steht in `ConfigDefaults.md`. Graph-Mail folgt in Phase 4.
 
 | Datei | Inhalt |
 |---|---|
@@ -59,7 +59,4 @@ Nur eine Phase pro Branch. Externe Zugänge (AD, Graph, KI-Anbieter) nicht raten
 
 ## Logos
 
-Noch nicht enthalten. Dateien hier ablegen, bevor Phase 2 startet:
-
-- `brand/kmb-logo.svg` — KMB Steuerberatung, links in der Kopfzeile
-- `brand/malama-logo.svg` — rechts, Linkziel `https://malama.at`
+Die Kopfzeile verwendet die hellen und dunklen Dateien aus `brand/`. Links KMB Steuerberatung, rechts Malama nach `https://malama.at`. Die Feinarbeit an den Flächen folgt.

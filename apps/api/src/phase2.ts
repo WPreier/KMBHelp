@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import {
   category,
@@ -34,7 +34,7 @@ import {
   type SearchHit,
   type StaffTicket,
 } from '@kmbhelp/shared';
-import { staffFromTestHeader } from './auth.js';
+import { optionalStaff, readRequestCookie, requireStaff, SESSION_COOKIE } from './auth.js';
 import { categoryTitleExplainer, type SearchExplainer } from './explain.js';
 import {
   createRateLimiter,
@@ -175,11 +175,11 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
   });
 
   app.get('/api/v1/staff/tickets', async (request) => {
-    if (!options.testAuthEnabled) {
+    if (!options.testAuthEnabled && !readRequestCookie(request, SESSION_COOKIE)) {
       throw new PublicError(401, 'unauthorized', publicErrors.unauthorized);
     }
     const database = db();
-    await staffFromTestHeader(database, request, options.testAuthEnabled);
+    await requireStaff(database, request, options.testAuthEnabled, now());
     const current = now();
     const openRows = await database.db
       .select(staffColumns())
@@ -292,7 +292,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
     if (!searchLimiter.allow(request.ip || 'unknown')) throw rateLimited();
     const database = db();
-    const actor = await optionalStaff(database, request, options.testAuthEnabled);
+    const actor = await optionalStaff(database, request, options.testAuthEnabled, now());
     const query = parsed.data.q.trim();
     const hits =
       query.length < 2 ? [] : await searchContent(database, query, actor !== null, explainer);
@@ -495,17 +495,6 @@ function toStaffTicket(row: StaffRow, current: Date, withDuration: boolean): Sta
     ageSeconds: elapsedSeconds(row.createdAt, current),
     durationSeconds: withDuration ? elapsedSeconds(row.createdAt, end) : null,
   });
-}
-
-async function optionalStaff(
-  database: Database,
-  request: FastifyRequest,
-  testAuthEnabled: boolean,
-): Promise<{ id: string } | null> {
-  if (!testAuthEnabled) return null;
-  const header = request.headers['x-kmbhelp-test-staff'];
-  if (typeof header !== 'string' || header.trim() === '') return null;
-  return staffFromTestHeader(database, request, testAuthEnabled);
 }
 
 async function searchContent(
