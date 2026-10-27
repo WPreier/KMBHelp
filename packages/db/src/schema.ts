@@ -303,6 +303,20 @@ export const staffSearch = pgTable('staff_search', {
   hitIds: jsonb('hit_ids').$type<{ kind: string; id: string }[]>().notNull(),
 });
 
+export const activityLog = pgTable(
+  'activity_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    at: timestamp('at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    actor: text('actor').notNull(),
+    kind: text('kind').notNull(),
+    target: text('target').notNull(),
+    detail: text('detail').notNull(),
+    ip: text('ip').notNull(),
+  },
+  (table) => [index('activity_log_at_idx').on(table.at)],
+);
+
 export const accessLog = pgTable(
   'access_log',
   {

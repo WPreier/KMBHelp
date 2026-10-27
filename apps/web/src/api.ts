@@ -10,7 +10,10 @@ export class RequestFailed extends Error {
 }
 
 export async function getJson<T>(url: string, parse: (value: unknown) => T): Promise<T> {
-  return readResponse(await fetch(url, { credentials: 'include' }), parse);
+  return readResponse(
+    await fetch(url, { credentials: 'include', headers: { ...csrfHeader() } }),
+    parse,
+  );
 }
 
 export async function postJson<T>(

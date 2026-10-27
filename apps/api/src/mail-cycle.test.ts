@@ -1,3 +1,4 @@
+import { scriptedModel } from '@kmbhelp/ai';
 import { describe, expect, it } from 'vitest';
 import type { CalendarReader, CalendarWriter, Mailer } from './graph.js';
 import { ingestMail } from './mail-cycle.js';
@@ -26,14 +27,26 @@ const people = [
   { id: 'bea', email: 'bea@example.com', displayName: 'Bea', skills: ['payroll', 'workplace'] },
 ];
 
-function memoryStore(): MailStore & { tickets: StoredMailTicket[]; events: { kind: string }[] } {
+function memoryStore(
+  faqs: { slug: string; bodyDe: string }[] = [],
+): MailStore & {
+  tickets: StoredMailTicket[];
+  events: { kind: string; payload: Record<string, unknown> }[];
+  closed: string[];
+} {
   const tickets: StoredMailTicket[] = [];
+  const closed: string[] = [];
   const events: { id: string; ticketId: string; kind: string; payload: Record<string, unknown> }[] =
     [];
   let sequence = 1;
-  const store: MailStore & { tickets: StoredMailTicket[]; events: { kind: string }[] } = {
+  const store: MailStore & {
+    tickets: StoredMailTicket[];
+    events: { kind: string; payload: Record<string, unknown> }[];
+    closed: string[];
+  } = {
     tickets,
     events,
+    closed,
     categories: async () => categories,
     async candidates(skillCode) {
       return people
@@ -76,6 +89,10 @@ function memoryStore(): MailStore & { tickets: StoredMailTicket[]; events: { kin
       events.push({ id, ticketId, kind, payload });
       return id;
     },
+    async closeTicket(ticketId) {
+      closed.push(ticketId);
+    },
+    publishedFaqs: async () => faqs,
     async hasEvent(ticketId, kind) {
       return events.some((event) => event.ticketId === ticketId && event.kind === kind);
     },
@@ -119,6 +136,16 @@ function doubles(): {
   };
 }
 
+const supportDecision = {
+  category: 'elda',
+  priority: 'p3' as const,
+  skill: 'payroll',
+  confidence: 0.9,
+  auto_reply_allowed: false,
+  faq_slug: null,
+  is_support: true,
+};
+
 const mail = {
   graphId: 'graph-1',
   internetMessageId: '<once@example.com>',
@@ -144,6 +171,8 @@ describe('ingestMail', () => {
       delays: { p1: 0, p2: 60, p3: 240 },
       oncallEmail: '',
       estimatedMinutes: null,
+      domains: ['example.com'],
+      model: scriptedModel({ decision: supportDecision, answer: 'JA\nEine Support-Anfrage.' }),
     };
     expect(await ingestMail(mail, deps)).toBe('created');
     expect(await ingestMail(mail, deps)).toBe('duplicate');
@@ -184,5 +213,146 @@ describe('ingestMail', () => {
     );
     expect(result).toBe('skip');
     expect(store.tickets).toHaveLength(0);
+  });
+
+  it('leaves the mail untouched when the model is missing or does not answer', async () => {
+    const store = memoryStore();
+    const ports = doubles();
+    const deps = {
+      store,
+      mailer: ports.mailer,
+      calendar: ports.calendar,
+      writer: ports.writer,
+      now: new Date('2026-10-27T08:10:00.000Z'),
+      origin: 'https://helpdesk.kmbcloud.at',
+      fallbackCategory: 'printer',
+      duration: 30,
+      delays: { p1: 0, p2: 60, p3: 240 },
+      oncallEmail: '',
+      estimatedMinutes: null,
+      domains: ['example.com'],
+    };
+    expect(await ingestMail(mail, deps)).toBe('retry');
+    expect(
+      await ingestMail(
+        { ...mail, internetMessageId: '<silent@example.com>' },
+        { ...deps, model: scriptedModel({ decision: null, answer: null }) },
+      ),
+    ).toBe('retry');
+    expect(store.tickets).toHaveLength(0);
+    expect(ports.mailer.sent).toHaveLength(0);
+    expect(ports.writer.events).toHaveLength(0);
+  });
+
+  it('does not create a ticket when the model says the mail is not support', async () => {
+    const store = memoryStore();
+    const ports = doubles();
+    const result = await ingestMail(mail, {
+      store,
+      mailer: ports.mailer,
+      calendar: ports.calendar,
+      writer: ports.writer,
+      now: new Date('2026-10-27T08:10:00.000Z'),
+      origin: 'https://helpdesk.kmbcloud.at',
+      fallbackCategory: 'printer',
+      duration: 30,
+      delays: { p1: 0, p2: 60, p3: 240 },
+      oncallEmail: '',
+      estimatedMinutes: null,
+      domains: ['example.com'],
+      model: scriptedModel({
+        decision: { ...supportDecision, is_support: false },
+        answer: 'NEIN\nDas ist ein Newsletter.',
+      }),
+    });
+    expect(result).toBe('declined');
+    expect(store.tickets).toHaveLength(0);
+    expect(ports.mailer.sent).toHaveLength(0);
+  });
+
+  it('closes from a published FAQ only when the model gate allows it', async () => {
+    const store = memoryStore([{ slug: 'printer', bodyDe: 'Papier nachlegen und neu starten.' }]);
+    const ports = doubles();
+    const base = {
+      store,
+      mailer: ports.mailer,
+      calendar: ports.calendar,
+      writer: ports.writer,
+      now: new Date('2026-10-27T08:10:00.000Z'),
+      origin: 'https://helpdesk.kmbcloud.at',
+      fallbackCategory: 'printer',
+      duration: 30,
+      delays: { p1: 0, p2: 60, p3: 240 } as const,
+      oncallEmail: '',
+      estimatedMinutes: null,
+      autoReplyCategories: ['printer'],
+      domains: ['example.com'],
+    };
+    const blocked = await ingestMail(
+      { ...mail, internetMessageId: '<svnr@example.com>', body: 'SVNR 1234 010180' },
+      {
+        ...base,
+        model: scriptedModel({
+          decision: {
+            category: 'printer',
+            priority: 'p3',
+            skill: 'workplace',
+            confidence: 0.95,
+            auto_reply_allowed: true,
+            faq_slug: 'printer',
+            is_support: true,
+          },
+          answer: 'JA\nEine Support-Anfrage.',
+        }),
+      },
+    );
+    expect(blocked).toBe('created');
+    expect(store.closed).toHaveLength(0);
+    expect(ports.mailer.sent[0]?.text).not.toContain('1234');
+
+    ports.mailer.sent.length = 0;
+    const closed = await ingestMail(
+      {
+        ...mail,
+        internetMessageId: '<faq@example.com>',
+        subject: 'Der Drucker klemmt',
+        body: 'Es kommt kein Papier.',
+      },
+      {
+        ...base,
+        model: scriptedModel({
+          decision: {
+            category: 'printer',
+            priority: 'p3',
+            skill: 'workplace',
+            confidence: 0.95,
+            auto_reply_allowed: true,
+            faq_slug: 'printer',
+            is_support: true,
+          },
+          answer: 'JA\nEine Support-Anfrage.',
+        }),
+      },
+    );
+    expect(closed).toBe('created');
+    expect(store.closed).toEqual(['ticket-2']);
+    expect(ports.mailer.sent[0]?.text).toContain('Papier nachlegen');
+    expect(ports.mailer.sent[0]?.text).not.toContain('Es kommt kein Papier');
+    expect(store.events.some((event) => event.kind === 'model_decision')).toBe(true);
+    const helpdesk = await ingestMail(
+      { ...mail, fromEmail: 'helpdesk@example.com', internetMessageId: '<desk@example.com>' },
+      {
+        ...base,
+        model: scriptedModel({
+          answer: 'JA\nEine Support-Anfrage.',
+          onReview: () => {
+            throw new Error('helpdesk must not reach the model');
+          },
+        }),
+      },
+    );
+    expect(helpdesk).toBe('declined');
+    const recorded = store.events.find((event) => event.kind === 'model_decision');
+    expect(JSON.stringify(recorded?.payload)).not.toContain('Papier');
   });
 });

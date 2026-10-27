@@ -1,3 +1,4 @@
+import { regionAllowsProcessing, endpointAllowsProcessing } from '@kmbhelp/ai';
 import { createDatabase } from '@kmbhelp/db';
 import { configField, describeConfig } from '@kmbhelp/shared';
 import { directoryCertificate, ldapsConfigFromEnv, serviceBindWorks } from './directory.js';
@@ -374,6 +375,125 @@ export async function checkConfigField(
           'warning',
           'Das Postfach fehlt oder ist keine E-Mail-Adresse.',
           'The mailbox is missing or is not an email address.',
+        );
+  }
+  if (key === 'AI_PROVIDER') {
+    const name = value.trim().toLowerCase();
+    return !name || ['grok', 'gemini', 'deepseek', 'other'].includes(name)
+      ? line(
+          key,
+          'ok',
+          name ? `Der Anbieter heißt ${name}. Die Adresse bleibt AI_ENDPOINT.` : 'Ohne Namen gilt grok. Die Adresse bleibt AI_ENDPOINT.',
+          name
+            ? `The provider is named ${name}. The address stays AI_ENDPOINT.`
+            : 'Without a name, grok applies. The address stays AI_ENDPOINT.',
+        )
+      : line(
+          key,
+          'warning',
+          'Erlaubt sind grok, gemini, deepseek oder other.',
+          'Allowed names are grok, gemini, deepseek or other.',
+        );
+  }
+  if (key === 'INTERNAL_MAIL_DOMAINS') {
+    if (!value.trim()) {
+      return line(
+        key,
+        'ok',
+        'Leer verwendet kmb-steuerberatung.at, ght.at und koller-rohrschach.at.',
+        'Empty uses kmb-steuerberatung.at, ght.at and koller-rohrschach.at.',
+      );
+    }
+    const domains = value
+      .split(/[\s,;]+/u)
+      .map((entry) => entry.trim().toLowerCase().replace(/^@/u, ''))
+      .filter((entry) => entry !== '');
+    return domains.every((entry) => /^[a-z0-9.-]+\.[a-z]{2,}$/u.test(entry))
+      ? line(key, 'ok', 'Die Domänen sind lesbar.', 'The domains can be read.')
+      : line(
+          key,
+          'warning',
+          'Jede Domäne braucht einen Punkt und keine Adresse davor.',
+          'Each domain needs a dot and no address in front of it.',
+        );
+  }
+  if (key === 'AI_MAIL_PROMPT') {
+    if (!value.trim()) {
+      return line(
+        key,
+        'ok',
+        'Leer verwendet den eingebauten Auftrag mit JA und NEIN.',
+        'Empty uses the built-in instruction with JA and NEIN.',
+      );
+    }
+    const upper = value.toUpperCase();
+    return upper.includes('JA') && upper.includes('NEIN')
+      ? line(key, 'ok', 'Der Auftrag nennt JA und NEIN.', 'The instruction names JA and NEIN.')
+      : line(
+          key,
+          'warning',
+          'Der Auftrag soll JA und NEIN enthalten.',
+          'The instruction should contain JA and NEIN.',
+        );
+  }
+  if (key === 'AI_ENDPOINT') {
+    if (!value) {
+      return line(
+        key,
+        'informational',
+        'Kein Modell. Helpdesk-Mails bleiben ungelesen. Die Suche bleibt beim Satz aus Phase 2.',
+        'No model. Helpdesk mail stays unread. Search keeps the phase 2 sentence.',
+      );
+    }
+    return endpointAllowsProcessing(value)
+      ? line(key, 'ok', 'Die Adresse ist https.', 'The address is https.')
+      : line(
+          key,
+          'warning',
+          'Die Adresse muss https sein und darf kein Passwort enthalten.',
+          'The address must be https and must not contain a password.',
+        );
+  }
+  if (key === 'AI_REGION') {
+    if (!value) {
+      return line(key, 'informational', 'Keine Region hinterlegt.', 'No region is stored.');
+    }
+    return regionAllowsProcessing(value)
+      ? line(key, 'ok', 'Die Region liegt in der EU.', 'The region is in the EU.')
+      : line(
+          key,
+          'warning',
+          'Die Region ist nicht als EU-Verarbeitung erkennbar.',
+          'The region is not recognisable as EU processing.',
+        );
+  }
+  if (key === 'AI_AVV_REFERENCE') {
+    return value
+      ? line(key, 'ok', 'Ein Vertragsverweis ist hinterlegt.', 'A contract reference is stored.')
+      : line(
+          key,
+          'informational',
+          'Ohne Vertragsverweis geht kein Text an ein Modell.',
+          'Without a contract reference no text goes to a model.',
+        );
+  }
+  if (key === 'AI_AUTO_REPLY_CATEGORIES') {
+    if (!value) {
+      return line(
+        key,
+        'ok',
+        'Keine Kategorie wird automatisch geschlossen.',
+        'No category is closed automatically.',
+      );
+    }
+    const codes = value.split(',').map((entry) => entry.trim());
+    return codes.every((entry) => /^[a-z0-9_]+$/u.test(entry))
+      ? line(key, 'ok', 'Die Codes sind lesbar.', 'The codes can be read.')
+      : line(
+          key,
+          'warning',
+          'Codes aus Kleinbuchstaben, Ziffern und Unterstrich, getrennt durch Komma.',
+          'Codes of lower case, digits and underscore, separated by commas.',
         );
   }
   if (key.startsWith('VITE_PUBLIC_URL_')) {

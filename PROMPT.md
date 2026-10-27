@@ -57,7 +57,7 @@ Namen wie auf GitHub üblich: kleingeschrieben, Bindestriche in Dateinamen, Engl
 - Mandantenbelege, Lohnzettel oder Ausweise als vorgesehener Anhang. Hinweis anzeigen, gefährliche Dateitypen abweisen.
 - Beschreibung, Absender oder Kommentare auf einer Seite ohne Anmeldung. Der Betreff darf in der Arbeitsliste stehen. Einen Geheimlink gibt es nicht.
 - AD-Passwörter, Lizenzschlüssel oder Portalpasswörter speichern oder loggen.
-- KI-Aufruf, bevor die Felder des Anbieters (Endpunkt, Region, AVV) in der Umgebung gesetzt sind. Bis dahin Zuordnung nur über Regeln: Kategorie-Skill, erste freie Person. Das muss ohne KI funktionieren.
+- KI-Aufruf, bevor die Felder des Anbieters (Endpunkt, Region, AVV) in der Umgebung gesetzt sind. Eine Helpdesk-Mail wird ohne erreichbare KI kein Ticket und bleibt ungelesen. Web, Anruf und Zuruf bleiben ohne KI möglich.
 - Direktes SQL aus dem MCP oder aus der Weboberfläche.
 - Eine zweite Geschäftslogik neben `apps/api`.
 - Abhängigkeiten, die nur deshalb „modern“ sind. Kein Message-Bus, kein Kubernetes, kein Elasticsearch in Version 1.
@@ -129,7 +129,7 @@ Change-Freeze, Beschaffungsgrenzen und Vorgesetzten-Token, Fernwartung nur bei f
 
 ### Phase 6 — KI
 
-Provider-Interface. Maskierung. JSON-Schema für Kategorie, Priorität, Skill, Konfidenz, `auto_reply_allowed`. Auto-Antwort nur nach den Regeln in `docs/sicherheit.md`. Suche für Staff mit Begründung und Link. Öffentliche Suche ohne Klartext-Protokoll. Wenn kein Anbieter konfiguriert ist: Verhalten von Phase 2 bleibt.
+Provider-Interface. Maskierung. JSON-Schema für Kategorie, Priorität, Skill, Konfidenz, `auto_reply_allowed`, `is_support`. Eine Helpdesk-Mail wird nur bei `is_support: true` ein Ticket. Der Auftrag steht in `AI_MAIL_PROMPT` und antwortet mit JA oder NEIN. Dieselbe Prüfung hängt an `POST /api/v1/mail/review` und am MCP-Werkzeug `review_mail`. `AI_PROVIDER` nennt den Anbieter, die Adresse bleibt `AI_ENDPOINT`. Nur Absender aus `INTERNAL_MAIL_DOMAINS` kommen infrage, nie Helpdesk oder ein aktiver Mitarbeiter, und das wird vor dem Modell geprüft. Ist der Anbieter nicht erreichbar, bleibt die Mail ungelesen. Jeder externe Schritt schreibt Syslog. Seiten- und Mailzugriffe schreiben `activity_log` und eine Datei außerhalb des Projektordners, sichtbar unter `/verwaltung/protokoll`. Auto-Antwort nur nach den Regeln in `docs/sicherheit.md`. Suche für Staff mit Begründung und Link. Öffentliche Suche ohne Klartext-Protokoll. Wenn kein Anbieter konfiguriert ist: die Suche bleibt bei Phase 2, aus einer Mail wird kein Ticket.
 
 ### Phase 7 — Dashboard
 

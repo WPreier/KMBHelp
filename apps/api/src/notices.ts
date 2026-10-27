@@ -98,8 +98,10 @@ export const noticeCatalog: readonly NoticeDefinition[] = [
   {
     code: 'ai.not_configured',
     category: 'informational',
-    textDe: 'Der KI-Anbieter ist nicht konfiguriert.',
-    textEn: 'The model provider is not configured.',
+    textDe:
+      'Der KI-Anbieter ist nicht konfiguriert. Helpdesk-Mails bleiben ungelesen und werden kein Ticket.',
+    textEn:
+      'The model provider is not configured. Helpdesk mail stays unread and does not become a ticket.',
   },
 ];
 

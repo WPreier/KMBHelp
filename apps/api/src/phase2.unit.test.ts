@@ -3,7 +3,7 @@ import request from 'supertest';
 import { readRuntimeAuth, TEST_STAFF_HEADER } from './auth.js';
 import { buildApp } from './app.js';
 import { categoryTitleExplainer } from './explain.js';
-import { accessLogPath, createRateLimiter, createSecretToken } from './http.js';
+import { accessLogPath, createRateLimiter, createSecretToken, loggedRequestUrl } from './http.js';
 
 describe('readRuntimeAuth', () => {
   it('refuses the test flag in production and ignores the header otherwise', () => {
@@ -31,6 +31,10 @@ describe('phase 2 helpers', () => {
       '/api/v1/tickets/by-token/:token',
     );
     expect(accessLogPath('/api/v1/search?q=ELDA')).toBe('/api/v1/search');
+    expect(loggedRequestUrl('/api/v1/search?q=ELDA')).toBe('/api/v1/search');
+    expect(loggedRequestUrl('/api/v1/tickets/public?status=open')).toBe(
+      '/api/v1/tickets/public?status=open',
+    );
     const token = createSecretToken();
     expect(token.length).toBeGreaterThanOrEqual(43);
     expect(token).not.toMatch(/[+/=]/);

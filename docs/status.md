@@ -1,6 +1,6 @@
 # Status
 
-Phase 5 ist umgesetzt. Der nächste Auftrag lautet: Phase 6 aus `PROMPT.md`.
+Phase 6 ist umgesetzt. Der nächste Auftrag lautet: Phase 7 aus `PROMPT.md`.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -10,7 +10,7 @@ Phase 5 ist umgesetzt. Der nächste Auftrag lautet: Phase 6 aus `PROMPT.md`.
 | 3 | AD, MFA, lokaler Admin | erledigt |
 | 4 | Graph Mail und Kalender | erledigt |
 | 5 | Übrige Prozessregeln | erledigt |
-| 6 | KI hinter Provider | offen |
+| 6 | KI hinter Provider | erledigt |
 | 7 | Dashboard | offen |
 | 8 | MCP | offen |
 | 9 | Staff-Oberflächen, Playwright | offen |
@@ -82,7 +82,7 @@ Der Start prüft nur `MADC1.kmbcloud.at`. Ist der Domänencontroller nicht errei
 - [x] Dieselbe `internetMessageId` erzeugt ein Ticket und eine Antwort
 - [x] Antwort mit Nummer und Link auf die öffentliche Liste. Kein Geheimlink
 - [x] Kalendereintrag beim ersten freien Mitarbeiter mit der passenden Kenntnis. Betreff `Neues Ticket` plus Mail-Betreff, Körper mit der kompletten Mail und dem Link. Dauer `CALENDAR_DEFAULT_MINUTES` (30), Start nach P1/P2/P3
-- [x] Ohne Treffer im Text gilt `FALLBACK_CATEGORY`, Auslieferung `printer`. Ohne KI
+- [x] `FALLBACK_CATEGORY` (Auslieferung `printer`) gilt erst, nachdem die KI die Mail als Support bestätigt hat und keine Katalogkategorie nennt. Ohne erreichbare KI entsteht aus der Mail kein Ticket
 - [x] Wiederöffnen informiert alle aktiven Mitarbeiter, sobald Graph konfiguriert ist
 - [x] `GET /api/health` zeigt den Worker. Die Seite bleibt erreichbar, wenn er steht
 - [x] `pnpm test` und `pnpm typecheck`
@@ -104,6 +104,22 @@ Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:work
 
 Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Die Vorgänge stehen auf `http://127.0.0.1:5173/mitarbeit/vorgaenge`. Aus `127.0.0.0/8` ohne Anmeldung, sonst als angemeldeter Mitarbeiter. Die Beschaffungsgrenzen und zusätzlichen Stoppfenster speichert der lokale Admin.
 
+## Phase 6 — Abnahme
+
+- [x] Anbieter hinter `@kmbhelp/ai`. Ohne https-Endpunkt, EU-Region, Schlüssel und AVV kein Aufruf und das Verhalten von Phase 2
+- [x] SVNR, IBAN, Kreditkartenmuster und Geburtsdatum werden vor dem Modell maskiert
+- [x] Entscheidung als JSON: Kategorie, Priorität, Kenntnis, Konfidenz, `auto_reply_allowed`, `is_support`
+- [x] Helpdesk-Mail wird nur bei `is_support: true` ein Ticket. Ohne erreichbare KI bleibt sie ungelesen und erzeugt nichts
+- [x] Neutrale Prüfung über `POST /api/v1/mail/review` und MCP `review_mail`. Der Auftrag steht mehrzeilig in `AI_MAIL_PROMPT`. JA setzt `is_support`. Der Anbietername `AI_PROVIDER` ist austauschbar, die Adresse bleibt `AI_ENDPOINT`
+- [x] Vor dem Modell: nur `INTERNAL_MAIL_DOMAINS`, nie `helpdesk`, das Postfach oder ein aktiver Mitarbeiter
+- [x] Syslog für jeden externen Schritt. Zugriffsprotokoll in `activity_log` und `%LOCALAPPDATA%\kmbhelp\activity.log`, sichtbar unter `/verwaltung/protokoll`, filterbar und als Text, CSV oder PDF
+- [x] Automatisch schließen nur bei Allowlist, Konfidenz ab 0,85, ohne personenbezogene Muster und mit veröffentlichter FAQ. Sonst Mensch
+- [x] `model_decision` speichert Modell, Eingabe-Hash und Ausgabe, nicht den Tickettext
+- [x] Staff-Suche mit Begründung und Link. Öffentliche Suche ohne Modell und ohne Klartext im Protokoll
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:worker`. Die Suche bleibt auf `http://127.0.0.1:5173`. Solange die vier KI-Felder leer sind, gilt der Satz „Treffer wegen Kategorie/Titel“, und eine Helpdesk-Mail bleibt ungelesen. `AI_AUTO_REPLY_CATEGORIES` bleibt leer, bis die Kanzlei Kategorien freigibt.
+
 ## Phase 9 — noch nicht bauen
 
 Die Staff-Oberfläche ist weiterhin Phase 9. Der folgende Auftrag wird dort erledigt, nicht vorher. Verbindlich ist zusätzlich `docs/prozesse/14-bearbeitung.md`.
@@ -116,7 +132,7 @@ Die Staff-Oberfläche ist weiterhin Phase 9. Der folgende Auftrag wird dort erle
 - [ ] Eine Rückfrage wird am Ticket gespeichert und als Mail an den Benutzer gesendet.
 - [ ] Die Seite listet Helpdesk-Mails, die noch kein Ticket sind, und kann jede davon von Hand in ein Ticket umwandeln.
 - [ ] Wird ein Mail als Ticket angenommen, merkt sich die KI den Grund. Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelöscht und der Grund gespeichert, damit ein Mail künftig kein Ticket erzeugen darf. Das ist keine allgemeine Löschfunktion.
-- [ ] Helpdesk-Mails dürfen zur Prüfung an Grok oder einen Grok-Agenten, aber nur hinter dem Provider aus Phase 6 und nur wenn Endpunkt, Region und AVV gesetzt sind. Sonst kein Aufruf.
+- [ ] Die Liste unverarbeiteter Helpdesk-Mails und die Umwandlung von Hand. Die Prüfung selbst liegt seit Phase 6 auf `POST /api/v1/mail/review` und dem MCP-Werkzeug `review_mail`, nur mit Endpunkt, EU-Region, Schlüssel und AVV. Sonst kein Aufruf.
 - [ ] Der Agent meldet, ob ein Mail ein Ticket werden soll, dazu Kategorie, Priorität, Benutzer und einen verfügbaren Mitarbeiter. Die Verfügbarkeit kommt aus dem Microsoft-365-Kalender. Der Mitarbeiter erhält eine Mail mit Ticketnummer, allen Angaben und dem Originalmail als Anhang.
 
 ## Offene Rückfragen

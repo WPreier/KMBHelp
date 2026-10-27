@@ -38,6 +38,11 @@ export function createSecretToken(): string {
   return randomBytes(32).toString('base64url');
 }
 
+export function loggedRequestUrl(url: string): string {
+  const path = url.split('?')[0] ?? url;
+  return path === '/api/v1/search' ? path : url;
+}
+
 export function accessLogPath(url: string): string {
   const path = (url.split('?')[0] ?? url).slice(0, 300);
   if (/^\/api\/v1\/tickets\/by-token\/.+$/.test(path)) return '/api/v1/tickets/by-token/:token';

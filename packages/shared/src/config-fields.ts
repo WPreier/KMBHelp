@@ -1,3 +1,9 @@
+import {
+  defaultAiProvider,
+  defaultInternalMailDomains,
+  defaultMailPrompt,
+} from './mail-prompt.js';
+
 export type ConfigField = {
   key: string;
   secret: boolean;
@@ -10,6 +16,7 @@ export const defaultCalendarDelayP1 = '0';
 export const defaultCalendarDelayP2 = '60';
 export const defaultCalendarDelayP3 = '240';
 export const defaultFallbackCategory = 'printer';
+
 export const defaultWorkerSchedule =
   '00:00-08:00=30,08:00-12:00=10,12:00-12:30=0,12:30-17:00=10,17:00-24:00=30';
 
@@ -21,6 +28,9 @@ const shownWhenEmpty: Record<string, string> = {
   FALLBACK_CATEGORY: defaultFallbackCategory,
   WORKER_SCHEDULE: defaultWorkerSchedule,
   ACCESS_LOG_RETENTION_DAYS: '90',
+  AI_PROVIDER: defaultAiProvider,
+  INTERNAL_MAIL_DOMAINS: defaultInternalMailDomains,
+  AI_MAIL_PROMPT: defaultMailPrompt,
 };
 
 export const configFields: readonly ConfigField[] = [
@@ -208,9 +218,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'FALLBACK_CATEGORY',
     secret: false,
     textDe:
-      'Der Kategorie-Code für Mails, in denen kein Kategorie-Name vorkommt. Standard ist printer (Drucker). Der Code muss in der Tabelle category stehen. Die Liste kommt aus dem Ticketkatalog und wird mit pnpm db:seed in PostgreSQL geschrieben. Eine eigene Seite zum Anlegen von Kategorien gibt es noch nicht. Auf der Verwaltung werden Kategorien nur den Mitarbeitern zugeordnet.',
+      'Der Kategorie-Code, nachdem die KI die Mail als Support bestätigt hat und selbst keinen Katalogcode nennt. Standard ist printer (Drucker). Ohne erreichbare KI entsteht kein Ticket. Der Code muss in der Tabelle category stehen. Die Liste kommt aus dem Ticketkatalog und wird mit pnpm db:seed in PostgreSQL geschrieben. Eine eigene Seite zum Anlegen von Kategorien gibt es noch nicht. Auf der Verwaltung werden Kategorien nur den Mitarbeitern zugeordnet.',
     textEn:
-      'The category code for mail that names no category. The default is printer. The code must exist in the category table. The list comes from the ticket catalog and is written to PostgreSQL by pnpm db:seed. There is no page yet for creating categories. Administration only assigns categories to employees.',
+      'The category code after the model confirms the mail is support and names no catalog code itself. The default is printer. Without a reachable model no ticket is created. The code must exist in the category table. The list comes from the ticket catalog and is written to PostgreSQL by pnpm db:seed. There is no page yet for creating categories. Administration only assigns categories to employees.',
   },
   {
     key: 'CALENDAR_DEFAULT_MINUTES',
@@ -285,12 +295,36 @@ export const configFields: readonly ConfigField[] = [
       'The exact web address the passkey is for. Locally that is http://127.0.0.1:5173. In production it is the helpdesk address.',
   },
   {
+    key: 'AI_PROVIDER',
+    secret: false,
+    textDe:
+      'Der Name des KI-Anbieters. Derzeit grok. Später können gemini, deepseek oder other denselben Aufruf nutzen. Der Name wählt keine Adresse. Der Aufruf geht an AI_ENDPOINT.',
+    textEn:
+      'The model provider name. It is grok for now. Later gemini, deepseek or other can use the same call. The name does not choose an address. The call goes to AI_ENDPOINT.',
+  },
+  {
+    key: 'INTERNAL_MAIL_DOMAINS',
+    secret: false,
+    textDe:
+      'Domänen interner Absender, eine pro Zeile oder durch Komma getrennt. Nur diese Absender können ein Support-Ticket auslösen. Derzeit kmb-steuerberatung.at, ght.at und koller-rohrschach.at. Ein leeres Feld verwendet diese drei.',
+    textEn:
+      'Domains of internal senders, one per line or separated by commas. Only these senders can open a support ticket. They are kmb-steuerberatung.at, ght.at and koller-rohrschach.at. An empty field uses those three.',
+  },
+  {
+    key: 'AI_MAIL_PROMPT',
+    secret: false,
+    textDe:
+      'Der Auftrag an den KI-Anbieter. Die Antwort beginnt mit JA oder NEIN und einer Begründung in einem Satz. JA heißt: die Mail ist ein Support-Anliegen und kann ein Ticket werden. NEIN heißt: Newsletter, Werbung, automatische Nachricht oder Spam. Ein leeres Feld verwendet den eingebauten Auftrag.',
+    textEn:
+      'The instruction for the model provider. The answer starts with JA or NEIN and one sentence of reasoning. JA means the mail is a support request and may become a ticket. NEIN means newsletter, advertising, an automatic notice or spam. An empty field uses the built-in instruction.',
+  },
+  {
     key: 'AI_ENDPOINT',
     secret: false,
     textDe:
-      'Die Adresse des KI-Anbieters. Solange sie fehlt, verteilt KMBHelp nur nach Regeln. Ein Modell wird erst in Phase 6 gerufen.',
+      'Die https-Adresse des KI-Anbieters. Ein Aufruf erfolgt nur zusammen mit EU-Region, Vertrag und Schlüssel. Ohne erreichbare KI bleibt eine Helpdesk-Mail ungelesen und wird kein Ticket. Die Suche bleibt dann beim Satz aus Phase 2.',
     textEn:
-      'The model provider address. While it is missing, KMBHelp assigns work by rules only. A model is called in phase 6.',
+      'The https address of the model provider. A call happens only together with an EU region, the contract and the key. Without a reachable model a helpdesk mail stays unread and does not become a ticket. Search then keeps the phase 2 sentence.',
   },
   {
     key: 'AI_REGION',
@@ -304,8 +338,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'AI_API_KEY',
     secret: true,
     textDe:
-      'Der Schlüssel des KI-Anbieters. Er wird nicht angezeigt und vor Phase 6 nicht benutzt.',
-    textEn: 'The model provider key. It is not shown and is not used before phase 6.',
+      'Der Schlüssel des KI-Anbieters. Er wird nicht angezeigt. Ohne die übrigen drei Angaben geht er an kein Modell.',
+    textEn:
+      'The model provider key. It is not shown. Without the other three values it is not sent to a model.',
   },
   {
     key: 'AI_AVV_REFERENCE',
@@ -314,6 +349,14 @@ export const configFields: readonly ConfigField[] = [
       'Ein Hinweis auf den Auftragsverarbeitungsvertrag. Ohne diesen Vertrag geht kein Tickettext an ein Modell.',
     textEn:
       'A reference to the processing agreement. Without that contract no ticket text goes to a model.',
+  },
+  {
+    key: 'AI_AUTO_REPLY_CATEGORIES',
+    secret: false,
+    textDe:
+      'Kategorie-Codes, die eine veröffentlichte FAQ automatisch beantworten darf. Leer heißt: nie automatisch schließen. Die Konfidenz muss mindestens 0,85 sein, und der Text darf keine SVNR, IBAN, Karte oder ein Geburtsdatum enthalten.',
+    textEn:
+      'Category codes a published FAQ may answer automatically. Empty means never close automatically. Confidence must be at least 0.85, and the text must not contain a social security number, an IBAN, a card or a birth date.',
   },
   {
     key: 'VITE_PUBLIC_URL_WWW',

@@ -32,7 +32,7 @@ Ohne Microsoft-365-Freigabe wird keine Mail erfunden. Die Aktion antwortet, dass
 
 ## Postfach
 
-Die Seite zeigt die Mails im Postfach `helpdesk@kmbcloud.at`, die noch kein Ticket sind. Jede davon kann von Hand in ein Ticket umgewandelt werden.
+Die Seite zeigt die Mails im Postfach `helpdesk@kmbcloud.at`, die noch kein Ticket sind. Der Worker legt nur dann eines an, wenn die KI die Mail als Support bestätigt. Ist die KI nicht erreichbar, bleibt die Mail ungelesen. Jede noch ungelesene Mail kann von Hand in ein Ticket umgewandelt werden.
 
 Wird ein Mail als Ticket angenommen, speichert die Anwendung den Grund. Diesen Grund soll die spätere Erkennung lernen.
 
@@ -40,6 +40,6 @@ Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelös
 
 ## Grok
 
-Helpdesk-Mails dürfen zur Prüfung an Grok oder einen Grok-Agenten gehen. Der Aufruf läuft über den Provider aus Phase 6. Fehlen Endpunkt, Region oder AVV, gibt es keinen Aufruf und die Zuordnung bleibt die regelbasierte aus Phase 2.
+Helpdesk-Mails gehen zur Prüfung an den konfigurierten Anbieter. Der Name steht in `AI_PROVIDER`, die Adresse in `AI_ENDPOINT`. Fehlen Endpunkt, EU-Region, Schlüssel oder AVV, gibt es keinen Aufruf und aus der Mail wird kein Ticket. Die Ausschlüsse für Domäne, Helpdesk und Mitarbeiter gelten davor.
 
 Meldet der Agent, dass ein Mail ein Ticket werden soll, entstehen Kategorie, Priorität, Benutzer und Mitarbeiter. Der Mitarbeiter muss aktiv sein und laut seinem Microsoft-365-Kalender verfügbar. Er erhält eine Mail mit der Ticketnummer, allen Ticketangaben und dem Originalmail als Anhang. Absender ist `GRAPH_MAILBOX`.

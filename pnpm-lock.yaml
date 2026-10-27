@@ -56,6 +56,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@kmbhelp/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@kmbhelp/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -188,6 +191,22 @@ importers:
       tsx:
         specifier: 'catalog:'
         version: 4.23.15
+      typescript:
+        specifier: 'catalog:'
+        version: 5.9.3
+      vitest:
+        specifier: 'catalog:'
+        version: 3.2.7(@types/node@22.20.5)(jsdom@27.4.0(@noble/hashes@1.8.0))(tsx@4.23.15)
+
+  packages/ai:
+    dependencies:
+      zod:
+        specifier: 'catalog:'
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.5
       typescript:
         specifier: 'catalog:'
         version: 5.9.3

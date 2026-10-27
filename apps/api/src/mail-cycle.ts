@@ -1,5 +1,13 @@
-import { appSetting, type Database } from '@kmbhelp/db';
-import { inArray } from 'drizzle-orm';
+import {
+  autoReplyAllowlist,
+  autoReplyGate,
+  inputHash,
+  modelProviderFromEnv,
+  stricterPriority,
+  type ModelProvider,
+} from '@kmbhelp/ai';
+import { appSetting, staff, type Database } from '@kmbhelp/db';
+import { eq, inArray } from 'drizzle-orm';
 import {
   calendarDate,
   defaultCalendarDelayP1,
@@ -33,6 +41,9 @@ import {
   reopenText,
   staffTicketPath,
 } from './mail-rules.js';
+import { writeActivity } from './activity-log.js';
+import { domainsFromSetting, reviewInboundMail } from './mail-review.js';
+import { noteExternal } from './syslog.js';
 import { shouldPollGraph } from './worker-schedule.js';
 import {
   drizzleMailStore,
@@ -57,6 +68,25 @@ type IngestDeps = {
   delays: Record<Priority, number>;
   oncallEmail: string;
   estimatedMinutes: number | null;
+  model?: ModelProvider | undefined;
+  autoReplyCategories?: readonly string[] | undefined;
+  domains?: readonly string[] | undefined;
+  mailPrompt?: string | undefined;
+  helpdeskMailbox?: string | undefined;
+  staffEmails?: readonly string[] | undefined;
+  providerName?: string | undefined;
+  record?:
+    | ((entry: {
+        actor: string;
+        kind: 'page' | 'mail';
+        target: string;
+        detail: string;
+        ip: string;
+      }) => Promise<void>)
+    | undefined;
+  syslog?:
+    | ((category: 'informational' | 'warning', message: string) => Promise<void>)
+    | undefined;
 };
 
 export { readWorkerState };
@@ -69,13 +99,14 @@ export async function runMailCycle(options: {
   lastSlot?: string | null;
 }): Promise<{ event: CycleEvent; created: number; slot: string }> {
   const now = options.now ?? (() => new Date());
-  if (!options.database) return { event: 'database_down', created: 0, slot: '' };
-  const store = drizzleMailStore(options.database);
+  const database = options.database;
+  if (!database) return { event: 'database_down', created: 0, slot: '' };
+  const store = drizzleMailStore(database);
   const fetchImpl = options.fetchImpl ?? fetch;
   const mailbox = mailboxFromEnv(options.env, fetchImpl);
   const mailer = mailerFromEnv(options.env, fetchImpl);
   const at = now();
-  const settings = await readCycleSettings(options.database, options.env);
+  const settings = await readCycleSettings(database, options.env);
   if (!mailbox.configured) {
     await store.heartbeat('not_configured', at);
     return { event: 'not_configured', created: 0, slot: '' };
@@ -102,14 +133,28 @@ export async function runMailCycle(options: {
     delays: settings.delays,
     oncallEmail: settings.oncallEmail,
     estimatedMinutes: null,
+    model: modelProviderFromEnv(options.env, fetchImpl),
+    autoReplyCategories: autoReplyAllowlist(settings.autoReplyCategories),
+    domains: settings.domains,
+    mailPrompt: settings.mailPrompt,
+    helpdeskMailbox: options.env.GRAPH_MAILBOX ?? '',
+    staffEmails: await reviewStaffEmails(database),
+    providerName: settings.providerName,
+    syslog: (category, message) => noteExternal(options.env, category, message),
+    record: (entry) => writeActivity(database, entry, options.env),
   };
   const mails = await mailbox.listUnread(25);
+  await noteExternal(options.env, 'informational', `external graph list unread=${mails.length}`);
   let created = 0;
   for (const mail of mails) {
     try {
       const result = await ingestMail(mail, deps);
       if (result === 'created') created += 1;
-      if (result !== 'retry') await mailbox.markRead(mail.graphId);
+      // Unreachable model: leave the mail unread. An explicit "not support" is marked read.
+      if (result !== 'retry') {
+        await mailbox.markRead(mail.graphId);
+        await noteExternal(options.env, 'informational', 'external graph mark-read');
+      }
     } catch {
       // Leave the message unread so the next minute can finish the reply.
     }
@@ -122,7 +167,7 @@ export async function runMailCycle(options: {
 export async function ingestMail(
   mail: InboundMail,
   deps: IngestDeps,
-): Promise<'created' | 'duplicate' | 'skip' | 'retry'> {
+): Promise<'created' | 'duplicate' | 'skip' | 'declined' | 'retry'> {
   if (!addressPattern.test(mail.fromEmail) || mail.internetMessageId.trim() === '') return 'skip';
   const existing = await deps.store.byMessageId(mail.internetMessageId);
   if (existing) {
@@ -131,27 +176,76 @@ export async function ingestMail(
     return 'duplicate';
   }
   const categories = await deps.store.categories();
-  const chosen = categories.find(
-    (category) =>
-      category.code ===
-      classifyMail(`${mail.subject}\n${mail.body}`, categories, deps.fallbackCategory),
+  const text = `${mail.subject}\n${mail.body}`;
+  const staffEmails = deps.staffEmails ?? (await deps.store.activeStaffEmails());
+  const verdict = await reviewInboundMail(
+    { fromEmail: mail.fromEmail, subject: mail.subject, body: mail.body },
+    {
+      provider: deps.model,
+      domains: deps.domains ?? domainsFromSetting(undefined),
+      prompt: deps.mailPrompt,
+      helpdeskMailbox: deps.helpdeskMailbox ?? '',
+      staffEmails,
+      providerName: deps.providerName,
+      syslog: deps.syslog,
+    },
   );
+  await deps.record?.({
+    actor: 'worker',
+    kind: 'mail',
+    target: mail.internetMessageId.slice(0, 200),
+    detail: verdict.held
+      ? 'decision=held'
+      : verdict.excluded
+        ? `decision=excluded-${verdict.reason}`
+        : verdict.is_support
+          ? 'decision=support'
+          : `decision=${verdict.reason === 'unparsed' ? 'unparsed' : 'not-support'}`,
+    ip: 'local',
+  });
+  if (verdict.held) return 'retry';
+  if (!verdict.is_support) return 'declined';
+  let modelResult: Awaited<ReturnType<ModelProvider['classify']>> = null;
+  if (deps.model?.configured) {
+    try {
+      modelResult = await deps.model.classify(text);
+    } catch {
+      modelResult = null;
+    }
+    await deps.syslog?.(
+      modelResult ? 'informational' : 'warning',
+      `external ${deps.providerName || deps.model.name} classify ${modelResult ? 'ok' : 'failed'}`,
+    );
+  }
+  const ruled = classifyMail(text, categories, deps.fallbackCategory);
+  const modelCategory = modelResult?.decision.category;
+  const categoryCode =
+    modelCategory && categories.some((category) => category.code === modelCategory)
+      ? modelCategory
+      : ruled;
+  const chosen = categories.find((category) => category.code === categoryCode);
   if (!chosen) return 'retry';
   const impact = impactForGroup(chosen.groupCode);
-  const decision = resolvePriority({
+  const ruledPriority = resolvePriority({
     impact,
     dueOn: null,
     today: calendarDate(deps.now),
     clientPriority: null,
   });
+  const priority = modelResult
+    ? stricterPriority(ruledPriority.priority, modelResult.decision.priority)
+    : ruledPriority.priority;
+  const priorityReason =
+    modelResult && priority !== ruledPriority.priority ? 'model' : ruledPriority.reason;
+  const skillCode = modelResult?.decision.skill || chosen.defaultSkillCode;
   const subject = mail.subject.trim() || 'Ohne Betreff';
   const body = mail.body.trim() || subject;
   const created = await deps.store.insertTicket({
     type: 'incident',
     categoryCode: chosen.code,
     impact,
-    priority: decision.priority,
-    priorityReason: decision.reason,
+    priority,
+    priorityReason,
     subject,
     body,
     requesterEmail: mail.fromEmail,
@@ -168,10 +262,22 @@ export async function ingestMail(
   }
   await deps.store.addEvent(created.id, 'created', {
     source: 'mail',
-    priority: decision.priority,
-    reason: decision.reason,
+    priority,
+    reason: priorityReason,
   });
-  const people = await deps.store.candidates(chosen.defaultSkillCode, chosen.code);
+  const auto = await maybeAutoReply(created, mail, text, modelResult, deps);
+  await deps.store.addEvent(created.id, 'model_decision', {
+    model: modelResult?.model ?? verdict.model,
+    inputHash: inputHash(text),
+    output: {
+      ...(modelResult?.decision ?? {}),
+      is_support: true,
+      reason: verdict.reason,
+    },
+    autoReplied: auto,
+  });
+  if (auto) return 'created';
+  const people = await deps.store.candidates(skillCode, chosen.code);
   const busy = new Map<string, { start: string; end: string }[] | null>();
   if (!deps.calendar.configured) {
     for (const person of people) busy.set(person.email, null);
@@ -185,7 +291,7 @@ export async function ingestMail(
     }
   }
   const length = durationMinutes(deps.estimatedMinutes, deps.duration);
-  const startAt = new Date(deps.now.getTime() + deps.delays[decision.priority] * 60_000);
+  const startAt = new Date(deps.now.getTime() + deps.delays[priority] * 60_000);
   const assignee = pickAssignee(people, busy, startAt, length);
   let stored = created;
   if (assignee) {
@@ -195,8 +301,36 @@ export async function ingestMail(
     await ensureCalendar(stored, deps, assignee.slot);
   }
   await ensureReply(stored, deps);
-  await notifyOnCall(stored, deps, decision.priority);
+  await notifyOnCall(stored, deps, priority);
   return 'created';
+}
+
+async function maybeAutoReply(
+  stored: StoredMailTicket,
+  mail: InboundMail,
+  text: string,
+  modelResult: Awaited<ReturnType<ModelProvider['classify']>>,
+  deps: IngestDeps,
+): Promise<boolean> {
+  if (!modelResult || !deps.mailer.configured || !addressPattern.test(mail.fromEmail)) return false;
+  const faqs = await deps.store.publishedFaqs();
+  const gate = autoReplyGate({
+    decision: modelResult.decision,
+    allowlist: deps.autoReplyCategories ?? [],
+    publishedFaqSlugs: faqs.map((faq) => faq.slug),
+    text,
+    now: deps.now,
+  });
+  const faq = faqs.find((entry) => entry.slug === modelResult.decision.faq_slug);
+  if (!gate.close || !faq) return false;
+  await deps.mailer.send({
+    to: mail.fromEmail,
+    subject: `Ticket ${stored.number}`,
+    text: `${replyText(stored.number, deps.origin)}\n${faq.bodyDe}\n`,
+  });
+  await deps.store.addEvent(stored.id, 'reply', { auto: true });
+  await deps.store.closeTicket(stored.id);
+  return true;
 }
 
 async function ensureCalendar(
@@ -296,6 +430,10 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     'CALENDAR_DELAY_P2',
     'CALENDAR_DELAY_P3',
     'ONCALL_EMAIL',
+    'AI_AUTO_REPLY_CATEGORIES',
+    'AI_MAIL_PROMPT',
+    'INTERNAL_MAIL_DOMAINS',
+    'AI_PROVIDER',
   ];
   const stored = new Map<string, string>();
   try {
@@ -324,7 +462,19 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
       p3: boundedMinutes(value('CALENDAR_DELAY_P3', defaultCalendarDelayP3), 240, 0, 1440),
     },
     oncallEmail: value('ONCALL_EMAIL', ''),
+    autoReplyCategories: value('AI_AUTO_REPLY_CATEGORIES', ''),
+    mailPrompt: value('AI_MAIL_PROMPT', ''),
+    domains: domainsFromSetting(value('INTERNAL_MAIL_DOMAINS', '')),
+    providerName: value('AI_PROVIDER', 'grok'),
   };
+}
+
+async function reviewStaffEmails(database: Database): Promise<string[]> {
+  const rows = await database.db
+    .select({ email: staff.email })
+    .from(staff)
+    .where(eq(staff.active, true));
+  return rows.map((row) => row.email);
 }
 
 function boundedMinutes(text: string, fallback: number, min: number, max: number): number {

@@ -19,6 +19,7 @@ export function AdminLinks() {
       <Link to="/verwaltung">{copy.adminTitle}</Link>
       <Link to="/verwaltung/meldungen">{copy.noticesTitle}</Link>
       <Link to="/verwaltung/konfiguration">{copy.configurationTitle}</Link>
+      <Link to="/verwaltung/protokoll">{copy.activityTitle}</Link>
     </nav>
   );
 }
@@ -126,7 +127,9 @@ function ConfigField({
   const wide =
     entry.key === 'LDAPS_CA_PEM' ||
     entry.key === 'ADMIN_IP_ALLOWLIST' ||
-    entry.key === 'WORKER_SCHEDULE';
+    entry.key === 'WORKER_SCHEDULE' ||
+    entry.key === 'AI_MAIL_PROMPT' ||
+    entry.key === 'INTERNAL_MAIL_DOMAINS';
 
   async function run(
     path: '/api/v1/admin/configuration/value' | '/api/v1/admin/configuration/value/check',

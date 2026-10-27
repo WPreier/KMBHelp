@@ -96,7 +96,7 @@ Grok arbeitet hier als Modell in Cursor auf dem lokalen Checkout. Der Chatinhalt
 - Keine echten Mandantendaten in den Prompt kleben, um „ein Beispiel“ zu zeigen.
 - Keine `.env` öffnen und den Agenten bitten, sie zu erklären.
 - Die Fachregeln sind schon in `docs/` formuliert. Der Agent soll diese Dateien lesen, statt dass jemand Tickets aus dem Produktivsystem in den Chat kopiert.
-- Wenn später ein KI-Provider **in der Anwendung** Tickettexte bewertet, ist das ein anderer Vertrag als der Coding-Agent. Den Anwendungs-Provider erst nach AVV und EU-Region anschließen (`docs/sicherheit.md`). Der Coding-Agent und der Ticket-Klassifizierer sind zwei getrennte Themen.
+- Wenn später ein KI-Provider **in der Anwendung** Tickettexte bewertet, ist das ein anderer Vertrag als der Coding-Agent. Den Anwendungs-Provider erst nach AVV und EU-Region anschließen (`docs/sicherheit.md`). Der Coding-Agent und der Ticket-Klassifizierer sind zwei getrennte Themen. Eine Mail an `helpdesk@kmbcloud.at` wird nur ein Ticket, wenn der Absender intern ist und dieser Provider JA antwortet. Helpdesk und Mitarbeiter werden vorher ausgeschlossen. Ist er nicht erreichbar, bleibt die Mail ungelesen. Der Anbietername steht in `AI_PROVIDER` und kann später wechseln. Die Adresse bleibt `AI_ENDPOINT`.
 
 Grok außerhalb von Cursor (grok.com) nur für Fragen ohne Codeausschnitte aus der Auth und ohne Echtdaten. Ergebnisse, die gelten sollen, gehören als Markdown ins Repo, nicht in einen Chatverlauf.
 

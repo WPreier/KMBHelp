@@ -37,8 +37,13 @@ const shownKeys = [
   'ACCESS_LOG_RETENTION_DAYS',
   'WEBAUTHN_RP_ID',
   'WEBAUTHN_ORIGIN',
+  'AI_PROVIDER',
+  'INTERNAL_MAIL_DOMAINS',
+  'AI_MAIL_PROMPT',
   'AI_ENDPOINT',
   'AI_REGION',
+  'AI_AVV_REFERENCE',
+  'AI_AUTO_REPLY_CATEGORIES',
 ];
 
 export type Check = ConfigurationReport['checks'][number];
@@ -441,14 +446,14 @@ export async function inspectConfiguration(
       ? check(
           'ai',
           'ok',
-          'Ein KI-Endpunkt ist gesetzt. Aufrufe folgen in Phase 6.',
-          'A model endpoint is set. Calls follow in phase 6.',
+          'Ein KI-Endpunkt ist gesetzt. Eine Helpdesk-Mail wird nur bei bestätigtem Support ein Ticket.',
+          'A model endpoint is set. A helpdesk mail becomes a ticket only after confirmed support.',
         )
       : check(
           'ai.not_configured',
           'informational',
-          'Der KI-Anbieter ist nicht konfiguriert.',
-          'The model provider is not configured.',
+          'Der KI-Anbieter ist nicht konfiguriert. Helpdesk-Mails bleiben ungelesen.',
+          'The model provider is not configured. Helpdesk mail stays unread.',
         ),
   );
 

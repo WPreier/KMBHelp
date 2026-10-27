@@ -167,7 +167,7 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
       .set(TEST_STAFF_HEADER, email);
     expect(staffSearchResponse.body.hits[0].sentenceDe).toBe('Modellsatz');
     expect(staffSearchResponse.body.hits[0].titleDe).toBe(marker);
-    expect(staffSearchResponse.body.hits[0].href).toBeNull();
+    expect(staffSearchResponse.body.hits[0].href).toBe(`/mitarbeit/ticket/${created.body.number}`);
     expect(staffSearchResponse.body.hits[0].body).toBeUndefined();
     const stored = await database.db
       .select({ queryHash: staffSearch.queryHash, sentenceDe: staffSearch.sentenceDe })

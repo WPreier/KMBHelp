@@ -2,6 +2,7 @@ import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import {
   appSetting,
   category,
+  faqArticle,
   staff,
   staffCategory,
   staffSkill,
@@ -50,6 +51,8 @@ export type MailStore = {
   assign(ticketId: string, staffId: string): Promise<void>;
   addEvent(ticketId: string, kind: string, payload: Record<string, unknown>): Promise<string>;
   hasEvent(ticketId: string, kind: string): Promise<boolean>;
+  closeTicket(ticketId: string): Promise<void>;
+  publishedFaqs(): Promise<{ slug: string; bodyDe: string }[]>;
   activeStaffEmails(): Promise<string[]>;
   pendingReopens(): Promise<{ eventId: string; ticketId: string; number: number }[]>;
   heartbeat(state: WorkerState, at: Date): Promise<void>;
@@ -145,6 +148,19 @@ export function drizzleMailStore(database: Database): MailStore {
       const row = rows[0];
       if (!row) throw new Error('ticket event insert returned no row');
       return row.id;
+    },
+    async closeTicket(ticketId) {
+      await database.db
+        .update(ticket)
+        .set({ status: 'closed', closedAt: new Date(), updatedAt: new Date() })
+        .where(eq(ticket.id, ticketId));
+    },
+    async publishedFaqs() {
+      const rows = await database.db
+        .select({ slug: faqArticle.slug, bodyDe: faqArticle.bodyDe })
+        .from(faqArticle)
+        .where(eq(faqArticle.published, true));
+      return rows.filter((row) => row.bodyDe.trim() !== '');
     },
     hasEvent(ticketId, kind) {
       return database.db

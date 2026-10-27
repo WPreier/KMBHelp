@@ -297,7 +297,12 @@ export const openApiDocument = {
     '/api/v1/search': {
       get: {
         operationId: 'search',
-        responses: { '200': { description: 'Hits with a replaceable explanation sentence.' } },
+        responses: {
+          '200': {
+            description:
+              'Hits with an explanation. Public search does not call a model and does not log the query. Staff search may add a model sentence and a ticket link.',
+          },
+        },
       },
     },
   },

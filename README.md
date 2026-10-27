@@ -53,7 +53,7 @@ pnpm dev
 
 `pnpm dev` startet die API auf `http://127.0.0.1:3000` und die Seite auf `http://127.0.0.1:5173`. Gesundheit: `GET /api/health`. Ohne erreichbare Datenbank antwortet die API mit 503.
 
-Der Mail-Worker (`pnpm dev:worker`) liest `helpdesk@kmbcloud.at` nach `WORKER_SCHEDULE`, sobald die Graph-Werte gesetzt sind. Dieselbe Mail wird ein Ticket, die Antwort nennt Nummer und Listen-Link, der erste freie Mitarbeiter bekommt einen Termin mit Betreff `Neues Ticket` plus Mail-Betreff, der kompletten Mail und einem direkten Link. Ohne Zugangsdaten protokolliert er `not_configured` und stürzt nicht ab. `GET /api/health` zeigt den Worker, die Seite bleibt erreichbar.
+Der Mail-Worker (`pnpm dev:worker`) liest `helpdesk@kmbcloud.at` nach `WORKER_SCHEDULE`, sobald die Graph-Werte gesetzt sind. Eine Mail wird nur dann ein Ticket, wenn der Absender zu `INTERNAL_MAIL_DOMAINS` gehört, nicht Helpdesk und kein aktiver Mitarbeiter ist, und die Prüfung JA antwortet (`is_support`). Die Antwort nennt dann Nummer und Listen-Link, der erste freie Mitarbeiter bekommt einen Termin mit Betreff `Neues Ticket` plus Mail-Betreff, der kompletten Mail und einem direkten Link. Ist die KI nicht erreichbar, bleibt die Mail ungelesen und es entsteht nichts. Dieselbe Prüfung liegt auf `POST /api/v1/mail/review` und im MCP-Werkzeug `review_mail`. Ohne Graph-Zugangsdaten protokolliert der Worker `not_configured` und stürzt nicht ab. `GET /api/health` zeigt den Worker, die Seite bleibt erreichbar. Zugriffe auf Seiten und Mails stehen im Protokoll unter `/verwaltung/protokoll`.
 
 Nur eine Phase pro Branch. Externe Zugänge (AD, Graph, KI-Anbieter) nicht raten.
 

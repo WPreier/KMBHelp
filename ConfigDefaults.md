@@ -58,7 +58,7 @@ Alle sind ausgelöst. Die Kategorie kann der lokale Admin ändern.
 | `syslog.unreachable` | Warning | Das UDP-Datagramm an den Syslog-Host wurde nicht übergeben |
 | `webauthn.mismatch` | Warning | Relying-Party und Origin passen nicht |
 | `local_admin.missing` | Warning | Es gibt nicht genau einen lokalen Admin |
-| `ai.not_configured` | Informational | Kein KI-Endpunkt. Das ist der normale Auslieferungszustand |
+| `ai.not_configured` | Informational | Kein KI-Endpunkt. Helpdesk-Mails bleiben ungelesen und werden kein Ticket |
 
 ## Weitere Prüfungen auf der Konfigurationsseite
 
@@ -74,13 +74,22 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `GRAPH_MAILBOX` | `helpdesk@kmbcloud.at` | Postfach, das der Worker liest, und Absender der Antworten. |
 | `PUBLIC_ORIGIN` | `http://127.0.0.1:5173` | Adresse in Antwort und Kalender. Produktion: `https://helpdesk.kmbcloud.at`. |
 | `ONCALL_EMAIL` | leer | Bereitschaft. Eine P1-Mail geht nur hin, wenn die Adresse gesetzt ist. |
-| `FALLBACK_CATEGORY` | `printer` | Kategorie-Code, wenn kein Kategorie-Name in der Mail steht. Muss in der Tabelle `category` existieren. |
+| `FALLBACK_CATEGORY` | `printer` | Kategorie-Code, nachdem die KI die Mail als Support bestätigt hat und kein Katalogcode daraus folgt. Muss in der Tabelle `category` existieren. |
 | `CALENDAR_DEFAULT_MINUTES` | `30` | Termindauer, bis Phase 6 eine Schätzung zwischen 5 und 480 Minuten liefert. |
 | `CALENDAR_DELAY_P1` | `0` | Minuten nach dem Anlegen, wann ein P1-Termin beginnt. |
 | `CALENDAR_DELAY_P2` | `60` | Minuten nach dem Anlegen, wann ein P2-Termin beginnt. |
 | `CALENDAR_DELAY_P3` | `240` | Minuten nach dem Anlegen, wann ein P3-Termin beginnt. |
 | `WORKER_SCHEDULE` | `00:00-08:00=30,08:00-12:00=10,12:00-12:30=0,12:30-17:00=10,17:00-24:00=30` | Abruf bei Microsoft 365. `0` ist eine Pause. Die Uhr ist `SYSLOG_UTC_OFFSET`. |
-| `ACCESS_LOG_RETENTION_DAYS` | `90` | Danach löscht der Review-Lauf die IP-Zeilen in `access_log`. |
+| `ACCESS_LOG_RETENTION_DAYS` | `90` | Danach löscht der Review-Lauf die IP-Zeilen in `access_log`. `activity_log` bleibt. |
+| `AI_PROVIDER` | `grok` | Nur der Name. Erlaubt sind grok, gemini, deepseek, other. Die Adresse ist `AI_ENDPOINT`. |
+| `INTERNAL_MAIL_DOMAINS` | `kmb-steuerberatung.at,ght.at,koller-rohrschach.at` | Absenderdomänen, die ein Ticket auslösen dürfen. Leer verwendet diese drei. |
+| `AI_MAIL_PROMPT` | eingebauter JA/NEIN-Auftrag | Mehrzeiliger Auftrag. JA setzt `is_support`. Leer verwendet den eingebauten Text. |
+| `ACTIVITY_LOG_FILE` | `%LOCALAPPDATA%\kmbhelp\activity.log` | Zweite Kopie des Zugriffsprotokolls, außerhalb des Projektordners. |
+| `AI_ENDPOINT` | leer | https-Adresse. Ohne EU-Region, Schlüssel und AVV kein Aufruf. |
+| `AI_REGION` | leer | Muss als EU-Verarbeitung erkennbar sein. Eine US-Region sperrt den Aufruf. |
+| `AI_API_KEY` | leer | Schlüssel. Nur in `secrets.json`, nie in Git. |
+| `AI_AVV_REFERENCE` | leer | Verweis auf den Auftragsverarbeitungsvertrag. |
+| `AI_AUTO_REPLY_CATEGORIES` | leer | Kategorie-Codes für automatisches Schließen. Leer schließt nie automatisch. |
 
 Die Kategorien selbst stehen nicht in dieser Datei. Sie liegen in `packages/db/src/catalog.ts`, fachlich in `docs/ticketkatalog.md`, und `pnpm db:seed` schreibt sie in die Tabelle `category`. Eine Seite zum Anlegen von Kategorien gibt es nicht. `/verwaltung` ordnet vorhandene Kategorien nur den Mitarbeitern zu.
 

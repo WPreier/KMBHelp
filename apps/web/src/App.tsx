@@ -6,7 +6,7 @@ import {
   type ThemeName,
 } from '@kmbhelp/shared';
 import { useEffect, useState, type FormEvent } from 'react';
-import { BrowserRouter, Link, Route, Routes, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import kmbDark from '../../../brand/kmb-logo-dark.png';
 import kmbLight from '../../../brand/kmb-logo--light.png';
 import malamaDark from '../../../brand/malama-logo-dark.svg';
@@ -15,6 +15,7 @@ import { LocaleProvider, useLocale } from './locale.js';
 import { AdminPage, SignInPage } from './auth-pages.js';
 import { ConfigurationPage, NoticesPage } from './operations-pages.js';
 import { ArticlePage, FaqListPage, FaqPage, HomePage, MissingPage, SearchPage } from './pages.js';
+import { ActivityPage } from './activity-page.js';
 import { ProcessPage, ProcurementDecisionPage } from './process-pages.js';
 import { readClientPreferences, writeClientPreference } from './preferences.js';
 
@@ -58,6 +59,16 @@ function Shell({
   onTheme: (theme: ThemeName) => void;
 }) {
   const { lang, copy } = useLocale();
+  const location = useLocation();
+  useEffect(() => {
+    const path = location.pathname;
+    void fetch('/api/v1/activity', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ path }),
+    }).catch(() => undefined);
+  }, [location.pathname]);
   useEffect(() => {
     document.title = copy.documentTitle;
     document.documentElement.lang = lang;
@@ -147,6 +158,7 @@ function Shell({
           <Link to="/anmelden">{copy.signIn}</Link>
           <Link to="/verwaltung">{copy.adminTitle}</Link>
           <Link to="/mitarbeit/vorgaenge">{copy.processesTitle}</Link>
+          <Link to="/verwaltung/protokoll">{copy.activityTitle}</Link>
         </nav>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -158,6 +170,7 @@ function Shell({
           <Route path="/verwaltung" element={<AdminPage />} />
           <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
           <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
+          <Route path="/verwaltung/protokoll" element={<ActivityPage />} />
           <Route path="/mitarbeit/vorgaenge" element={<ProcessPage />} />
           <Route path="/beschaffung/:token" element={<ProcurementDecisionPage />} />
           <Route path="*" element={<MissingPage />} />

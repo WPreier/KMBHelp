@@ -106,6 +106,20 @@ export function sendSyslog(host: string, port: number, line: string): Promise<vo
   });
 }
 
+export async function noteExternal(
+  env: NodeJS.ProcessEnv,
+  category: NoticeCategory,
+  message: string,
+): Promise<void> {
+  if (env.NODE_ENV === 'test') return;
+  const target = syslogTarget(env);
+  try {
+    await sendSyslog(target.host, target.port, formatSyslog(category, message, new Date(), target));
+  } catch {
+    // A missing receiver must not stop the mail or the page.
+  }
+}
+
 export function syslogTarget(env: NodeJS.ProcessEnv): {
   host: string;
   port: number;

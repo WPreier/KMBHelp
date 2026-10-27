@@ -1,3 +1,4 @@
+import { maskPersonalData, type ModelProvider } from '@kmbhelp/ai';
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
@@ -62,6 +63,7 @@ export type Phase2Options = {
   searchLimit?: number | undefined;
   mailer?: Mailer | undefined;
   calendar?: CalendarReader | undefined;
+  model?: ModelProvider | undefined;
 };
 
 export function registerPhase2(app: FastifyInstance, options: Phase2Options): void {
@@ -420,13 +422,31 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     const query = parsed.data.q.trim();
     const hits =
       query.length < 2 ? [] : await searchContent(database, query, actor !== null, explainer);
+    if (actor && options.model?.configured && hits.length > 0) {
+      try {
+        const sentence = await options.model.explain(
+          maskPersonalData(query),
+          hits.map((hit) => ({ kind: hit.kind, title: hit.titleDe })),
+        );
+        if (sentence) {
+          const de = maskPersonalData(sentence.de).slice(0, 240);
+          const en = maskPersonalData(sentence.en).slice(0, 240);
+          for (const hit of hits) {
+            hit.sentenceDe = de;
+            hit.sentenceEn = en;
+          }
+        }
+      } catch {
+        // A model that cannot answer leaves the phase 2 sentence in place.
+      }
+    }
     if (actor && hits.length > 0) {
-      const sentence = explainer.explain({ kind: hits[0]?.kind ?? 'faq', title: '' });
+      const first = hits[0];
       await database.db.insert(staffSearch).values({
         staffId: actor.id,
         queryHash: queryHash(query),
-        sentenceDe: sentence.de,
-        sentenceEn: sentence.en,
+        sentenceDe: first?.sentenceDe ?? '',
+        sentenceEn: first?.sentenceEn ?? '',
         hitIds: hits.map((hit) => ({ kind: hit.kind, id: hit.id })),
       });
     }
@@ -702,8 +722,8 @@ async function searchContent(
     ),
   ];
   if (includeTickets) {
-    const tickets = await database.pool.query<{ id: string; subject: string }>(
-      `select ticket.id, ticket.subject
+    const tickets = await database.pool.query<{ id: string; number: number; subject: string }>(
+      `select ticket.id, ticket.number, ticket.subject
        from ticket
        join category on category.code = ticket.category_code
        where to_tsvector(
@@ -724,7 +744,7 @@ async function searchContent(
           id: row.id,
           titleDe: row.subject,
           titleEn: row.subject,
-          href: null,
+          href: `/mitarbeit/ticket/${row.number}`,
         }),
       ),
     );

@@ -121,6 +121,22 @@ export {
 } from './config-fields.js';
 export { deactivateStaffSchema } from './auth.js';
 export {
+  activityListSchema,
+  activityViewSchema,
+  mailReviewRequestSchema,
+  mailReviewResponseSchema,
+  type ActivityList,
+} from './activity.js';
+export {
+  aiProviderName,
+  defaultAiProvider,
+  defaultInternalMailDomains,
+  defaultMailPrompt,
+  internalMailDomains,
+  mailPromptText,
+  type AiProviderName,
+} from './mail-prompt.js';
+export {
   adminAccessSchema,
   adminPasswordSchema,
   adminStaffSchema,

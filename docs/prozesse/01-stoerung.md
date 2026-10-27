@@ -8,7 +8,7 @@ Lohnlauf, UVA, FinanzOnline, ELDA und Scanner dürfen nicht liegen bleiben, nur 
 
 ## Auslöser
 
-Mail, Web, App, Anruf oder Zuruf. Anruf und Zuruf erfasst der Mitarbeiter, der den Anruf hat, unter Quelle `phone` oder `walkin`.
+Mail, Web, App, Anruf oder Zuruf. Eine Mail an das Helpdesk wird nur ein Ticket, wenn die Prüfung JA sagt und damit `is_support` setzt. Vorher muss die Absenderdomäne in `INTERNAL_MAIL_DOMAINS` stehen. Mails von `helpdesk`, vom Postfach und von aktiven Mitarbeitern werden nie ein Ticket und gehen nicht an die KI. Ist die KI nicht erreichbar, bleibt die Mail ungelesen und es entsteht nichts. Anruf und Zuruf erfasst der Mitarbeiter, der den Anruf hat, unter Quelle `phone` oder `walkin`.
 
 ## Schritte
 

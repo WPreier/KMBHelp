@@ -1,10 +1,11 @@
 import { randomBytes } from 'node:crypto';
+import { modelProviderFromEnv, unconfiguredModel, type ModelProvider } from '@kmbhelp/ai';
 import { createDatabase, databaseReachable, type Database } from '@kmbhelp/db';
 import { healthResponseSchema, publicErrors } from '@kmbhelp/shared';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { directoryFromEnv, type Directory } from './directory.js';
 import type { SearchExplainer } from './explain.js';
-import { PublicError } from './http.js';
+import { loggedRequestUrl, PublicError } from './http.js';
 import { withDevelopmentLoopback } from './network.js';
 import { openApiDocument } from './openapi.js';
 import { readWorkerState } from './mail-cycle.js';
@@ -12,6 +13,7 @@ import { registerPhase2 } from './phase2.js';
 import { registerOperations } from './operations.js';
 import { registerPhase3 } from './phase3.js';
 import { registerPhase5 } from './phase5.js';
+import { registerActivity } from './activity-routes.js';
 
 export type BuildAppOptions = {
   databaseUrl?: string | undefined;
@@ -29,6 +31,7 @@ export type BuildAppOptions = {
   webauthnRpId?: string | undefined;
   webauthnOrigin?: string | undefined;
   worker?: 'up' | 'down' | 'not_configured' | undefined;
+  model?: ModelProvider | undefined;
 };
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -47,6 +50,17 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
             'req.body.token',
             'req.query',
           ],
+          serializers: {
+            req(request) {
+              return {
+                method: request.method,
+                url: loggedRequestUrl(request.url),
+                host: request.host,
+                remoteAddress: request.ip,
+                remotePort: request.socket?.remotePort,
+              };
+            },
+          },
         }
       : false,
   });
@@ -101,6 +115,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     explainer: options.explainer,
     ticketCreateLimit: options.ticketCreateLimit,
     searchLimit: options.searchLimit,
+    model:
+      options.model ??
+      (process.env.NODE_ENV === 'test' ? unconfiguredModel : modelProviderFromEnv(process.env)),
   });
   registerPhase3(app, {
     database,
@@ -121,6 +138,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     testAuthEnabled: options.testAuthEnabled ?? false,
     adminAllowlist,
     now: options.now,
+  });
+  registerActivity(app, {
+    database,
+    testAuthEnabled: options.testAuthEnabled ?? false,
+    now: options.now,
+    model: options.model,
   });
 
   app.get('/api/docs', async () => openApiDocument);
