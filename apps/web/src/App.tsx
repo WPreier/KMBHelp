@@ -15,6 +15,7 @@ import { LocaleProvider, useLocale } from './locale.js';
 import { AdminPage, SignInPage } from './auth-pages.js';
 import { ConfigurationPage, NoticesPage } from './operations-pages.js';
 import { ArticlePage, FaqListPage, FaqPage, HomePage, MissingPage, SearchPage } from './pages.js';
+import { ProcessPage, ProcurementDecisionPage } from './process-pages.js';
 import { readClientPreferences, writeClientPreference } from './preferences.js';
 
 const targets = publicLinkTargets({
@@ -145,6 +146,7 @@ function Shell({
           <Link to="/faq">{copy.guides}</Link>
           <Link to="/anmelden">{copy.signIn}</Link>
           <Link to="/verwaltung">{copy.adminTitle}</Link>
+          <Link to="/mitarbeit/vorgaenge">{copy.processesTitle}</Link>
         </nav>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -156,6 +158,8 @@ function Shell({
           <Route path="/verwaltung" element={<AdminPage />} />
           <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
           <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
+          <Route path="/mitarbeit/vorgaenge" element={<ProcessPage />} />
+          <Route path="/beschaffung/:token" element={<ProcurementDecisionPage />} />
           <Route path="*" element={<MissingPage />} />
         </Routes>
       </main>

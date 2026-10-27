@@ -16,6 +16,27 @@ export {
   type TicketType,
 } from './domain.js';
 export {
+  backupCloseSchema,
+  backupTestInputSchema,
+  certificateInputSchema,
+  changeApproveSchema,
+  changeInputSchema,
+  changeOutcomeSchema,
+  checklistUpdateSchema,
+  freezeInputSchema,
+  offboardingInputSchema,
+  portalInputSchema,
+  processCreatedSchema,
+  procurementDecisionSchema,
+  procurementInputSchema,
+  procurementPolicySchema,
+  remoteSupportInputSchema,
+  retentionInputSchema,
+  securityDowngradeSchema,
+  securityIncidentInputSchema,
+  supplierInputSchema,
+} from './process.js';
+export {
   categoryListSchema,
   categoryOptionSchema,
   assignableStaffSchema,

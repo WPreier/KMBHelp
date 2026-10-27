@@ -80,6 +80,7 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `CALENDAR_DELAY_P2` | `60` | Minuten nach dem Anlegen, wann ein P2-Termin beginnt. |
 | `CALENDAR_DELAY_P3` | `240` | Minuten nach dem Anlegen, wann ein P3-Termin beginnt. |
 | `WORKER_SCHEDULE` | `00:00-08:00=30,08:00-12:00=10,12:00-12:30=0,12:30-17:00=10,17:00-24:00=30` | Abruf bei Microsoft 365. `0` ist eine Pause. Die Uhr ist `SYSLOG_UTC_OFFSET`. |
+| `ACCESS_LOG_RETENTION_DAYS` | `90` | Danach löscht der Review-Lauf die IP-Zeilen in `access_log`. |
 
 Die Kategorien selbst stehen nicht in dieser Datei. Sie liegen in `packages/db/src/catalog.ts`, fachlich in `docs/ticketkatalog.md`, und `pnpm db:seed` schreibt sie in die Tabelle `category`. Eine Seite zum Anlegen von Kategorien gibt es nicht. `/verwaltung` ordnet vorhandene Kategorien nur den Mitarbeitern zu.
 

@@ -20,6 +20,7 @@ const shownWhenEmpty: Record<string, string> = {
   CALENDAR_DELAY_P3: defaultCalendarDelayP3,
   FALLBACK_CATEGORY: defaultFallbackCategory,
   WORKER_SCHEDULE: defaultWorkerSchedule,
+  ACCESS_LOG_RETENTION_DAYS: '90',
 };
 
 export const configFields: readonly ConfigField[] = [
@@ -250,6 +251,14 @@ export const configFields: readonly ConfigField[] = [
       'Wann der Worker Microsoft 365 abfragt. Jeder Abschnitt ist von-bis=Minuten, getrennt durch Komma. 0 bedeutet: in diesem Abschnitt nicht abfragen. Standard: 00:00-08:00=30, 08:00-12:00=10, 12:00-12:30=0, 12:30-17:00=10, 17:00-24:00=30. Die Uhr ist SYSLOG_UTC_OFFSET, Winter +01:00.',
     textEn:
       'When the worker calls Microsoft 365. Each part is from-to=minutes, separated by commas. 0 means do not call during that part. Default: 00:00-08:00=30, 08:00-12:00=10, 12:00-12:30=0, 12:30-17:00=10, 17:00-24:00=30. The clock is SYSLOG_UTC_OFFSET, winter +01:00.',
+  },
+  {
+    key: 'ACCESS_LOG_RETENTION_DAYS',
+    secret: false,
+    textDe:
+      'Nach wie vielen Tagen IP-Zeilen in access_log gelöscht werden. Standard ist 90. Der Knopf Reviews auf der Vorgangsseite löscht die älteren Zeilen. Öffentliche Suchbegriffe werden nicht gespeichert.',
+    textEn:
+      'After how many days IP rows in access_log are deleted. The default is 90. The review button on the process page deletes older rows. Public search terms are not stored.',
   },
   {
     key: 'PUBLIC_ORIGIN',

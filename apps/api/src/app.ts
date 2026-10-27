@@ -11,6 +11,7 @@ import { readWorkerState } from './mail-cycle.js';
 import { registerPhase2 } from './phase2.js';
 import { registerOperations } from './operations.js';
 import { registerPhase3 } from './phase3.js';
+import { registerPhase5 } from './phase5.js';
 
 export type BuildAppOptions = {
   databaseUrl?: string | undefined;
@@ -43,6 +44,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
             'req.body.currentPassword',
             'req.body.newPassword',
             'req.body.code',
+            'req.body.token',
             'req.query',
           ],
         }
@@ -111,6 +113,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
   registerOperations(app, {
     database,
+    adminAllowlist,
+    now: options.now,
+  });
+  registerPhase5(app, {
+    database,
+    testAuthEnabled: options.testAuthEnabled ?? false,
     adminAllowlist,
     now: options.now,
   });

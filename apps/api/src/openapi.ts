@@ -229,6 +229,71 @@ export const openApiDocument = {
         responses: { '200': { description: 'Published redacted article.' } },
       },
     },
+    '/api/v1/staff/changes': {
+      post: {
+        operationId: 'createChange',
+        responses: {
+          '422': { description: 'A freeze window needs exception_reason.' },
+        },
+      },
+    },
+    '/api/v1/staff/procurement': {
+      post: {
+        operationId: 'createProcurement',
+        responses: {
+          '200': {
+            description: 'direct under the first limit, token up to the second, otherwise manual.',
+          },
+        },
+      },
+    },
+    '/api/v1/procurement/decision': {
+      post: {
+        operationId: 'decideProcurement',
+        responses: {
+          '200': { description: 'Article and amount only. No ticket text.' },
+        },
+      },
+    },
+    '/api/v1/staff/remote-support': {
+      post: {
+        operationId: 'startRemoteSupport',
+        responses: { '422': { description: 'Supplier is not approved for remote support.' } },
+      },
+    },
+    '/api/v1/staff/backup-tests/{number}/close': {
+      post: {
+        operationId: 'closeBackupTest',
+        responses: {
+          '422': { description: 'restored yes or no is required. A follow-up is due in 90 days.' },
+        },
+      },
+    },
+    '/api/v1/staff/security-incidents': {
+      post: {
+        operationId: 'createSecurityIncident',
+        responses: {
+          '200': { description: 'Starts as P1. deadline_at is detected_at plus 72 hours.' },
+        },
+      },
+    },
+    '/api/v1/staff/offboarding': {
+      post: {
+        operationId: 'createOffboarding',
+        responses: { '422': { description: 'The last working day is required.' } },
+      },
+    },
+    '/api/v1/staff/reviews/run': {
+      post: {
+        operationId: 'runReviews',
+        responses: {
+          '200': {
+            description:
+              'Access reviews at 180 days, retention reviews at 365 days, then IP log deletion.',
+          },
+        },
+      },
+    },
     '/api/v1/search': {
       get: {
         operationId: 'search',

@@ -233,6 +233,8 @@ export const portal = pgTable('portal', {
   accountName: text('account_name').notNull(),
   mfa: boolean('mfa').notNull(),
   ownerName: text('owner_name').notNull(),
+  ownerStaffId: uuid('owner_staff_id').references(() => staff.id),
+  lastReviewOn: date('last_review_on', { mode: 'string' }),
 });
 
 export const procurementPolicy = pgTable('procurement_policy', {
@@ -254,6 +256,11 @@ export const procurement = pgTable(
     supplierId: uuid('supplier_id').references(() => supplier.id),
     wantedOn: date('wanted_on', { mode: 'string' }),
     supervisorEmail: text('supervisor_email'),
+    supervisorTokenHash: text('supervisor_token_hash'),
+    supervisorTokenExpiresAt: timestamp('supervisor_token_expires_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
     route: text('route').notNull(),
     decidedByEmail: text('decided_by_email'),
     decidedAt: timestamp('decided_at', { withTimezone: true, mode: 'date' }),
@@ -462,6 +469,7 @@ export const retentionLocation = pgTable('retention_location', {
   retentionLabel: text('retention_label').notNull(),
   backupsFollowSamePeriod: boolean('backups_follow_same_period').notNull(),
   lastReviewOn: date('last_review_on', { mode: 'string' }),
+  ownerStaffId: uuid('owner_staff_id').references(() => staff.id),
 });
 
 export const appSetting = pgTable('app_setting', {

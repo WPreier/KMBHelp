@@ -94,11 +94,24 @@ Diese Routen verlangen den lokalen Admin, eine fertige Sitzung, den CSRF-Header 
 
 `GET /api/v1/admin/notices` und `PATCH /api/v1/admin/notices/:code` pflegen den Meldungskatalog. `GET /api/v1/admin/configuration` zeigt jeden Wert mit Erklärung und Prüfung. Geheimnisse kommen nur als gesetzt oder fehlend zurück. `POST /api/v1/admin/configuration/value` speichert einen Wert. `POST /api/v1/admin/configuration/value/check` prüft den eingegebenen Wert, ohne ihn zu speichern. `POST /api/v1/admin/configuration/check` prüft erneut und löst die fehlgeschlagenen Meldungen aus. `POST /api/v1/admin/configuration/syslog` speichert Host, Port, APP-NAME und Facility. `POST /api/v1/admin/configuration/syslog/test` übergibt ein UDP-Datagramm an die eingegebene Adresse. Der gespeicherte Wert gilt vor der Umgebungsdatei. Anfangswert ist `192.168.191.215` Port `514`, Name `KMBHelp`, Facility `local0`. Das Format ist RFC 5424. Die Auslieferung steht in `ConfigDefaults.md`.
 
-## 12. Datenbank
+## 12. Prozessregeln
+
+Mitarbeiterformulare: `/mitarbeit/vorgaenge`. Aus `127.0.0.0/8` ohne Anmeldung, sonst mit fertiger Mitarbeitersitzung.
+
+- `POST /api/v1/staff/changes` speichert eine Änderung. Liegt der Termin in `change_freeze`, fehlt ohne `exceptionReason` die Speicherung (422). `POST .../approve` verlangt einen Rückfalltext.
+- `POST /api/v1/staff/procurement` setzt den Weg aus `procurement_policy`: unter `directBelow` direkt, bis `tokenUntil` mit Einmal-Token, darüber `manual`. Der Token gilt 7 Tage. `POST /api/v1/procurement/decision` zeigt Artikel und Betrag und nimmt nur diese Entscheidung an.
+- `POST /api/v1/staff/suppliers` legt einen Lieferanten als `draft` an. Freigabe braucht AVV-Datum und Verschwiegenheitsdatum. Fernwartung ohne diese Freigabe antwortet 422.
+- `POST /api/v1/staff/backup-tests/:number/close` verlangt `restored` ja oder nein und legt das Folgeticket auf 90 Tage.
+- `POST /api/v1/staff/security-incidents` setzt P1 und `deadline_at` auf 72 Stunden nach `detectedAt`.
+- `POST /api/v1/staff/offboarding` verlangt den letzten Arbeitstag und legt die Checkliste an.
+- `POST /api/v1/staff/certificates/remind` erzeugt je Zertifikat höchstens ein Ticket für 30 Tage und eines für 7 Tage.
+- `POST /api/v1/staff/reviews/run` erzeugt offene Review-Tickets je Portal (180 Tage) und je Aufbewahrungsort (365 Tage) und löscht `access_log`-Zeilen, die älter als `ACCESS_LOG_RETENTION_DAYS` sind. Standard 90.
+
+## 13. Datenbank
 
 PostgreSQL 17. Eine Instanz, benutzt von API und Worker. Schema nur über Migrationen.
 
-## 13. HTTP-API
+## 14. HTTP-API
 
 Alle fachlichen Aktionen, die Web, App, Worker oder MCP auslösen, gehen durch `/api/v1`. Keine zweite Geschäftslogik in der Oberfläche.
 
@@ -118,14 +131,14 @@ Ressourcen mindestens:
 
 Staff-Routen: Session-Cookie, `Secure`, `HttpOnly`, `SameSite=Lax`, plus CSRF-Header.
 
-## 14. MCP
+## 15. MCP
 
 `apps/mcp` spricht die HTTP-API mit einem Dienst-Token der Rolle `automation`. Werkzeuge spiegeln die API, keine SQL-Konsole. Der Token liegt nicht im Git.
 
-## 15. Apps
+## 16. Apps
 
 Expo-App für die Funktionen der Punkte 2, 3, 4 und 6 sowie das Dashboard (Punkt 7). Staff-Bereiche verlangen die Server-MFA und zusätzlich eine lokale Geräte-MFA (Biometrie oder Gerätecode), bevor Ticketinhalte gezeichnet werden. Öffentliches Erfassen ist ohne Konto möglich.
 
-## 16. Installation
+## 17. Installation
 
 Siehe `ENTWICKLUNGSUMGEBUNG.md` und die vom Agenten zu schreibenden Dateien `docs/installation-linux.md` und `docs/mobile-stores.md`.

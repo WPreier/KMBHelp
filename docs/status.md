@@ -1,6 +1,6 @@
 # Status
 
-Phase 4 ist umgesetzt. Der nächste Auftrag lautet: Phase 5 aus `PROMPT.md`.
+Phase 5 ist umgesetzt. Der nächste Auftrag lautet: Phase 6 aus `PROMPT.md`.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -9,7 +9,7 @@ Phase 4 ist umgesetzt. Der nächste Auftrag lautet: Phase 5 aus `PROMPT.md`.
 | 2 | Öffentliches Web, Staff-API, Test-Auth nur außerhalb Produktion | erledigt |
 | 3 | AD, MFA, lokaler Admin | erledigt |
 | 4 | Graph Mail und Kalender | erledigt |
-| 5 | Übrige Prozessregeln | offen |
+| 5 | Übrige Prozessregeln | erledigt |
 | 6 | KI hinter Provider | offen |
 | 7 | Dashboard | offen |
 | 8 | MCP | offen |
@@ -88,6 +88,21 @@ Der Start prüft nur `MADC1.kmbcloud.at`. Ist der Domänencontroller nicht errei
 - [x] `pnpm test` und `pnpm typecheck`
 
 Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:worker`. Ohne `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID` und `GRAPH_CLIENT_SECRET` bleibt der Worker bei `not_configured`. Die Antwortadresse ist `PUBLIC_ORIGIN`. Der Abruf folgt `WORKER_SCHEDULE`. P1 beginnt nach `CALENDAR_DELAY_P1` Minuten (0), P2 nach 60, P3 nach 240. Die Bereitschaft ist `ONCALL_EMAIL` und bleibt leer, bis eine Adresse gespeichert ist. Kategorien stehen in der Tabelle `category` und kommen aus `packages/db/src/catalog.ts` über `pnpm db:seed`. Eine Seite zum Anlegen von Kategorien gibt es nicht.
+
+## Phase 5 — Abnahme
+
+- [x] Änderung im Stoppfenster ohne `exception_reason` antwortet 422. Mit Begründung wird sie gespeichert. Ohne Rückfalltext keine Genehmigung
+- [x] Beschaffung: unter der ersten Grenze direkt, bis zur zweiten Grenze ein Vorgesetzten-Token, darüber `manual`. Grenzen über die Verwaltung änderbar, Voreinstellung 100 und 500
+- [x] Der Token-Link zeigt nur Artikel und Betrag. Er liest das Ticket nicht
+- [x] Fernwartung lehnt einen Lieferanten ohne Freigabe oder ohne AVV- und Verschwiegenheitsdatum ab
+- [x] Backup-Test ohne ja/nein zu „echt zurückgespielt“ wird nicht geschlossen. Danach entsteht das Folgeticket in 90 Tagen
+- [x] Sicherheitsvorfall startet als P1 mit `deadline_at` = Entdeckung plus 72 Stunden. Herabstufen nur mit Begründung
+- [x] Offboarding ohne letzten Arbeitstag wird abgelehnt. Die Checkliste hängt am Ticket
+- [x] Zertifikate erinnern bei 30 und bei 7 Tagen. Berechtigungen alle 180 Tage je Portal, Aufbewahrung alle 365 Tage je Datenort. IP-Zeilen älter als `ACCESS_LOG_RETENTION_DAYS` werden gelöscht
+- [x] Schlichte Formulare unter `/mitarbeit/vorgaenge`
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Die Vorgänge stehen auf `http://127.0.0.1:5173/mitarbeit/vorgaenge`. Aus `127.0.0.0/8` ohne Anmeldung, sonst als angemeldeter Mitarbeiter. Die Beschaffungsgrenzen und zusätzlichen Stoppfenster speichert der lokale Admin.
 
 ## Phase 9 — noch nicht bauen
 
