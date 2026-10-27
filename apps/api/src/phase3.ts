@@ -25,6 +25,7 @@ import {
   adminAccessSchema,
   adminPasswordSchema,
   adminStaffSchema,
+  deactivateStaffSchema,
   loginRequestSchema,
   loginResultSchema,
   publicErrors,
@@ -35,11 +36,13 @@ import {
 import {
   assertCsrf,
   CSRF_COOKIE,
+  localhostAdmin,
   SESSION_COOKIE,
   staffFromSession,
   type StaffSession,
 } from './auth.js';
 import { DirectoryUnavailable, type Directory, type DirectoryAccount } from './directory.js';
+import { deactivateMissing, reconcileHelpdesk } from './helpdesk-sync.js';
 import {
   clientAddress,
   createRateLimiter,
@@ -74,6 +77,9 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
   }
 
   app.get('/api/v1/auth/session', async (request) => {
+    if (localhostAdmin(request)) {
+      return sessionViewSchema.parse({ signedIn: true, isLocalAdmin: true });
+    }
     if (!options.database) return sessionViewSchema.parse({ signedIn: false, isLocalAdmin: false });
     const current = await staffFromSession(options.database, request, now());
     if (!current || current.mfaPending)
@@ -365,10 +371,37 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     return { ok: true };
   });
 
-  app.get('/api/v1/admin/staff', async (request) => {
+  async function staffView() {
     const database = db();
-    await requireLocalAdmin(database, request, options.adminAllowlist, now());
-    return adminStaffSchema.parse(await adminSnapshot(database));
+    const sync = await reconcileHelpdesk(database, options.directory);
+    return adminStaffSchema.parse({ ...sync, ...(await adminSnapshot(database)) });
+  }
+
+  app.get('/api/v1/admin/staff', async (request) => {
+    await requireLocalAdmin(db(), request, options.adminAllowlist, now());
+    return staffView();
+  });
+
+  app.post('/api/v1/admin/directory/read', async (request) => {
+    const current = await requireLocalAdmin(db(), request, options.adminAllowlist, now());
+    assertCsrf(current, request);
+    return staffView();
+  });
+
+  app.post('/api/v1/admin/directory/deactivate', async (request) => {
+    const current = await requireLocalAdmin(db(), request, options.adminAllowlist, now());
+    assertCsrf(current, request);
+    const parsed = deactivateStaffSchema.safeParse(request.body);
+    if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+    try {
+      await deactivateMissing(db(), options.directory, parsed.data.ids);
+    } catch (error) {
+      if (error instanceof DirectoryUnavailable) {
+        throw new PublicError(503, 'directory_unavailable', publicErrors.directoryUnavailable);
+      }
+      throw error;
+    }
+    return staffView();
   });
 
   app.post('/api/v1/admin/password', async (request) => {
@@ -622,6 +655,8 @@ async function requireLocalAdmin(
   allowlist: string,
   at: Date,
 ): Promise<StaffSession> {
+  const local = localhostAdmin(request);
+  if (local) return local;
   if (!ipAllowed(clientAddress(request), allowlist)) {
     throw new PublicError(403, 'network_denied', publicErrors.networkDenied);
   }
@@ -727,6 +762,7 @@ async function adminSnapshot(database: Database) {
       username: staff.username,
       displayName: staff.displayName,
       isLocalAdmin: staff.isLocalAdmin,
+      active: staff.active,
       mfaEnrolledAt: staff.mfaEnrolledAt,
     })
     .from(staff)
@@ -750,6 +786,7 @@ async function adminSnapshot(database: Database) {
       username: person.username,
       displayName: person.displayName,
       isLocalAdmin: person.isLocalAdmin,
+      active: person.active,
       mfaEnrolled: person.mfaEnrolledAt !== null,
       skillCodes: skillRows.filter((row) => row.staffId === person.id).map((row) => row.skillCode),
       categoryCodes: categoryRows

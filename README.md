@@ -6,7 +6,7 @@ Markenname der Anwendung: **KMBHelp**
 Host und DNS-Name: `helpdesk.kmbcloud.at`
 Postfach: `helpdesk@kmbcloud.at`
 
-Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 3 meldet Staff an: Verzeichnis, Passkey oder TOTP, lokaler Admin. Der Start prüft den Domänencontroller und schreibt Syslog. Die Auslieferung steht in `ConfigDefaults.md`. Graph-Mail folgt in Phase 4.
+Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 3 meldet Staff an: Verzeichnis, Passkey oder TOTP, lokaler Admin. Der Start prüft `MADC1.kmbcloud.at` und schreibt Syslog nach RFC 5424. Der erste Empfänger ist `192.168.191.215` Port 514 UDP, der Name `KMBHelp`, die Facility `local0`, die Uhrzeit `+01:00`. Die Konfigurationsseite ändert und prüft jeden Wert. Die Verwaltung liest `HelpdeskAdmins` und deaktiviert fehlende Mitarbeiter, ohne sie zu löschen. Aus `127.0.0.0/8` ist die Verwaltung ohne Anmeldung erreichbar, solange die API nicht in Produktion läuft. Einstellungen ohne Geheimnis stehen in `.env` im Projektordner. Die Auslieferung steht in `ConfigDefaults.md`. Graph-Mail folgt in Phase 4.
 
 | Datei | Inhalt |
 |---|---|

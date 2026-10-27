@@ -88,7 +88,7 @@ Nicht raten und keine Platzhalter-Zugangsdaten erfinden. Die Phase ohne diese Da
 4. Echte URLs für www, Home und Wiki.
 5. Logo-Dateien unter `brand/`, sonst Textwortmarke, kein heruntergeladenes Fremdlogo.
 6. Apple-Developer-Team und Google-Play-Konto, sobald Phase 11 beginnt. Wer besitzt sie?
-7. Internes Subnetz für `ADMIN_IP_ALLOWLIST`. Beantwortet: `192.168.36.0/24` und `192.168.191.0/24`.
+7. Internes Subnetz für `ADMIN_IP_ALLOWLIST`. Beantwortet: `192.168.36.0/24` und `192.168.191.0/24`. Aus `127.0.0.0/8` ist die Verwaltung ohne Anmeldung erreichbar, solange die API nicht in Produktion läuft.
 
 ## Arbeitsweise
 
@@ -142,6 +142,8 @@ Werkzeuge für Lesen und für die Staff-Aktionen, Dienst-Token, keine SQL-Werkze
 ### Phase 9 — Web fertig
 
 Alle Staff-Seiten zu den Prozessen, nicht nur die API. Barrierefreie Formulare, leere Zustände, Fehler, Laden. Playwright-Rauchtests: Ticket anlegen, öffentliche Liste enthält keinen Betreff, Theme-Umschalter, Sprache.
+
+Zusätzlich die Bearbeitung aus `docs/prozesse/14-bearbeitung.md`: Ticketseite für jeden angemeldeten Mitarbeiter, alle Felder außer der Zufriedenheit, Erledigt-Mail, KI-Auswertung der Antwort in drei SVG-Smileys (gelb, grün, orange), Erklärung, Mail „ich arbeite jetzt daran“, Rückfrage im Ticket, unverarbeitete Helpdesk-Mails, Lernsignal bei Annahme und bei Fehlinterpretation inklusive Löschen nur dieses Fehl-Tickets, Grok nur hinter dem Provider aus Phase 6 und nur mit Endpunkt, Region und AVV. Zuordnung nur an einen Mitarbeiter, der im Microsoft-365-Kalender frei ist, mit Mail und Originalmail als Anhang.
 
 ### Phase 10 — Installation Linux
 

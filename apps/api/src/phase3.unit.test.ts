@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { localhostSkipsSignIn } from './auth.js';
 import { ldapFilterEscape } from './directory.js';
-import { ipAllowed } from './network.js';
+import { ipAllowed, withDevelopmentLoopback } from './network.js';
 import { decodeBase32, encodeBase32, randomTotpSecret, totpCode, totpMatches } from './totp.js';
 
 describe('phase 3 helpers', () => {
@@ -22,6 +23,24 @@ describe('phase 3 helpers', () => {
     expect(ipAllowed('192.168.36.20', office)).toBe(true);
     expect(ipAllowed('192.168.191.4', office)).toBe(true);
     expect(ipAllowed('127.0.0.1', office)).toBe(false);
+    expect(ipAllowed('127.0.0.1', '127.0.0.0/8')).toBe(true);
+    expect(ipAllowed('127.255.0.2', '127.0.0.0/8')).toBe(true);
+    expect(ipAllowed('192.168.36.1', '127.0.0.0/8')).toBe(false);
+    const development = withDevelopmentLoopback(office, true);
+    expect(ipAllowed('127.0.0.1', development)).toBe(true);
+    expect(ipAllowed('192.168.36.20', development)).toBe(true);
+    expect(withDevelopmentLoopback(office, false)).toBe(office);
+    expect(withDevelopmentLoopback(`${office},127.0.0.0/8`, true)).toBe(`${office},127.0.0.0/8`);
+    expect(localhostSkipsSignIn('127.0.0.1', '', { NODE_ENV: 'development' })).toBe(true);
+    expect(localhostSkipsSignIn('127.8.0.1', '', {})).toBe(true);
+    expect(localhostSkipsSignIn('192.168.36.20', '', { NODE_ENV: 'development' })).toBe(false);
+    expect(localhostSkipsSignIn('127.0.0.1', '192.168.36.20', { NODE_ENV: 'development' })).toBe(
+      false,
+    );
+    expect(localhostSkipsSignIn('10.0.0.1', '127.0.0.1', { NODE_ENV: 'development' })).toBe(false);
+    expect(localhostSkipsSignIn('127.0.0.1', '127.0.0.2', { NODE_ENV: 'production' })).toBe(true);
+    expect(localhostSkipsSignIn('127.0.0.1', '', { NODE_ENV: 'production' })).toBe(false);
+    expect(localhostSkipsSignIn('127.0.0.1', '', { NODE_ENV: 'test' })).toBe(false);
   });
 
   it('escapes ldap filter characters', () => {

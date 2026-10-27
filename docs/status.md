@@ -71,9 +71,24 @@ Die Kopfzeile zeigt die Logos aus `brand/`, hell und dunkel. Weiße Flächen und
 
 Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Anmeldung auf `http://127.0.0.1:5173/anmelden`. Den lokalen Admin legt `pnpm install:helpdesk` an, wenn `LOCAL_ADMIN_USERNAME` und `LOCAL_ADMIN_PASSWORD` in der Shell stehen. Danach die Werte aus der History entfernen.
 
-Die Gruppe ist `HelpdeskAdmins`. Die Verwaltung gilt für `192.168.36.0/24` und `192.168.191.0/24`. Dienstkonto, Passwort und das MADC1-Zertifikat liegen in `%LOCALAPPDATA%\kmbhelp\secrets.json`, nicht im Git und nicht im Projektordner.
+Die Gruppe ist `HelpdeskAdmins`. Die Verwaltung gilt für `192.168.36.0/24` und `192.168.191.0/24`. Aus `127.0.0.0/8` sind die Verwaltungsseiten ohne Anmeldung erreichbar, solange die API nicht in Produktion läuft. Dienstkonto, Passwort und das MADC1-Zertifikat liegen in `%LOCALAPPDATA%\kmbhelp\secrets.json`, nicht im Git und nicht im Projektordner. Einstellungen ohne Geheimnis stehen in `.env` im Projektordner.
 
-Der Start prüft `MADC1.kmbcloud` und den konfigurierten Domänencontroller. Ist einer nicht erreichbar, geht die Meldung `directory.unreachable` ins Prozesslog und per Syslog an UDP 514. Meldungen und Konfiguration sieht nur der lokale Admin, unter `/verwaltung/meldungen` und `/verwaltung/konfiguration`. Die Auslieferung steht in `ConfigDefaults.md`.
+Der Start prüft nur `MADC1.kmbcloud.at`. Ist der Domänencontroller nicht erreichbar, geht die Meldung `directory.unreachable` ins Prozesslog und per Syslog. Der erste Empfänger ist `192.168.191.215` Port 514 UDP, der APP-NAME ist `KMBHelp`, die Facility `local0`, die Uhrzeit `+01:00` über `SYSLOG_UTC_OFFSET`, das Format RFC 5424. Der lokale Admin ändert und prüft jeden Konfigurationswert unter `/verwaltung/konfiguration`. Meldungen sieht er unter `/verwaltung/meldungen`. `/verwaltung` liest `HelpdeskAdmins`, legt neue Mitarbeiter über die E-Mail-Adresse an und kann fehlende Einträge nur deaktivieren. `staff.active` ist der Status aktiv oder inaktiv. Inaktive stehen unter „Inaktive Mitarbeiter“. Neue Tickets bieten nur Aktive an. Vorhandene Tickets zeigen das Kürzel auch bei inaktiven Mitarbeitern. Die Auslieferung steht in `ConfigDefaults.md`.
+
+## Phase 9 — noch nicht bauen
+
+Die Staff-Oberfläche ist weiterhin Phase 9. Der folgende Auftrag wird dort erledigt, nicht vorher. Verbindlich ist zusätzlich `docs/prozesse/14-bearbeitung.md`.
+
+- [ ] Eine Ticketseite für angemeldete Mitarbeiter. Jeder Mitarbeiter darf jedes offene Ticket bearbeiten und jedes Feld ändern, außer die Zufriedenheit.
+- [ ] Erledigt setzt das Ticket auf geschlossen und sendet eine Mail mit Betreff `Ticket` plus Nummer und dem Text: das Ticket ist gelöst, und wenn es zur Zufriedenheit gelöst wurde, würde man sich über eine kurze Antwort freuen.
+- [ ] Diese Antwort liest die KI, hängt sie an das Ticket und trägt die Zufriedenheit ein. Drei Zustände, als SVG und nicht als Emoji: zufrieden gelb, neutral grün, unzufrieden orange. Nur der Benutzer ändert das, nie der Mitarbeiter.
+- [ ] Der Mitarbeiter kann eine Erklärung am Ticket speichern.
+- [ ] Ein Knopf sendet an den Auftraggeber: ich arbeite jetzt an diesem Ticket. Absender ist `GRAPH_MAILBOX`.
+- [ ] Eine Rückfrage wird am Ticket gespeichert und als Mail an den Benutzer gesendet.
+- [ ] Die Seite listet Helpdesk-Mails, die noch kein Ticket sind, und kann jede davon von Hand in ein Ticket umwandeln.
+- [ ] Wird ein Mail als Ticket angenommen, merkt sich die KI den Grund. Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelöscht und der Grund gespeichert, damit ein Mail künftig kein Ticket erzeugen darf. Das ist keine allgemeine Löschfunktion.
+- [ ] Helpdesk-Mails dürfen zur Prüfung an Grok oder einen Grok-Agenten, aber nur hinter dem Provider aus Phase 6 und nur wenn Endpunkt, Region und AVV gesetzt sind. Sonst kein Aufruf.
+- [ ] Der Agent meldet, ob ein Mail ein Ticket werden soll, dazu Kategorie, Priorität, Benutzer und einen verfügbaren Mitarbeiter. Die Verfügbarkeit kommt aus dem Microsoft-365-Kalender. Der Mitarbeiter erhält eine Mail mit Ticketnummer, allen Angaben und dem Originalmail als Anhang.
 
 ## Offene Rückfragen
 

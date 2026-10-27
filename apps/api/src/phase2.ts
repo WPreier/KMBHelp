@@ -5,12 +5,15 @@ import {
   category,
   faqArticle,
   knowledgeArticle,
+  staff,
   staffSearch,
   ticket,
   ticketEvent,
   type Database,
 } from '@kmbhelp/db';
 import {
+  assignableStaffSchema,
+  availabilitySchema,
   calendarDate,
   categoryOptionSchema,
   createTicketSchema,
@@ -35,6 +38,7 @@ import {
   type StaffTicket,
 } from '@kmbhelp/shared';
 import { optionalStaff, readRequestCookie, requireStaff, SESSION_COOKIE } from './auth.js';
+import { calendarFromEnv, mailerFromEnv, type CalendarReader, type Mailer } from './graph.js';
 import { categoryTitleExplainer, type SearchExplainer } from './explain.js';
 import {
   createRateLimiter,
@@ -55,6 +59,8 @@ export type Phase2Options = {
   explainer?: SearchExplainer | undefined;
   ticketCreateLimit?: number | undefined;
   searchLimit?: number | undefined;
+  mailer?: Mailer | undefined;
+  calendar?: CalendarReader | undefined;
 };
 
 export function registerPhase2(app: FastifyInstance, options: Phase2Options): void {
@@ -63,6 +69,8 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
   const ticketLimiter = createRateLimiter(options.ticketCreateLimit ?? 10, 60_000);
   const searchLimiter = createRateLimiter(options.searchLimit ?? 30, 60_000);
   const changeLimiter = createRateLimiter(30, 60_000);
+  const mailer = options.mailer ?? mailerFromEnv(process.env);
+  const calendar = options.calendar ?? calendarFromEnv(process.env);
 
   function db(): Database {
     if (!options.database) throw databaseDown();
@@ -88,6 +96,17 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         .from(category)
         .where(eq(category.code, input.categoryCode));
       if (!known[0]) throw new PublicError(400, 'unknown_category', publicErrors.unknownCategory);
+      let assignedStaffId: string | null = null;
+      if (input.assignedStaffId) {
+        const people = await tx
+          .select({ id: staff.id, active: staff.active })
+          .from(staff)
+          .where(eq(staff.id, input.assignedStaffId));
+        if (!people[0]?.active) {
+          throw new PublicError(400, 'inactive_staff', publicErrors.inactiveStaff);
+        }
+        assignedStaffId = people[0].id;
+      }
       const rows = await tx
         .insert(ticket)
         .values({
@@ -102,6 +121,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
           body: input.body,
           requesterName: input.requesterName ?? null,
           dueOn: input.dueOn ?? null,
+          assignedStaffId,
         })
         .returning({ id: ticket.id, number: ticket.number });
       const row = rows[0];
@@ -137,9 +157,11 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         priority: ticket.priority,
         dueOn: ticket.dueOn,
         createdAt: ticket.createdAt,
+        staffEmail: staff.email,
       })
       .from(ticket)
       .innerJoin(category, eq(ticket.categoryCode, category.code))
+      .leftJoin(staff, eq(ticket.assignedStaffId, staff.id))
       .where(ne(ticket.status, 'closed'))
       .orderBy(asc(category.groupCode), asc(ticket.priority), asc(ticket.createdAt));
     await writeAccessLog(database, request);
@@ -172,6 +194,102 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     const next = await applyPublicAction(database, row, parsed.data, current);
     await writeAccessLog(database, request, row.id);
     return publicTicketStateSchema.parse({ number, ...next });
+  });
+
+  app.post<{ Params: { number: string } }>(
+    '/api/v1/tickets/public/:number/ask',
+    async (request) => {
+      const number = Number(request.params.number);
+      if (!Number.isInteger(number) || number < 1) {
+        throw new PublicError(404, 'not_found', publicErrors.notFound);
+      }
+      if (!changeLimiter.allow(request.ip || 'unknown')) throw rateLimited();
+      const database = db();
+      const rows = await database.db
+        .select({
+          id: ticket.id,
+          subject: ticket.subject,
+          status: ticket.status,
+          email: staff.email,
+        })
+        .from(ticket)
+        .leftJoin(staff, eq(ticket.assignedStaffId, staff.id))
+        .where(eq(ticket.number, number));
+      const row = rows[0];
+      if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
+      if (row.status !== 'open') {
+        throw new PublicError(400, 'ticket_not_open', publicErrors.ticketNotOpen);
+      }
+      if (!row.email) throw new PublicError(400, 'no_assignee', publicErrors.noAssignee);
+      if (!mailer.configured) {
+        throw new PublicError(503, 'mail_not_configured', publicErrors.mailNotConfigured);
+      }
+      const origin = publicOrigin(request.headers.origin);
+      await mailer.send({
+        to: row.email,
+        subject: `Ticket ${number}`,
+        text: `Benutzer fragt wann das gelöst ist.\n\nText: ${row.subject}\nLink: ${origin}/?ticket=${number}\n`,
+      });
+      await writeAccessLog(database, request, row.id);
+      return { ok: true };
+    },
+  );
+
+  app.get('/api/v1/staff/assignable', async () => {
+    const database = db();
+    const rows = await database.db
+      .select({ id: staff.id, displayName: staff.displayName, active: staff.active })
+      .from(staff)
+      .where(eq(staff.active, true))
+      .orderBy(asc(staff.displayName));
+    return assignableStaffSchema.parse({ staff: rows });
+  });
+
+  app.get<{ Params: { id: string } }>('/api/v1/staff/:id/availability', async (request) => {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(request.params.id)
+    ) {
+      throw new PublicError(404, 'not_found', publicErrors.notFound);
+    }
+    const database = db();
+    const rows = await database.db
+      .select({ email: staff.email, active: staff.active })
+      .from(staff)
+      .where(eq(staff.id, request.params.id));
+    const person = rows[0];
+    if (!person?.active) throw new PublicError(404, 'not_found', publicErrors.notFound);
+    if (!calendar.configured) {
+      return availabilitySchema.parse({
+        configured: false,
+        windows: [],
+        textDe:
+          'Der Microsoft-365-Kalender ist noch nicht verbunden. Sobald die Kanzlei die Freigabe erteilt, steht hier, wann diese Person frei ist.',
+        textEn:
+          'The Microsoft 365 calendar is not connected yet. Once the firm grants access, this shows when this person is free.',
+      });
+    }
+    try {
+      const windows = await calendar.availability(person.email, now());
+      return availabilitySchema.parse({
+        configured: true,
+        windows,
+        textDe:
+          windows.length === 0
+            ? 'In den nächsten sieben Tagen ist kein belegter Termin sichtbar.'
+            : 'Belegte Zeiten der nächsten sieben Tage.',
+        textEn:
+          windows.length === 0
+            ? 'No busy time is visible for the next seven days.'
+            : 'Busy times for the next seven days.',
+      });
+    } catch {
+      return availabilitySchema.parse({
+        configured: true,
+        windows: [],
+        textDe: 'Der Kalender konnte nicht gelesen werden.',
+        textEn: 'The calendar could not be read.',
+      });
+    }
   });
 
   app.get('/api/v1/staff/tickets', async (request) => {
@@ -323,6 +441,7 @@ function publicFields(
     priority: string;
     dueOn: string | null;
     createdAt: Date;
+    staffEmail: string | null;
   },
   current: Date,
 ): PublicTicket {
@@ -340,7 +459,16 @@ function publicFields(
     priority: enumValue(priorities, row.priority),
     ageSeconds: elapsedSeconds(row.createdAt, current),
     dueOn: row.dueOn,
+    staffMark: row.staffEmail ? row.staffEmail.slice(0, 3) : null,
   });
+}
+
+function publicOrigin(origin: string | string[] | undefined): string {
+  const value = Array.isArray(origin) ? origin[0] : origin;
+  if (typeof value === 'string' && /^https?:\/\/[A-Za-z0-9.:-]+$/u.test(value)) {
+    return value.replace(/\/$/u, '');
+  }
+  return 'http://127.0.0.1:5173';
 }
 
 async function expireDueTickets(database: Database, today: string): Promise<void> {

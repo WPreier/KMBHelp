@@ -32,3 +32,15 @@ export function ipAllowed(ip: string, allowlist: string): boolean {
     .filter((entry) => entry !== '');
   return rules.some((rule) => matches(normalized, rule.replace(/^::ffff:/u, '')));
 }
+
+const developmentLoopback = '127.0.0.0/8';
+
+export function withDevelopmentLoopback(allowlist: string, enabled: boolean): string {
+  if (!enabled) return allowlist;
+  const rules = allowlist
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry !== '');
+  if (rules.includes(developmentLoopback)) return rules.join(',');
+  return [...rules, developmentLoopback].join(',');
+}

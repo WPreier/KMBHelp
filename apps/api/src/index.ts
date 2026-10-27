@@ -5,9 +5,12 @@ import { buildApp } from './app.js';
 import { inspectConfiguration } from './configuration.js';
 import { reportChecks } from './operations.js';
 import { readPort } from './port.js';
+import { applyStoredConfig } from './config-store.js';
+import { readSyslogTarget } from './syslog-settings.js';
 
 loadEnvFileIfPresent(new URL('../../../.env', import.meta.url));
 loadWorkstationEnv();
+await applyStoredConfig();
 
 let testAuthEnabled = false;
 try {
@@ -37,7 +40,8 @@ const startupDatabase = process.env.DATABASE_URL?.trim()
   ? createDatabase(process.env.DATABASE_URL)
   : undefined;
 try {
-  const report = await inspectConfiguration(process.env);
+  const syslog = await readSyslogTarget(startupDatabase, process.env);
+  const report = await inspectConfiguration(process.env, undefined, syslog);
   await reportChecks({
     database: startupDatabase,
     env: process.env,

@@ -2,7 +2,8 @@ import type { FastifyRequest } from 'fastify';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { publicErrors } from '@kmbhelp/shared';
 import { session, staff, type Database } from '@kmbhelp/db';
-import { PublicError } from './http.js';
+import { clientAddress, PublicError } from './http.js';
+import { ipAllowed } from './network.js';
 
 export const TEST_STAFF_HEADER = 'x-kmbhelp-test-staff';
 export const SESSION_COOKIE = 'kmbhelp_session';
@@ -89,7 +90,38 @@ export async function staffFromSession(
   return rows[0] ?? null;
 }
 
+const localhostAdminId = '00000000-0000-0000-0000-000000000000';
+
+export function localhostSkipsSignIn(
+  ip: string,
+  forwardedFor: string,
+  env: NodeJS.ProcessEnv,
+): boolean {
+  if (env.NODE_ENV === 'test') return false;
+  if (!ipAllowed(ip, '127.0.0.0/8')) return false;
+  const forwarded = forwardedFor.split(',')[0]?.trim() ?? '';
+  if (env.NODE_ENV === 'production') {
+    return forwarded !== '' && ipAllowed(forwarded, '127.0.0.0/8');
+  }
+  return forwarded === '' || ipAllowed(forwarded, '127.0.0.0/8');
+}
+
+export function localhostAdmin(request: FastifyRequest, env = process.env): StaffSession | null {
+  const forwarded = request.headers['x-forwarded-for'];
+  const raw = Array.isArray(forwarded) ? (forwarded[0] ?? '') : (forwarded ?? '');
+  if (!localhostSkipsSignIn(clientAddress(request), raw, env)) return null;
+  return {
+    id: localhostAdminId,
+    staffId: localhostAdminId,
+    email: 'localhost',
+    isLocalAdmin: true,
+    mfaPending: false,
+    csrfToken: 'localhost',
+  };
+}
+
 export function assertCsrf(current: StaffSession, request: FastifyRequest): void {
+  if (current.csrfToken === 'localhost') return;
   const header = request.headers[CSRF_HEADER];
   if (typeof header !== 'string' || header === '' || header !== current.csrfToken) {
     throw new PublicError(403, 'csrf_invalid', publicErrors.csrfInvalid);

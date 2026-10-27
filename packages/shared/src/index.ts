@@ -18,6 +18,8 @@ export {
 export {
   categoryListSchema,
   categoryOptionSchema,
+  assignableStaffSchema,
+  availabilitySchema,
   createTicketSchema,
   createdTicketSchema,
   faqArticleSchema,
@@ -58,15 +60,39 @@ export { displayDateToIso, isoDateToDisplay } from './dates.js';
 export { defaultPublicLinks, publicLinkTargets, type PublicLinkTargets } from './links.js';
 export { messages, publicErrors, type Lang, type MessageKey } from './messages.js';
 export {
+  configFieldResultSchema,
+  configValueSchema,
   configurationSchema,
+  defaultSyslogFacility,
+  defaultSyslogHost,
+  defaultSyslogName,
+  defaultSyslogOffset,
+  defaultSyslogPort,
   noticeCategories,
   noticeListSchema,
   noticeUpdateSchema,
   sessionViewSchema,
+  syslogFacilities,
+  syslogFacilitySetting,
+  syslogHostSetting,
+  syslogNameSetting,
+  syslogOffsetPattern,
+  syslogOffsetSetting,
+  syslogPortSetting,
+  syslogTargetSchema,
+  syslogTestSchema,
   type ConfigurationReport,
   type NoticeList,
   type SessionView,
 } from './operations.js';
+export {
+  configField,
+  configFields,
+  describeConfig,
+  isSecretConfig,
+  type ConfigField,
+} from './config-fields.js';
+export { deactivateStaffSchema } from './auth.js';
 export {
   adminAccessSchema,
   adminPasswordSchema,

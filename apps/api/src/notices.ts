@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { noticeSetting, type Database } from '@kmbhelp/db';
-import { formatSyslog, sendSyslog, syslogTarget, type NoticeCategory } from './syslog.js';
+import { readSyslogTarget } from './syslog-settings.js';
+import { formatSyslog, sendSyslog, type NoticeCategory } from './syslog.js';
 
 export type NoticeDefinition = {
   code: string;
@@ -148,10 +149,17 @@ export async function emitNotice(input: {
   const text = `${definition.textDe} ${definition.textEn}${detail ? ` (${detail})` : ''}`;
   input.log(state.category, text);
   if (input.code === 'syslog.unreachable') return true;
-  const target = syslogTarget(input.env);
+  const target = await readSyslogTarget(input.database, input.env);
   const send = input.send ?? sendSyslog;
   try {
-    await send(target.host, target.port, formatSyslog(state.category, text));
+    await send(
+      target.host,
+      target.port,
+      formatSyslog(state.category, text, new Date(), {
+        appName: target.appName,
+        facility: target.facility,
+      }),
+    );
     return true;
   } catch {
     input.log(

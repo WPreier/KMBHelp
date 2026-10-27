@@ -105,7 +105,7 @@ Grok außerhalb von Cursor (grok.com) nur für Fragen ohne Codeausschnitte aus d
 | Geheimnis | Wo es liegt | Wo es nicht liegt |
 |---|---|---|
 | PostgreSQL-Produktion | `/etc/kmbhelp/api.env`, Modus 0600, User `kmbhelp` | Git, Cursor-Chat, Issue |
-| Dieser Arbeitsplatz | `%LOCALAPPDATA%\kmbhelp\secrets.json` für Konten, Passwörter und Zertifikate, dazu `dev.env` für die Datenbank-URL. Nur der Benutzer. Die API liest beide, solange `NODE_ENV` nicht `production` ist | Projektordner, Git |
+| Dieser Arbeitsplatz | `%LOCALAPPDATA%\kmbhelp\secrets.json` für Konten, Passwörter und Zertifikate, dazu `dev.env` für die Datenbank-URL. Nur der Benutzer. Die API liest beide, solange `NODE_ENV` nicht `production` ist. `.env` im Projektordner nimmt die übrigen Werte auf und darf kein Passwort und kein Zertifikat enthalten, weil der Ordner auf Google Drive liegt | Git |
 | Graph Client-Secret | dieselbe Datei | |
 | AD-Dienstkonto | dieselbe Datei | kein Domänenadmin |
 | Session-Schlüssel | dieselbe Datei, lange Zufallswerte | |
@@ -119,7 +119,7 @@ Vorlage der Variablennamen, ohne Werte, ist `.env.example` und wird in Phase 0 e
 
 Linux, Node 22, PostgreSQL 17 auf demselben Rechner oder einem internen Datenbankrechner, nginx oder Apache davor, TLS mit dem Zertifikat der Kanzlei. Zwei systemd-Einheiten: `kmbhelp-api`, `kmbhelp-worker`. Die genaue Anleitung schreibt Phase 10 nach `docs/installation-linux.md`. Bis dahin nicht „schnell per scp“ deployen.
 
-Der Server braucht ausgehende Verbindungen zu Microsoft Graph und zum später gewählten KI-Anbieter, und eine eingehende LDAPS-Verbindung zu `MADC1.kmbcloud.at:636`. Port 443 öffentlich nur, wenn anonyme Meldungen von außen gewollt sind. Staff- und Admin-Pfade bleiben per Allowlist auf das Kanzleinetz beschränkt, auch wenn die API denselben Host hat.
+Der Server braucht ausgehende Verbindungen zu Microsoft Graph und zum später gewählten KI-Anbieter, und eine eingehende LDAPS-Verbindung zu `MADC1.kmbcloud.at:636`. Port 443 öffentlich nur, wenn anonyme Meldungen von außen gewollt sind. Staff- und Admin-Pfade bleiben per Allowlist auf das Kanzleinetz beschränkt, auch wenn die API denselben Host hat. Die Entwicklung fügt `127.0.0.0/8` hinzu. Syslog geht zuerst an `192.168.191.215` Port 514 UDP, Name `KMBHelp`, Facility `local0`, Uhrzeit `+01:00`, Format RFC 5424, und lässt sich danach auf der Konfigurationsseite ändern. `SYSLOG_NAME`, `SYSLOG_FACILITY` und `SYSLOG_UTC_OFFSET` stehen in `.env`.
 
 Uhrzeit per NTP. Ohne korrekte Uhr ist die 72-Stunden-Frist und der Kalender falsch.
 

@@ -257,7 +257,7 @@ fieldset.check-list input {
   min-height: 1.25rem;
 }
 
-.form-actions button[type='submit'] {
+.form-actions button {
   margin-top: 0;
 }
 
@@ -389,6 +389,25 @@ button[type='submit'] {
   background: var(--green);
   border-color: var(--green);
   color: var(--on-green);
+}
+
+.form-actions button,
+.form-actions button[type='submit'] {
+  margin-top: 0;
+}
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.week div {
+  min-height: 44px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  font-size: 0.75rem;
 }
 
 .ticket-list li {

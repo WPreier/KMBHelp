@@ -33,6 +33,7 @@ export const createTicketSchema = z
         .optional(),
     ),
     clientPriority: z.preprocess(emptyToUndefined, z.enum(priorities).optional()),
+    assignedStaffId: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
     source: z.enum(['web', 'app']).default('web'),
   })
   .strict();
@@ -53,6 +54,7 @@ export const publicTicketSchema = z
     priority: z.enum(priorities),
     ageSeconds: z.number().int().nonnegative(),
     dueOn: z.string().nullable(),
+    staffMark: z.string().min(1).max(3).nullable(),
   })
   .strict();
 
@@ -151,6 +153,36 @@ export const searchQuerySchema = z.object({
 });
 
 export const publicTicketListSchema = z.object({ tickets: z.array(publicTicketSchema) }).strict();
+export const assignableStaffSchema = z
+  .object({
+    staff: z.array(
+      z
+        .object({
+          id: z.string().uuid(),
+          displayName: z.string(),
+          active: z.boolean(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const availabilitySchema = z
+  .object({
+    configured: z.boolean(),
+    windows: z.array(
+      z
+        .object({
+          start: z.string(),
+          end: z.string(),
+        })
+        .strict(),
+    ),
+    textDe: z.string(),
+    textEn: z.string(),
+  })
+  .strict();
+
 export const categoryListSchema = z.object({ categories: z.array(categoryOptionSchema) }).strict();
 export const faqListSchema = z.object({ articles: z.array(faqSummarySchema) }).strict();
 export const searchResultSchema = z.object({ hits: z.array(searchHitSchema) }).strict();

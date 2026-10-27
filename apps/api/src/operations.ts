@@ -1,17 +1,26 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { noticeSetting, type Database } from '@kmbhelp/db';
 import {
+  configField,
+  configFieldResultSchema,
+  configValueSchema,
   configurationSchema,
+  describeConfig,
   noticeListSchema,
   noticeUpdateSchema,
   publicErrors,
+  syslogTargetSchema,
+  syslogTestSchema,
 } from '@kmbhelp/shared';
-import { assertCsrf, staffFromSession, type StaffSession } from './auth.js';
+import { assertCsrf, localhostAdmin, staffFromSession, type StaffSession } from './auth.js';
+import { checkConfigField } from './config-check.js';
+import { saveConfigValue } from './config-store.js';
 import { inspectConfiguration, type Check } from './configuration.js';
 import { clientAddress, databaseDown, PublicError } from './http.js';
 import { ipAllowed } from './network.js';
 import { emitNotice, noticeByCode, noticeCatalog, noticeState } from './notices.js';
-import type { NoticeCategory } from './syslog.js';
+import { readSyslogTarget, writeSyslogTarget } from './syslog-settings.js';
+import { formatSyslog, sendSyslog, type NoticeCategory } from './syslog.js';
 
 export type OperationsOptions = {
   database: Database | undefined;
@@ -23,7 +32,7 @@ export type OperationsOptions = {
 export function noticeCodeFor(check: Check): { code: string; detail: string } | null {
   if (check.status === 'ok') return null;
   if (check.status === 'informational' && !noticeByCode(check.code)) return null;
-  if (check.code === 'directory.short' || check.code === 'directory.fqdn') {
+  if (check.code === 'directory.fqdn') {
     return { code: 'directory.unreachable', detail: check.textEn };
   }
   if (!noticeByCode(check.code)) return null;
@@ -53,12 +62,19 @@ export function registerOperations(app: FastifyInstance, options: OperationsOpti
   const now = options.now ?? (() => new Date());
   const env = options.env ?? process.env;
 
+  async function loadReport() {
+    const syslog = await readSyslogTarget(options.database, env);
+    return inspectConfiguration(env, undefined, syslog);
+  }
+
   function db(): Database {
     if (!options.database) throw databaseDown();
     return options.database;
   }
 
   async function admin(request: FastifyRequest): Promise<StaffSession> {
+    const local = localhostAdmin(request, env);
+    if (local) return local;
     if (!ipAllowed(clientAddress(request), options.adminAllowlist)) {
       throw new PublicError(403, 'network_denied', publicErrors.networkDenied);
     }
@@ -111,13 +127,77 @@ export function registerOperations(app: FastifyInstance, options: OperationsOpti
 
   app.get('/api/v1/admin/configuration', async (request) => {
     await admin(request);
-    return configurationSchema.parse(await inspectConfiguration(env));
+    return configurationSchema.parse(await loadReport());
+  });
+
+  app.post('/api/v1/admin/configuration/syslog', async (request) => {
+    const current = await admin(request);
+    assertCsrf(current, request);
+    const parsed = syslogTargetSchema.safeParse(request.body);
+    if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+    await writeSyslogTarget(db(), parsed.data);
+    process.env.SYSLOG_HOST = parsed.data.host;
+    process.env.SYSLOG_PORT = String(parsed.data.port);
+    process.env.SYSLOG_NAME = parsed.data.appName;
+    process.env.SYSLOG_FACILITY = parsed.data.facility;
+    process.env.SYSLOG_UTC_OFFSET = parsed.data.offset;
+    return configurationSchema.parse(await loadReport());
+  });
+
+  app.post('/api/v1/admin/configuration/syslog/test', async (request) => {
+    const current = await admin(request);
+    assertCsrf(current, request);
+    const parsed = syslogTargetSchema.safeParse(request.body);
+    if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+    try {
+      await sendSyslog(
+        parsed.data.host,
+        parsed.data.port,
+        formatSyslog('informational', 'KMBHelp syslog check', new Date(), parsed.data),
+      );
+      return syslogTestSchema.parse({ ok: true });
+    } catch {
+      return syslogTestSchema.parse({ ok: false });
+    }
+  });
+
+  async function fieldResult(key: string, candidate?: string) {
+    const syslog = await readSyslogTarget(options.database, env);
+    const check = await checkConfigField(env, key, candidate);
+    const entry = describeConfig(env).find((item) => item.key === key);
+    if (!entry) throw new PublicError(404, 'not_found', publicErrors.notFound);
+    return configFieldResultSchema.parse({ entry, check, syslog });
+  }
+
+  app.post('/api/v1/admin/configuration/value', async (request) => {
+    const current = await admin(request);
+    assertCsrf(current, request);
+    const parsed = configValueSchema.safeParse(request.body);
+    if (!parsed.success || !configField(parsed.data.key)) {
+      throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+    }
+    try {
+      await saveConfigValue(db(), parsed.data.key, parsed.data.value);
+    } catch {
+      throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+    }
+    return fieldResult(parsed.data.key);
+  });
+
+  app.post('/api/v1/admin/configuration/value/check', async (request) => {
+    const current = await admin(request);
+    assertCsrf(current, request);
+    const parsed = configValueSchema.safeParse(request.body);
+    if (!parsed.success || !configField(parsed.data.key)) {
+      throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+    }
+    return fieldResult(parsed.data.key, parsed.data.value);
   });
 
   app.post('/api/v1/admin/configuration/check', async (request) => {
     const current = await admin(request);
     assertCsrf(current, request);
-    const report = await inspectConfiguration(env);
+    const report = await loadReport();
     await reportChecks({
       database: options.database,
       env,

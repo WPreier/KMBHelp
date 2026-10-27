@@ -35,21 +35,32 @@ export const adminAccessSchema = z.object({
   categoryCodes: z.array(z.string().trim().min(1).max(80)).max(100),
 });
 
+const helpdeskPerson = z.object({
+  id: z.string().uuid(),
+  email: z.string(),
+  displayName: z.string(),
+});
+
 export const adminStaffSchema = z.object({
+  directory: z.enum(['ok', 'unavailable']),
+  added: z.array(z.object({ email: z.string(), displayName: z.string() })),
+  missing: z.array(helpdeskPerson),
   skills: z.array(z.object({ code: z.string(), labelDe: z.string(), labelEn: z.string() })),
   categories: z.array(z.object({ code: z.string(), labelDe: z.string(), labelEn: z.string() })),
   staff: z.array(
-    z.object({
-      id: z.string().uuid(),
-      email: z.string(),
+    helpdeskPerson.extend({
       username: z.string().nullable(),
-      displayName: z.string(),
       isLocalAdmin: z.boolean(),
+      active: z.boolean(),
       mfaEnrolled: z.boolean(),
       skillCodes: z.array(z.string()),
       categoryCodes: z.array(z.string()),
     }),
   ),
+});
+
+export const deactivateStaffSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(200),
 });
 
 export type LoginResult = z.infer<typeof loginResultSchema>;

@@ -63,6 +63,7 @@ describe('placeholder page', () => {
                 priority: 'p1',
                 ageSeconds: 120,
                 dueOn: '2026-10-26',
+                staffMark: 'abc',
               },
             ],
           });

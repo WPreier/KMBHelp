@@ -5,6 +5,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { directoryFromEnv, type Directory } from './directory.js';
 import type { SearchExplainer } from './explain.js';
 import { PublicError } from './http.js';
+import { withDevelopmentLoopback } from './network.js';
 import { openApiDocument } from './openapi.js';
 import { registerPhase2 } from './phase2.js';
 import { registerOperations } from './operations.js';
@@ -84,6 +85,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
 
   const webauthn = webauthnFromEnv(process.env);
+  const adminAllowlist = withDevelopmentLoopback(
+    options.adminAllowlist ?? process.env.ADMIN_IP_ALLOWLIST ?? '',
+    options.adminAllowlist === undefined && process.env.NODE_ENV !== 'production',
+  );
   registerPhase2(app, {
     database,
     testAuthEnabled: options.testAuthEnabled ?? false,
@@ -96,14 +101,14 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     database,
     directory: options.directory ?? directoryFromEnv(process.env),
     sessionSecret: resolveSessionSecret(options.sessionSecret, process.env),
-    adminAllowlist: options.adminAllowlist ?? process.env.ADMIN_IP_ALLOWLIST ?? '',
+    adminAllowlist,
     rpId: options.webauthnRpId ?? webauthn.rpId,
     origin: options.webauthnOrigin ?? webauthn.origin,
     now: options.now,
   });
   registerOperations(app, {
     database,
-    adminAllowlist: options.adminAllowlist ?? process.env.ADMIN_IP_ALLOWLIST ?? '',
+    adminAllowlist,
     now: options.now,
   });
 

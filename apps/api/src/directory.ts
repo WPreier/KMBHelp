@@ -17,10 +17,18 @@ export type DirectoryAccount = {
   inHelpdeskGroup: boolean;
 };
 
+export type DirectoryMember = {
+  email: string;
+  cn: string;
+  adObjectId: string;
+  active: boolean;
+};
+
 export type Directory = {
   readonly configured: boolean;
   verifyPassword(email: string, password: string): Promise<DirectoryAccount | null>;
   assertMembership(email: string): Promise<'member' | 'absent'>;
+  listHelpdeskAdmins(): Promise<DirectoryMember[]>;
 };
 
 export type MemoryDirectoryAccount = DirectoryAccount & { password: string };
@@ -32,6 +40,9 @@ export function unconfiguredDirectory(): Directory {
       throw new DirectoryUnavailable();
     },
     assertMembership(): Promise<'member' | 'absent'> {
+      throw new DirectoryUnavailable();
+    },
+    listHelpdeskAdmins(): Promise<DirectoryMember[]> {
       throw new DirectoryUnavailable();
     },
   };
@@ -56,6 +67,16 @@ export function memoryDirectory(accounts: MemoryDirectoryAccount[]): Directory {
       if (!found || !found.active || !found.inHelpdeskGroup) return 'absent';
       return 'member';
     },
+    async listHelpdeskAdmins() {
+      return accounts
+        .filter((account) => account.inHelpdeskGroup)
+        .map((account) => ({
+          email: account.email,
+          cn: account.displayName,
+          adObjectId: account.adObjectId,
+          active: account.active,
+        }));
+    },
   };
 }
 
@@ -69,15 +90,14 @@ export type LdapsConfig = {
   caPem?: string | undefined;
 };
 
-export function directoryFromEnv(env: NodeJS.ProcessEnv): Directory {
+export function ldapsConfigFromEnv(env: NodeJS.ProcessEnv): LdapsConfig | null {
   const url = env.LDAPS_URL?.trim() ?? '';
   const bindDn = env.LDAPS_BIND_DN?.trim() ?? '';
   const bindPassword = env.LDAPS_BIND_PASSWORD ?? '';
   const baseDn = env.LDAPS_BASE_DN?.trim() ?? '';
   const groupDn = env.LDAPS_GROUP_DN?.trim() ?? '';
-  if (!url || !bindDn || bindPassword.trim() === '' || !baseDn || !groupDn)
-    return unconfiguredDirectory();
-  return ldapDirectory({
+  if (!url || !bindDn || bindPassword.trim() === '' || !baseDn || !groupDn) return null;
+  return {
     url,
     bindDn,
     bindPassword,
@@ -85,7 +105,12 @@ export function directoryFromEnv(env: NodeJS.ProcessEnv): Directory {
     groupDn,
     caFile: env.LDAPS_CA_FILE?.trim() || undefined,
     caPem: env.LDAPS_CA_PEM?.trim() || undefined,
-  });
+  };
+}
+
+export function directoryFromEnv(env: NodeJS.ProcessEnv): Directory {
+  const config = ldapsConfigFromEnv(env);
+  return config ? ldapDirectory(config) : unconfiguredDirectory();
 }
 
 export function ldapFilterEscape(value: string): string {
@@ -95,14 +120,19 @@ export function ldapFilterEscape(value: string): string {
   );
 }
 
+function first(value: unknown): unknown {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 function text(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (Buffer.isBuffer(value)) return value.toString('utf8');
+  const item = first(value);
+  if (typeof item === 'string') return item;
+  if (Buffer.isBuffer(item)) return item.toString('utf8');
   return '';
 }
 
 function disabled(value: unknown): boolean {
-  return (Number(value ?? 0) & 2) === 2;
+  return (Number(first(value) ?? 0) & 2) === 2;
 }
 
 function memberOfGroup(value: unknown, groupDn: string): boolean {
@@ -112,8 +142,9 @@ function memberOfGroup(value: unknown, groupDn: string): boolean {
 }
 
 function objectId(value: unknown): string {
-  if (Buffer.isBuffer(value)) return value.toString('hex');
-  return text(value);
+  const item = first(value);
+  if (Buffer.isBuffer(item)) return item.toString('hex');
+  return text(item);
 }
 
 async function searchAccount(client: Client, config: LdapsConfig, email: string) {
@@ -125,6 +156,45 @@ async function searchAccount(client: Client, config: LdapsConfig, email: string)
     sizeLimit: 2,
   });
   return searchEntries[0] as ({ dn: string } & Record<string, unknown>) | undefined;
+}
+
+function memberEmail(entry: Record<string, unknown>): string {
+  const mail = text(Array.isArray(entry['mail']) ? entry['mail'][0] : entry['mail']);
+  if (mail.includes('@')) return mail;
+  const upn = text(
+    Array.isArray(entry['userPrincipalName'])
+      ? entry['userPrincipalName'][0]
+      : entry['userPrincipalName'],
+  );
+  return upn.includes('@') ? upn : '';
+}
+
+async function searchHelpdeskAdmins(
+  client: Client,
+  config: LdapsConfig,
+): Promise<DirectoryMember[]> {
+  const { searchEntries } = await client.search(config.baseDn, {
+    scope: 'sub',
+    filter: `(&(objectCategory=person)(memberOf=${ldapFilterEscape(config.groupDn)}))`,
+    attributes: ['cn', 'mail', 'userPrincipalName', 'userAccountControl', 'objectGUID'],
+    sizeLimit: 500,
+  });
+  const members: DirectoryMember[] = [];
+  const seen = new Set<string>();
+  for (const entry of searchEntries) {
+    const record = entry as Record<string, unknown>;
+    const email = memberEmail(record);
+    const key = email.toLowerCase();
+    if (!email || seen.has(key)) continue;
+    seen.add(key);
+    members.push({
+      email,
+      cn: text(record['cn']) || email,
+      adObjectId: objectId(record['objectGUID']),
+      active: !disabled(record['userAccountControl']),
+    });
+  }
+  return members;
 }
 
 export function ldapDirectory(config: LdapsConfig): Directory {
@@ -191,6 +261,17 @@ export function ldapDirectory(config: LdapsConfig): Directory {
         return 'absent';
       }
       return 'member';
+    },
+    async listHelpdeskAdmins() {
+      const bound = client();
+      try {
+        await bound.bind(config.bindDn, config.bindPassword);
+        return await searchHelpdeskAdmins(bound, config);
+      } catch {
+        throw new DirectoryUnavailable();
+      } finally {
+        await bound.unbind().catch(() => undefined);
+      }
     },
   };
 }

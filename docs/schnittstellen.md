@@ -87,13 +87,13 @@ Passkey und TOTP: `POST /api/v1/auth/totp/setup`, `POST /api/v1/auth/totp/confir
 
 Bei `scripts/install.ts` einmalig abgefragt oder über Umgebungsvariable, die danach aus der Shell-History entfernt wird. Es gibt genau einen solchen Account. Das Passwort liegt als Argon2id-Hash.
 
-`GET /api/v1/admin/staff` listet Konten, Skills und Kategorien ohne Passwort-Hash und ohne TOTP-Geheimnis. `POST /api/v1/admin/password` ändert das eigene Passwort. `POST /api/v1/admin/staff/:id/mfa/reset` löscht TOTP, Passkeys und Sitzungen. `POST /api/v1/admin/staff/:id/access` ersetzt Skills und Kategorien.
+`GET /api/v1/admin/staff` liest `HelpdeskAdmins`, gleicht sie über die E-Mail-Adresse ab und listet Konten, Skills und Kategorien ohne Passwort-Hash und ohne TOTP-Geheimnis. Der Name ist `cn`. `POST /api/v1/admin/directory/read` wiederholt den Abgleich. `POST /api/v1/admin/directory/deactivate` setzt ausgewählte Konten inaktiv, wenn sie nicht mehr in der Gruppe sind. Mitarbeiter werden nie gelöscht. `POST /api/v1/admin/password` ändert das eigene Passwort. `POST /api/v1/admin/staff/:id/mfa/reset` löscht TOTP, Passkeys und Sitzungen. `POST /api/v1/admin/staff/:id/access` ersetzt Skills und Kategorien.
 
-Diese Routen verlangen den lokalen Admin, eine fertige Sitzung, den CSRF-Header und eine Adresse aus `192.168.36.0/24` oder `192.168.191.0/24`. Eine leere Liste verweigert jeden Zugriff. `127.0.0.1` gehört nicht dazu.
+Diese Routen verlangen den lokalen Admin, eine fertige Sitzung, den CSRF-Header und eine Adresse aus `192.168.36.0/24` oder `192.168.191.0/24`. Eine leere Liste verweigert in Produktion jeden Zugriff. Aus `127.0.0.0/8` entfällt die Anmeldung, solange die API nicht in Produktion läuft. In Produktion entfällt sie nur, wenn die weitergeleitete Client-Adresse ebenfalls aus diesem Netz stammt.
 
 `GET /api/v1/auth/session` sagt nur, ob die eigene Sitzung fertig ist und ob sie der lokale Admin ist.
 
-`GET /api/v1/admin/notices` und `PATCH /api/v1/admin/notices/:code` pflegen den Meldungskatalog. `GET /api/v1/admin/configuration` zeigt Werte und Prüfungen, Geheimnisse nur als gesetzt oder fehlend. `POST /api/v1/admin/configuration/check` prüft erneut und löst die fehlgeschlagenen Meldungen aus. Syslog ist UDP 514 im BSD-Format. Die Auslieferung steht in `ConfigDefaults.md`.
+`GET /api/v1/admin/notices` und `PATCH /api/v1/admin/notices/:code` pflegen den Meldungskatalog. `GET /api/v1/admin/configuration` zeigt jeden Wert mit Erklärung und Prüfung. Geheimnisse kommen nur als gesetzt oder fehlend zurück. `POST /api/v1/admin/configuration/value` speichert einen Wert. `POST /api/v1/admin/configuration/value/check` prüft den eingegebenen Wert, ohne ihn zu speichern. `POST /api/v1/admin/configuration/check` prüft erneut und löst die fehlgeschlagenen Meldungen aus. `POST /api/v1/admin/configuration/syslog` speichert Host, Port, APP-NAME und Facility. `POST /api/v1/admin/configuration/syslog/test` übergibt ein UDP-Datagramm an die eingegebene Adresse. Der gespeicherte Wert gilt vor der Umgebungsdatei. Anfangswert ist `192.168.191.215` Port `514`, Name `KMBHelp`, Facility `local0`. Das Format ist RFC 5424. Die Auslieferung steht in `ConfigDefaults.md`.
 
 ## 12. Datenbank
 
@@ -105,9 +105,11 @@ Alle fachlichen Aktionen, die Web, App, Worker oder MCP auslösen, gehen durch `
 
 Ressourcen mindestens:
 
-- `POST /api/v1/tickets` anonym, begrenzt
-- `GET /api/v1/tickets/public` Arbeitsliste mit Nummer, Betreff, Status, Priorität, Alter und Fälligkeit. Kein Beschreibungstext, kein Absender, keine Kommentare
+- `POST /api/v1/tickets` anonym, begrenzt. Optional ein aktiver Mitarbeiter. Inaktive Mitarbeiter werden abgelehnt. Der Kalender dazu ist `GET /api/v1/staff/:id/availability`. Ohne Microsoft-365-Freigabe bleibt er unverbunden und erfindet keine Termine.
+- `GET /api/v1/staff/assignable` nur aktive Mitarbeiter
+- `GET /api/v1/tickets/public` Arbeitsliste mit Nummer, Betreff, den ersten drei Zeichen der Mitarbeiter-E-Mail, Status, Priorität, Alter und Fälligkeit. Kein Beschreibungstext, kein Absender, keine Kommentare. Ein inaktiver Mitarbeiter bleibt an vorhandenen Tickets sichtbar.
 - `POST /api/v1/tickets/public/:number` schaltet offen und inaktiv, ändert die Priorität oder schließt dauerhaft
+- `POST /api/v1/tickets/public/:number/ask` schickt von `GRAPH_MAILBOX` eine Rückfrage an den zugeordneten Mitarbeiter: Betreff `Ticket` plus Nummer, der sichtbare Text, der Link und der Satz „Benutzer fragt wann das gelöst ist“. Ohne Graph antwortet die API 503.
 - `GET|PATCH /api/v1/staff/tickets`
 - Der Header `X-Kmbhelp-Test-Staff` mit der E-Mail eines Staff-Kontos gilt nur, wenn `ALLOW_TEST_AUTH=1` gesetzt ist und `NODE_ENV` nicht `production` ist. In Produktion darf die Variable nicht gesetzt sein. Ohne diese Freigabe wird der Header ignoriert. Eine fertige Sitzung gilt auch ohne den Header.
 - `POST /api/v1/staff/tickets/:id/comments`

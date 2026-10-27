@@ -1,5 +1,17 @@
-import { sql } from 'drizzle-orm';
+import {
+  defaultSyslogFacility,
+  defaultSyslogHost,
+  defaultSyslogName,
+  defaultSyslogOffset,
+  defaultSyslogPort,
+  syslogFacilitySetting,
+  syslogHostSetting,
+  syslogNameSetting,
+  syslogOffsetSetting,
+  syslogPortSetting,
+} from '@kmbhelp/shared';
 import { loadEnvFileIfPresent } from '@kmbhelp/shared/env';
+import { sql } from 'drizzle-orm';
 import {
   approvedExchangeSettingKey,
   catalogItems,
@@ -90,6 +102,17 @@ export async function seedCatalog(database: Database): Promise<void> {
   await database.db
     .insert(appSetting)
     .values({ key: approvedExchangeSettingKey, value: '' })
+    .onConflictDoNothing();
+
+  await database.db
+    .insert(appSetting)
+    .values([
+      { key: syslogHostSetting, value: defaultSyslogHost },
+      { key: syslogPortSetting, value: String(defaultSyslogPort) },
+      { key: syslogNameSetting, value: defaultSyslogName },
+      { key: syslogFacilitySetting, value: defaultSyslogFacility },
+      { key: syslogOffsetSetting, value: defaultSyslogOffset },
+    ])
     .onConflictDoNothing();
 }
 

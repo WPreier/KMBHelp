@@ -1,8 +1,8 @@
 import { createDatabase } from '@kmbhelp/db';
-import type { ConfigurationReport } from '@kmbhelp/shared';
+import { describeConfig, type ConfigurationReport } from '@kmbhelp/shared';
 import { directoryCertificate, serviceBindWorks, type LdapsConfig } from './directory.js';
 import { ldapsHost, peerFingerprint, tcpOpen, type TcpResult } from './probes.js';
-import { formatSyslog, sendSyslog } from './syslog.js';
+import { formatSyslog, sendSyslog, syslogTarget } from './syslog.js';
 
 const secretKeys = [
   'DATABASE_URL',
@@ -40,7 +40,7 @@ type Probes = {
   bind: (config: LdapsConfig) => Promise<boolean>;
   database: (url: string) => Promise<{ ok: boolean; version: string; admins: number }>;
   graphDns: () => Promise<boolean>;
-  syslog: (host: string, port: number) => Promise<boolean>;
+  syslog: (host: string, port: number, line: string) => Promise<boolean>;
 };
 
 const liveProbes: Probes = {
@@ -49,9 +49,9 @@ const liveProbes: Probes = {
   bind: serviceBindWorks,
   database: readDatabase,
   graphDns: async () => (await tcpOpen('login.microsoftonline.com', 443)) === 'open',
-  syslog: async (host, port) => {
+  syslog: async (host, port, line) => {
     try {
-      await sendSyslog(host, port, formatSyslog('informational', 'KMBHelp syslog check'));
+      await sendSyslog(host, port, line);
       return true;
     } catch {
       return false;
@@ -121,25 +121,9 @@ async function readDatabase(
 export async function inspectConfiguration(
   env: NodeJS.ProcessEnv,
   probes: Probes = liveProbes,
+  syslog: ReturnType<typeof syslogTarget> = syslogTarget(env),
 ): Promise<ConfigurationReport> {
   const checks: Check[] = [];
-  const short = await probes.tcp('MADC1.kmbcloud', 636);
-  checks.push(
-    short === 'open'
-      ? check(
-          'directory.short',
-          'ok',
-          'MADC1.kmbcloud nimmt LDAPS an.',
-          'MADC1.kmbcloud accepts LDAPS.',
-        )
-      : check(
-          'directory.short',
-          'error',
-          `MADC1.kmbcloud ist nicht erreichbar (${short}).`,
-          `MADC1.kmbcloud is not reachable (${short}).`,
-        ),
-  );
-
   const target = ldapsHost(env.LDAPS_URL);
   const fqdn = await probes.tcp(target.host, target.port);
   checks.push(
@@ -399,19 +383,21 @@ export async function inspectConfiguration(
     );
   }
 
-  const syslogHost = env.SYSLOG_HOST?.trim() || '127.0.0.1';
-  const syslogPort = Number(env.SYSLOG_PORT?.trim() || '514');
-  const syslog = await probes.syslog(syslogHost, Number.isInteger(syslogPort) ? syslogPort : 514);
+  const syslogReachable = await probes.syslog(
+    syslog.host,
+    syslog.port,
+    formatSyslog('informational', 'KMBHelp syslog check', new Date(), syslog),
+  );
   checks.push(
     check(
-      syslog ? 'syslog' : 'syslog.unreachable',
-      syslog ? 'ok' : 'warning',
-      syslog
-        ? `Das Syslog-Datagramm wurde an ${syslogHost}:${syslogPort} übergeben. UDP bestätigt den Empfang nicht.`
-        : `Das Syslog-Datagramm an ${syslogHost}:${syslogPort} wurde nicht übergeben.`,
-      syslog
-        ? `The syslog datagram was handed to ${syslogHost}:${syslogPort}. UDP does not confirm delivery.`
-        : `The syslog datagram to ${syslogHost}:${syslogPort} was not handed over.`,
+      syslogReachable ? 'syslog' : 'syslog.unreachable',
+      syslogReachable ? 'ok' : 'warning',
+      syslogReachable
+        ? `Das Syslog-Datagramm wurde an ${syslog.host}:${syslog.port} übergeben. UDP bestätigt den Empfang nicht.`
+        : `Das Syslog-Datagramm an ${syslog.host}:${syslog.port} wurde nicht übergeben.`,
+      syslogReachable
+        ? `The syslog datagram was handed to ${syslog.host}:${syslog.port}. UDP does not confirm delivery.`
+        : `The syslog datagram to ${syslog.host}:${syslog.port} was not handed over.`,
     ),
   );
 
@@ -469,5 +455,5 @@ export async function inspectConfiguration(
         ),
   );
 
-  return { values: valuesOf(env), checks };
+  return { values: valuesOf(env), checks, syslog, entries: describeConfig(env) };
 }

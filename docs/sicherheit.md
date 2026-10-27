@@ -43,9 +43,11 @@ Die öffentliche Arbeitsliste kennt die Status `open`, `inactive`, `expired` und
 4. AD-Passwörter werden nie gespeichert, nie geloggt, nie an die KI gegeben.
 5. Ein lokales Admin-Konto, Benutzername bei der Installation festgelegt, Passwort Argon2id. Es setzt MFA zurück und pflegt Kenntnisse. Es ist kein Alltags-Agent.
 
-Admin-Oberflächen zusätzlich nur aus `192.168.36.0/24` und `192.168.191.0/24`. Authentifizierung bleibt Pflicht. Ein IP-Filter allein ist kein Zugangsschutz. Meldungskatalog und Konfiguration sieht nur der lokale Admin.
+Admin-Oberflächen zusätzlich nur aus `192.168.36.0/24` und `192.168.191.0/24`, dort mit Anmeldung. Aus `127.0.0.0/8` sind alle Verwaltungsseiten ohne Passwort, Passkey oder Einmalcode erreichbar. Das gilt, solange die API nicht in Produktion läuft. In Produktion bleibt die Anmeldung, außer die weitergeleitete Client-Adresse stammt selbst aus `127.0.0.0/8`. Fehlt diese Weiterleitung, bleibt die Anmeldung, weil der Webserver vor der API sonst jeden Besucher als localhost zeigen würde. Ein IP-Filter allein ist außerhalb von localhost kein Zugangsschutz.
 
-Systemmeldungen gehen zusätzlich als BSD-Syslog, Facility `local0`, an `SYSLOG_HOST` Port `514` UDP. Kategorien sind Informational, Warning und Error. Eine ignorierte Meldung wird nicht ausgelöst. Der Text enthält kein Passwort und kein Zertifikat.
+Systemmeldungen gehen zusätzlich als RFC-5424-Syslog per UDP an den Server, den der lokale Admin auf der Konfigurationsseite speichert. Der APP-NAME ist `KMBHelp`, die Facility `local0`, der Empfänger zuerst `192.168.191.215` Port `514`. Die Uhrzeit trägt `+01:00`, nicht `Z`. Der HOSTNAME der Zeile ist der Rechnername. Kategorien sind Informational, Warning und Error. Eine ignorierte Meldung wird nicht ausgelöst. Der Text enthält kein Passwort und kein Zertifikat.
+
+Die Verwaltung liest `HelpdeskAdmins` und gleicht sie über die E-Mail-Adresse mit der Datenbank ab. Der angezeigte Name kommt aus `cn`. Neue Mitglieder werden angelegt. Wer nur noch in der Datenbank steht, kann deaktiviert werden. Mitarbeiter-Zeilen werden nie gelöscht.
 
 ## KI
 
