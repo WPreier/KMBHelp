@@ -153,7 +153,17 @@ Lokale MFA der App (Biometrie oder Gerätecode) ist zusätzlich zur Server-MFA. 
 5. Erst dann Phase 1.
 6. Parallel die Rückfragen aus `PROMPT.md` klären (Graph, LDAPS, KI-Anbieter, Logos, URLs, IP-Netz). Ohne diese Antworten sind Phasen 0, 1, 2 und 5 trotzdem baubar. Phase 3, 4 und 6 warten auf die Zugänge.
 
-## 9. Mindest-Check vor dem ersten echten Benutzer
+## 9. Stündliche Datenbanksicherung
+
+Die Sicherung liegt im selben Ordner wie das Zugriffsprotokoll: `%LOCALAPPDATA%\kmbhelp\backups`. Die Datei heißt `kmbhelp-yyyyMMdd-HH.backup` und ist ein `pg_dump` im Custom-Format. Dateien, die älter als sieben Tage sind, löscht das Skript. Das Kennwort bleibt in `dev.env` und steht nicht in der Aufgabenplanung.
+
+Das Skript im Repository ist `scripts/backup-database.ps1`. Die geplante Aufgabe `KMBHelp-Database-Backup` startet die Kopie unter `%LOCALAPPDATA%\kmbhelp\backup-database.ps1`, stündlich, solange dieser Windows-Benutzer angemeldet ist. Ein Dump gehört nicht ins Git und nicht auf das Laufwerk der Ablage.
+
+Zurückspielen, nur auf eine leere Testdatenbank:
+
+`pg_restore --dbname postgresql://…/kmbhelp_restore --clean --if-exists datei.backup`
+
+## 10. Mindest-Check vor dem ersten echten Benutzer
 
 - Öffentliche Ticketliste zeigt einen angelegten Betreff nicht.
 - Ausgeschiedenes AD-Konto (in einer Test-OU) kommt nicht mehr hinein, obwohl der Passkey noch auf dem Gerät liegt.

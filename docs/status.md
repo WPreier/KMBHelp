@@ -1,6 +1,6 @@
 # Status
 
-Phase 6 ist umgesetzt. Der nächste Auftrag lautet: Phase 7 aus `PROMPT.md`.
+Phase 7 ist umgesetzt auf `phase/07-dashboard`. Nach der Sicherung und dem Commit lautet der nächste Auftrag: Phase 8 aus `PROMPT.md`. Der KI-Anbieter für kmbcloud.at bleibt offen bis zum 28.10.2026.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -11,7 +11,7 @@ Phase 6 ist umgesetzt. Der nächste Auftrag lautet: Phase 7 aus `PROMPT.md`.
 | 4 | Graph Mail und Kalender | erledigt |
 | 5 | Übrige Prozessregeln | erledigt |
 | 6 | KI hinter Provider | erledigt |
-| 7 | Dashboard | offen |
+| 7 | Dashboard | erledigt |
 | 8 | MCP | offen |
 | 9 | Staff-Oberflächen, Playwright | offen |
 | 10 | Installation Linux, nginx, Apache | offen |
@@ -120,11 +120,25 @@ Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Die Vorgänge stehen auf `
 
 Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:worker`. Die Suche bleibt auf `http://127.0.0.1:5173`. Solange die vier KI-Felder leer sind, gilt der Satz „Treffer wegen Kategorie/Titel“, und eine Helpdesk-Mail bleibt ungelesen. `AI_AUTO_REPLY_CATEGORIES` bleibt leer, bis die Kanzlei Kategorien freigibt.
 
+## Phase 7 — Abnahme
+
+- [x] `GET /api/v1/staff/dashboard` mit Tag, Woche, Monat, Quartal und Jahr nach `Europe/Vienna`
+- [x] Rolle `agent` sieht nur zugewiesene Tickets. `lead`, `admin` und der lokale Admin sehen die Kanzlei
+- [x] Eingänge, Erledigungen, offene P1, Median bis zur ersten Reaktion, Median bis zur Lösung, Aufwand in Minuten
+- [x] Überzogene Fernwartung mit Falldaten und Link auf `/mitarbeit/ticket/{nummer}`
+- [x] Tortendiagramm: Mails, Webtickets, Erledigt, offene P1, P2 und P3, zusammen 100 Prozent
+- [x] Seite `/mitarbeit/dashboard`, ohne Anmeldung keine Zahlen
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm dev`. Das Dashboard steht auf `http://127.0.0.1:5173/mitarbeit/dashboard`. Aus `127.0.0.0/8` ohne Anmeldung, sonst als angemeldeter Mitarbeiter.
+
+Am 27.10.2026 blieben je Kategorie zwei Tickets. 610 fehlgeschlagene Test-Tickets und ihre Ereignisse wurden entfernt. Der Append-only-Trigger an `ticket_event` ist danach wieder aktiv. Die stündliche Sicherung steht in `ENTWICKLUNGSUMGEBUNG.md`.
+
 ## Phase 9 — noch nicht bauen
 
-Die Staff-Oberfläche ist weiterhin Phase 9. Der folgende Auftrag wird dort erledigt, nicht vorher. Verbindlich ist zusätzlich `docs/prozesse/14-bearbeitung.md`.
+Die Bearbeitung bleibt Phase 9. Eine schreibgeschützte Ticketseite unter `/mitarbeit/ticket/{nummer}` gibt es bereits, damit Dashboard und Kalender auf das Ticket zeigen. Verbindlich ist zusätzlich `docs/prozesse/14-bearbeitung.md`.
 
-- [ ] Eine Ticketseite `/mitarbeit/ticket/{nummer}` für angemeldete Mitarbeiter. Jeder Mitarbeiter darf jedes offene Ticket bearbeiten und jedes Feld ändern, außer die Zufriedenheit. Der Kalender verlinkt diesen Pfad bereits.
+- [ ] Dieselbe Ticketseite bearbeiten: jeder Mitarbeiter darf jedes offene Ticket ändern, außer die Zufriedenheit.
 - [ ] Erledigt setzt das Ticket auf geschlossen und sendet eine Mail mit Betreff `Ticket` plus Nummer und dem Text: das Ticket ist gelöst, und wenn es zur Zufriedenheit gelöst wurde, würde man sich über eine kurze Antwort freuen.
 - [ ] Diese Antwort liest die KI, hängt sie an das Ticket und trägt die Zufriedenheit ein. Drei Zustände, als SVG und nicht als Emoji: zufrieden gelb, neutral grün, unzufrieden orange. Nur der Benutzer ändert das, nie der Mitarbeiter.
 - [ ] Der Mitarbeiter kann eine Erklärung am Ticket speichern.
@@ -138,5 +152,5 @@ Die Staff-Oberfläche ist weiterhin Phase 9. Der folgende Auftrag wird dort erle
 ## Offene Rückfragen
 
 - Graph Admin-Consent und Kalender-Reichweite
-- KI-Anbieter mit AVV, EU
+- KI-Anbieter mit AVV und EU-Region im Mandanten kmbcloud.at. Termin 28.10.2026. Bis dahin kein Endpunkt, kein Schlüssel und kein AVV-Verweis eintragen.
 - Apple- und Google-Konten der GmbH

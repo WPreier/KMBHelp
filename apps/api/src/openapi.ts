@@ -283,6 +283,31 @@ export const openApiDocument = {
         responses: { '422': { description: 'The last working day is required.' } },
       },
     },
+    '/api/v1/staff/dashboard': {
+      get: {
+        operationId: 'staffDashboard',
+        responses: {
+          '200': {
+            description:
+              'Counts, a pie of mail, web, done and open P1 to P3, and overdue remote support with subject and ticket number. An agent sees assigned tickets. A lead or admin sees the firm. The public body stays off this list.',
+          },
+          '401': { description: 'Staff sign-in is required.' },
+        },
+      },
+    },
+    '/api/v1/staff/tickets/{number}': {
+      get: {
+        operationId: 'staffTicket',
+        responses: {
+          '200': {
+            description:
+              'One ticket for staff, including the description and any remote-support window. Not a public view.',
+          },
+          '401': { description: 'Staff sign-in is required.' },
+          '404': { description: 'No ticket with that number.' },
+        },
+      },
+    },
     '/api/v1/staff/reviews/run': {
       post: {
         operationId: 'runReviews',

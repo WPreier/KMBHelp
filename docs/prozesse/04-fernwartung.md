@@ -12,7 +12,7 @@ Ein Auftragsverarbeitungsvertrag ersetzt die berufsrechtliche Verschwiegenheit n
 2. Zugriff nur auf Zuruf: Ticket auf „freigegeben“, Zeitfenster Pflicht.
 3. Admin-Zugang des Dienstleisters ist ein eigener Account, nie das Passwort eines Mitarbeiters. Die App speichert das Passwort nicht, nur den Account-Namen und wo er liegt.
 4. MFA des Dienstleisters ist Checklistenpunkt.
-5. Nach dem Fenster: Ticket auf „Zugang beendet“ mit Uhrzeit. Überzogene Fenster erscheinen im Dashboard.
+5. Nach dem Fenster: Ticket auf „Zugang beendet“ mit Uhrzeit. Ist `window_end` vorbei und `ended_at` leer, zeigt das Dashboard den Fall mit Link auf `/mitarbeit/ticket/{nummer}`.
 
 ## Nachweis
 

@@ -52,9 +52,14 @@ Gesundheit: `https://helpdesk.kmbcloud.at/api/health`
 
 ## 7. Dashboard
 
-- Nur Staff, Rolle `agent` sieht eigene Zahlen, Rolle `lead` und `admin` die Kanzlei.
-- Umschalter: Tag, Woche, Monat, Quartal, Jahr.
-- Eingänge, Erledigungen, offene P1, Medianzeit bis zur ersten Reaktion, Medianzeit bis zur Lösung, Aufwand in Minuten (Pflichtfeld beim Schließen).
+- Nur Staff. `GET /api/v1/staff/dashboard?range=day|week|month|quarter|year`. Ohne Anmeldung 401. Localhost zählt als Kanzlei.
+- Rolle `agent` sieht Tickets, die ihm zugewiesen sind. Rolle `lead`, `admin` und der lokale Admin sehen die Kanzlei.
+- Der Zeitraum folgt `Europe/Vienna`. Die Woche beginnt am Montag. Offene P1 sind der aktuelle Bestand, nicht der Zeitraum.
+- Eingänge sind Tickets mit `created_at` im Zeitraum. Erledigungen sind Tickets mit `closed_at` im Zeitraum. Der Aufwand ist die Summe von `effort_minutes` dieser Erledigungen. Eine Erledigung ohne Minuten zählt als 0. Die Minuten werden beim Schließen durch einen Mitarbeiter eingetragen. Die öffentliche Liste fragt sie nicht ab.
+- Die erste Reaktion ist das erste Ereignis `assigned`, `reply`, `closed` oder `priority_changed` nach dem Anlegen. Die Lösung ist `closed_at` minus `created_at`. Beide Mediane sind in Minuten, gerundet. Fehlt ein Wert, steht `null`.
+- Eine Fernwartung, deren Fenster vorbei ist und die kein `ended_at` hat, erscheint mit Nummer, Betreff, Kategorie, Priorität, Status, Lieferant, Kontoname und Fenster. Der Link führt auf `/mitarbeit/ticket/{nummer}`. Der Beschreibungstext steht dort, nicht in der Liste.
+- Das Tortendiagramm teilt jede Meldung genau einmal zu. Noch nicht erledigte Mails sind „Mails“, noch nicht erledigte Web- und App-Tickets sind „Webtickets“, die übrigen nicht erledigten Meldungen stehen nach P1, P2 und P3. „Erledigt“ sind die im Zeitraum geschlossenen. Die gerundeten Anteile ergeben 100 Prozent. Die nicht erledigten Anteile sind der aktuelle Bestand.
+- Die Seite ist `/mitarbeit/dashboard`. Die Ticketseite ist nur für Mitarbeiter und enthält die Beschreibung. Die öffentliche Liste bleibt ohne Text, Melder und Kommentare. Bearbeiten kommt in Phase 9.
 
 ## 8. Admin, nur intern und nur authentifiziert
 

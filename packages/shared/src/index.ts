@@ -121,6 +121,18 @@ export {
 } from './config-fields.js';
 export { deactivateStaffSchema } from './auth.js';
 export {
+  buildDashboard,
+  dashboardRanges,
+  dashboardSchema,
+  medianMinutes,
+  periodBounds,
+  pieSliceKeys,
+  type DashboardRange,
+  type DashboardReport,
+  type PieSliceKey,
+} from './dashboard.js';
+export { staffTicketViewSchema, type StaffTicketView } from './ticket-view.js';
+export {
   activityListSchema,
   activityViewSchema,
   mailReviewRequestSchema,

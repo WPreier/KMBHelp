@@ -417,6 +417,59 @@ button[type='submit'] {
   padding: 0;
 }
 
+.pie-wrap {
+  display: grid;
+  gap: 16px;
+  margin: 8px 0 16px;
+}
+
+.pie-wrap svg {
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+}
+
+.pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pie-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pie-swatch {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+}
+
+.remote-case {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+}
+
+.remote-case a {
+  color: var(--green);
+}
+
+@media (min-width: 720px) {
+  .pie-wrap {
+    grid-template-columns: minmax(0, 420px) minmax(220px, 1fr);
+    align-items: center;
+  }
+}
+
 h2,
 h3 {
   margin: 28px 0 8px;

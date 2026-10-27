@@ -14,6 +14,8 @@ import { registerOperations } from './operations.js';
 import { registerPhase3 } from './phase3.js';
 import { registerPhase5 } from './phase5.js';
 import { registerActivity } from './activity-routes.js';
+import { registerDashboard } from './dashboard-routes.js';
+import { registerStaffTicket } from './ticket-view-routes.js';
 
 export type BuildAppOptions = {
   databaseUrl?: string | undefined;
@@ -144,6 +146,16 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     testAuthEnabled: options.testAuthEnabled ?? false,
     now: options.now,
     model: options.model,
+  });
+  registerDashboard(app, {
+    database,
+    testAuthEnabled: options.testAuthEnabled ?? false,
+    now: options.now,
+  });
+  registerStaffTicket(app, {
+    database,
+    testAuthEnabled: options.testAuthEnabled ?? false,
+    now: options.now,
   });
 
   app.get('/api/docs', async () => openApiDocument);
