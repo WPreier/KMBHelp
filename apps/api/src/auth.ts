@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import type { FastifyRequest } from 'fastify';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { publicErrors } from '@kmbhelp/shared';
@@ -91,6 +92,16 @@ export async function staffFromSession(
 }
 
 const localhostAdminId = '00000000-0000-0000-0000-000000000000';
+
+export function serviceTokenMatches(request: FastifyRequest, env: NodeJS.ProcessEnv = process.env): boolean {
+  const expected = env.MCP_SERVICE_TOKEN?.trim() ?? '';
+  const header = request.headers.authorization;
+  if (expected.length < 16 || typeof header !== 'string') return false;
+  const match = /^Bearer (\S+)$/u.exec(header.trim());
+  const presented = match?.[1] ?? '';
+  if (presented.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(presented), Buffer.from(expected));
+}
 
 export function localhostSkipsSignIn(
   ip: string,

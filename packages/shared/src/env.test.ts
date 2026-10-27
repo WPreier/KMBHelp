@@ -10,6 +10,7 @@ const secretKeys = [
   'LDAPS_BIND_PASSWORD',
   'SESSION_SECRET',
   'AI_API_KEY',
+  'MCP_SERVICE_TOKEN',
   'LOCAL_ADMIN_PASSWORD',
 ] as const;
 

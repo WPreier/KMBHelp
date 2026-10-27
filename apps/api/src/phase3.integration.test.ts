@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDatabase, seedCatalog } from '@kmbhelp/db';
-import { applyMigrations } from '@kmbhelp/db/testing';
+import { applyMigrations, deleteDirectoryFixtures } from '@kmbhelp/db/testing';
 import { buildApp } from './app.js';
 import {
   memoryDirectory,
@@ -20,17 +20,7 @@ const apps: FastifyInstance[] = [];
 const secret = 'phase3-test-session-secret-value';
 
 async function removeTestPeople(database: ReturnType<typeof createDatabase>): Promise<void> {
-  const rows = await database.pool.query<{ id: string }>(
-    `select id from staff where username like 'breakglass-%' or email like 'agent-%@kmbcloud.at'`,
-  );
-  for (const row of rows.rows) {
-    await database.pool.query(`delete from session where staff_id = $1`, [row.id]);
-    await database.pool.query(`delete from webauthn_challenge where staff_id = $1`, [row.id]);
-    await database.pool.query(`delete from webauthn_credential where staff_id = $1`, [row.id]);
-    await database.pool.query(`delete from staff_skill where staff_id = $1`, [row.id]);
-    await database.pool.query(`delete from staff_category where staff_id = $1`, [row.id]);
-    await database.pool.query(`delete from staff where id = $1`, [row.id]);
-  }
+  await deleteDirectoryFixtures(database);
 }
 
 function csrfFrom(response: request.Response): string {
@@ -45,6 +35,7 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
   const database = createDatabase(databaseUrl ?? '');
 
   afterAll(async () => {
+    await deleteDirectoryFixtures(database);
     await Promise.all(apps.splice(0).map((app) => app.close()));
     await database.pool.end();
   });

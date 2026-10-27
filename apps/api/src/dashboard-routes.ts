@@ -8,7 +8,7 @@ import {
   type DashboardRange,
   type StaffRole,
 } from '@kmbhelp/shared';
-import { assertCsrf, localhostAdmin, requireStaff, staffFromSession } from './auth.js';
+import { assertCsrf, localhostAdmin, requireStaff, serviceTokenMatches, staffFromSession } from './auth.js';
 import { databaseDown } from './http.js';
 
 export function registerDashboard(
@@ -30,6 +30,7 @@ export function registerDashboard(
 
   async function reader(request: FastifyRequest): Promise<{ staffId: string | null }> {
     if (localhostAdmin(request, env)) return { staffId: null };
+    if (serviceTokenMatches(request, env)) return { staffId: null };
     const database = db();
     const session = await staffFromSession(database, request, now());
     if (session && !session.mfaPending) {

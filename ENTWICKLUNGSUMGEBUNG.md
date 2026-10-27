@@ -163,7 +163,11 @@ Zurückspielen, nur auf eine leere Testdatenbank:
 
 `pg_restore --dbname postgresql://…/kmbhelp_restore --clean --if-exists datei.backup`
 
-## 10. Mindest-Check vor dem ersten echten Benutzer
+## 10. Testreste
+
+Die Datenbanktests laden die Arbeitsplatz-Umgebung, damit sie dieselbe lokale Datenbank `kmbhelp` verwenden. Integrationstests schreiben in diese Datenbank. Jeder solche Test merkt sich seine Zeilen und löscht sie am Ende des Tests über `deleteTestResidue` in `packages/db/src/testing/cleanup.ts`. `createTestStaff` trägt die Person in diese Liste ein, sobald der Test sie übergibt. Nach dem gesamten API-Testlauf räumt `sweepTestArtifacts` zusätzlich auf: Adressen auf `@example.com` und `@example.invalid`, Anzeigenamen `Phase*`, `Dash Agent`, `Dash Lead`, `Dash Other`, `Test Staff` und `Factory Tester`, Break-Glass-Benutzer `breakglass-*`, Verzeichnis-Testkonten `agent-<kennzeichnung>@kmbcloud.at`, Tickets mit einer UUID im Betreff, Lieferanten `Dash *` und `Scan AG` mit Zweck `Scan`, sowie die dazu gehörenden Ereignisse. Die Trigger für nur anhängbare Zeilen werden dafür in derselben Transaktion aus- und wieder eingeschaltet. Helpdesk und die benannten Mitarbeiter fallen nicht unter diese Muster. Die Testzeile `automation@kmbhelp.invalid` entfernt die Migration `0011_remove_automation_staff`. Die Anwendung selbst löscht keine Mitarbeiter. `pnpm test` führt die Pakete nacheinander aus, damit das Aufräumen am Ende der API-Tests keine Zeile löscht, die ein anderes Paket gerade prüft.
+
+## 11. Mindest-Check vor dem ersten echten Benutzer
 
 - Öffentliche Ticketliste zeigt einen angelegten Betreff nicht.
 - Ausgeschiedenes AD-Konto (in einer Test-OU) kommt nicht mehr hinein, obwohl der Passkey noch auf dem Gerät liegt.

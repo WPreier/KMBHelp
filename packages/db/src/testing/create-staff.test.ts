@@ -2,8 +2,10 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { createDatabase } from '../client.js';
 import { applyMigrations } from './apply-migrations.js';
+import { createTestResidue, deleteTestResidue } from './cleanup.js';
 import { createTestStaff } from './create-staff.js';
 
 function sourceFiles(directory: string): string[] {
@@ -39,26 +41,32 @@ describe('createTestStaff', () => {
   });
 });
 
+loadWorkstationEnv();
 const databaseUrl = process.env.DATABASE_URL?.trim();
 
 describe.skipIf(!databaseUrl)('createTestStaff against postgres', () => {
   it('inserts a staff row outside production', async () => {
     const database = createDatabase(databaseUrl ?? '');
+    const residue = createTestResidue();
     const email = `factory-${Date.now()}@example.invalid`;
     try {
       await applyMigrations(database);
-      const created = await createTestStaff(database.db, {
-        email,
-        displayName: 'Factory Tester',
-        role: 'agent',
-      });
+      const created = await createTestStaff(
+        database.db,
+        {
+          email,
+          displayName: 'Factory Tester',
+          role: 'agent',
+        },
+        residue,
+      );
       const found = await database.pool.query<{ email: string }>(
         'select email from staff where id = $1',
         [created.id],
       );
       expect(found.rows[0]?.email).toBe(email);
-      await database.pool.query('delete from staff where id = $1', [created.id]);
     } finally {
+      await deleteTestResidue(database, residue);
       await database.pool.end();
     }
   });

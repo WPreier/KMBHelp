@@ -1,6 +1,7 @@
 import type { StaffRole } from '@kmbhelp/shared';
 import type { Database } from '../client.js';
 import { staff } from '../schema.js';
+import type { TestResidue } from './cleanup.js';
 
 export function assertTestStaffFactoryAllowed(env: NodeJS.ProcessEnv = process.env): void {
   if (env.NODE_ENV === 'production') {
@@ -11,6 +12,7 @@ export function assertTestStaffFactoryAllowed(env: NodeJS.ProcessEnv = process.e
 export async function createTestStaff(
   db: Database['db'],
   input: { email: string; displayName: string; role?: StaffRole },
+  residue?: TestResidue,
 ): Promise<{ id: string }> {
   assertTestStaffFactoryAllowed();
   const rows = await db
@@ -24,5 +26,9 @@ export async function createTestStaff(
     .returning({ id: staff.id });
   const created = rows[0];
   if (!created) throw new Error('staff insert returned no row');
+  if (residue) {
+    residue.staffIds.push(created.id);
+    residue.emails.push(input.email.trim().toLowerCase());
+  }
   return created;
 }

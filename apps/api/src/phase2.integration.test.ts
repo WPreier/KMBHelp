@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { createDatabase, faqArticle, seedCatalog, staffSearch, ticket } from '@kmbhelp/db';
-import { applyMigrations, createTestStaff } from '@kmbhelp/db/testing';
+import { applyMigrations, createTestResidue, createTestStaff, deleteTestResidue, rememberTicketNumber } from '@kmbhelp/db/testing';
 import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { TEST_STAFF_HEADER } from './auth.js';
 import { buildApp } from './app.js';
@@ -16,6 +16,11 @@ const apps: FastifyInstance[] = [];
 
 describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
   const database = createDatabase(databaseUrl ?? '');
+  const residue = createTestResidue();
+
+  afterEach(async () => {
+    await deleteTestResidue(database, residue);
+  });
 
   afterAll(async () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -47,6 +52,7 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
         clientPriority: 'p3',
       });
     expect(created.status).toBe(200);
+    await rememberTicketNumber(database, created.body.number, residue);
     expect(created.body.priority).toBe('p1');
     expect(created.body.priorityReason).toBe('deadline_today_or_overdue');
     expect(created.body.secretPath).toBeUndefined();
@@ -81,6 +87,7 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
         clientPriority: 'p1',
       });
     expect(withoutEmail.status).toBe(200);
+    await rememberTicketNumber(database, withoutEmail.body.number, residue);
     expect(withoutEmail.body.priority).toBe('p2');
     expect(withoutEmail.body.secretPath).toBeUndefined();
 
@@ -98,10 +105,14 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
     await seedCatalog(database);
     const marker = `Xylophonlauf-${randomUUID()}`;
     const email = `staff-${randomUUID()}@example.invalid`;
-    const person = await createTestStaff(database.db, {
-      email,
-      displayName: 'Test Staff',
-    });
+    const person = await createTestStaff(
+      database.db,
+      {
+        email,
+        displayName: 'Test Staff',
+      },
+      residue,
+    );
     const app = buildApp({
       database,
       testAuthEnabled: true,
@@ -118,6 +129,7 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
       body: 'nur ein Test',
     });
     expect(created.status).toBe(200);
+    await rememberTicketNumber(database, created.body.number, residue);
 
     const denied = await request(app.server).get('/api/v1/staff/tickets');
     expect(denied.status).toBe(401);
@@ -133,19 +145,24 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
     expect(staffList.body.recent.length).toBeLessThanOrEqual(10);
 
     for (let index = 0; index < 11; index += 1) {
-      await database.db.insert(ticket).values({
-        type: 'incident',
-        categoryCode: 'payroll_run',
-        status: 'closed',
-        impact: 'cosmetic',
-        priority: 'p3',
-        priorityReason: 'no_deadline',
-        source: 'web',
-        subject: `geschlossen ${index} ${randomUUID()}`,
-        body: 'zu',
-        updatedAt: new Date(Date.now() + index),
-        closedAt: new Date(Date.now() + index),
-      });
+      const closedTicket = await database.db
+        .insert(ticket)
+        .values({
+          type: 'incident',
+          categoryCode: 'payroll_run',
+          status: 'closed',
+          impact: 'cosmetic',
+          priority: 'p3',
+          priorityReason: 'no_deadline',
+          source: 'web',
+          subject: `geschlossen ${index} ${randomUUID()}`,
+          body: 'zu',
+          updatedAt: new Date(Date.now() + index),
+          closedAt: new Date(Date.now() + index),
+        })
+        .returning({ id: ticket.id });
+      const closedId = closedTicket[0]?.id;
+      if (closedId) residue.ticketIds.push(closedId);
     }
     const capped = await request(app.server)
       .get('/api/v1/staff/tickets')
@@ -249,6 +266,7 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
         body: 'vorbei',
         dueOn: '01.04.2026',
       });
+    await rememberTicketNumber(database, overdue.body.number, residue);
     const listed = await request(app.server).get('/api/v1/tickets/public');
     const expired = listed.body.tickets.find(
       (entry: { number: number }) => entry.number === overdue.body.number,
@@ -264,6 +282,7 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
         body: 'noch da',
       });
     const number = fresh.body.number as number;
+    await rememberTicketNumber(database, number, residue);
     const off = await request(app.server)
       .post(`/api/v1/tickets/public/${number}`)
       .send({ action: 'toggle' });

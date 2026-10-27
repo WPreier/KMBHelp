@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { category, remoteSupportDetail, supplier, ticket, type Database } from '@kmbhelp/db';
 import { publicErrors, staffTicketViewSchema, ticketSources } from '@kmbhelp/shared';
-import { requireStaff, staffFromSession, localhostAdmin, assertCsrf } from './auth.js';
+import { requireStaff, serviceTokenMatches, staffFromSession, localhostAdmin, assertCsrf } from './auth.js';
 import { databaseDown, PublicError } from './http.js';
 
 export function registerStaffTicket(
@@ -24,6 +24,7 @@ export function registerStaffTicket(
 
   async function reader(request: FastifyRequest): Promise<void> {
     if (localhostAdmin(request, env)) return;
+    if (serviceTokenMatches(request, env)) return;
     const database = db();
     const session = await staffFromSession(database, request, now());
     if (session && !session.mfaPending) {

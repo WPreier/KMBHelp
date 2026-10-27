@@ -101,7 +101,7 @@ Diese Routen verlangen den lokalen Admin, eine fertige Sitzung, den CSRF-Header 
 
 ## 12. Prozessregeln
 
-Mitarbeiterformulare: `/mitarbeit/vorgaenge`. Aus `127.0.0.0/8` ohne Anmeldung, sonst mit fertiger Mitarbeitersitzung.
+Die Formularseite `/mitarbeit/vorgaenge` ist entfernt. Die Schnittstellen der Vorgänge bleiben. Aus `127.0.0.0/8` ohne Anmeldung, sonst mit fertiger Mitarbeitersitzung.
 
 - `POST /api/v1/staff/changes` speichert eine Änderung. Liegt der Termin in `change_freeze`, fehlt ohne `exceptionReason` die Speicherung (422). `POST .../approve` verlangt einen Rückfalltext.
 - `POST /api/v1/staff/procurement` setzt den Weg aus `procurement_policy`: unter `directBelow` direkt, bis `tokenUntil` mit Einmal-Token, darüber `manual`. Der Token gilt 7 Tage. `POST /api/v1/procurement/decision` zeigt Artikel und Betrag und nimmt nur diese Entscheidung an.
@@ -138,7 +138,9 @@ Staff-Routen: Session-Cookie, `Secure`, `HttpOnly`, `SameSite=Lax`, plus CSRF-He
 
 ## 15. MCP
 
-`apps/mcp` spricht die HTTP-API mit einem Dienst-Token der Rolle `automation`. Werkzeuge spiegeln die API, keine SQL-Konsole. Der Token liegt nicht im Git.
+`apps/mcp` spricht nur die versionierte HTTP-API. Der Dienst-Token `MCP_SERVICE_TOKEN` hat mindestens 16 Zeichen. Er ist kein Mitarbeiter, sieht die Kanzlei und wird keinem Ticket zugewiesen. Ein Vorgang über den Token hat keinen Bearbeiter. Der Token liegt nicht im Git. Cursor startet den Server aus dem Repository mit `.cursor/mcp.json`. Das Beispiel ist `.cursor/mcp.json.example`. Die echte Datei bleibt ignoriert. `KMBHELP_API_ORIGIN` zeigt auf die API.
+
+Werkzeuge zum Lesen: `health`, `list_categories`, `list_staff_tickets`, `get_ticket`, `dashboard`, `list_processes`, `review_mail`. Werkzeuge für die Staff-Aktionen spiegeln die POST-Routen der Vorgänge. Es gibt keine SQL-Konsole und keinen Zugriff auf die Admin-Routen. `review_mail` schickt den Prompt nicht mit. Den besitzt der Server.
 
 ## 16. Apps
 

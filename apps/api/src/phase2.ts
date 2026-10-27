@@ -38,7 +38,7 @@ import {
   type SearchHit,
   type StaffTicket,
 } from '@kmbhelp/shared';
-import { optionalStaff, readRequestCookie, requireStaff, SESSION_COOKIE } from './auth.js';
+import { optionalStaff, readRequestCookie, requireStaff, serviceTokenMatches, SESSION_COOKIE } from './auth.js';
 import { calendarFromEnv, mailerFromEnv, type CalendarReader, type Mailer } from './graph.js';
 import { deliverReopen } from './mail-cycle.js';
 import { categoryTitleExplainer, type SearchExplainer } from './explain.js';
@@ -301,11 +301,17 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
   });
 
   app.get('/api/v1/staff/tickets', async (request) => {
-    if (!options.testAuthEnabled && !readRequestCookie(request, SESSION_COOKIE)) {
+    if (
+      !serviceTokenMatches(request) &&
+      !options.testAuthEnabled &&
+      !readRequestCookie(request, SESSION_COOKIE)
+    ) {
       throw new PublicError(401, 'unauthorized', publicErrors.unauthorized);
     }
     const database = db();
-    await requireStaff(database, request, options.testAuthEnabled, now());
+    if (!serviceTokenMatches(request)) {
+      await requireStaff(database, request, options.testAuthEnabled, now());
+    }
     const current = now();
     const openRows = await database.db
       .select(staffColumns())

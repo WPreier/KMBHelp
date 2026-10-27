@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { createDatabase, remoteSupportDetail, seedCatalog, supplier, ticket, ticketEvent } from '@kmbhelp/db';
-import { applyMigrations, createTestStaff } from '@kmbhelp/db/testing';
+import { applyMigrations, createTestResidue, createTestStaff, deleteTestResidue } from '@kmbhelp/db/testing';
 import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { TEST_STAFF_HEADER } from './auth.js';
 import { buildApp } from './app.js';
@@ -14,6 +14,11 @@ const apps: FastifyInstance[] = [];
 
 describe.skipIf(!databaseUrl)('phase 7 against postgres', () => {
   const database = createDatabase(databaseUrl ?? '');
+  const residue = createTestResidue();
+
+  afterEach(async () => {
+    await deleteTestResidue(database, residue);
+  });
 
   afterAll(async () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -24,21 +29,33 @@ describe.skipIf(!databaseUrl)('phase 7 against postgres', () => {
     await applyMigrations(database);
     await seedCatalog(database);
     const suffix = randomUUID();
-    const agent = await createTestStaff(database.db, {
-      email: `dash-agent-${suffix}@example.com`,
-      displayName: 'Dash Agent',
-      role: 'agent',
-    });
-    const lead = await createTestStaff(database.db, {
-      email: `dash-lead-${suffix}@example.com`,
-      displayName: 'Dash Lead',
-      role: 'lead',
-    });
-    const other = await createTestStaff(database.db, {
-      email: `dash-other-${suffix}@example.com`,
-      displayName: 'Dash Other',
-      role: 'agent',
-    });
+    const agent = await createTestStaff(
+      database.db,
+      {
+        email: `dash-agent-${suffix}@example.com`,
+        displayName: 'Dash Agent',
+        role: 'agent',
+      },
+      residue,
+    );
+    await createTestStaff(
+      database.db,
+      {
+        email: `dash-lead-${suffix}@example.com`,
+        displayName: 'Dash Lead',
+        role: 'lead',
+      },
+      residue,
+    );
+    const other = await createTestStaff(
+      database.db,
+      {
+        email: `dash-other-${suffix}@example.com`,
+        displayName: 'Dash Other',
+        role: 'agent',
+      },
+      residue,
+    );
     const created = await database.db
       .insert(ticket)
       .values([
@@ -72,6 +89,7 @@ describe.skipIf(!databaseUrl)('phase 7 against postgres', () => {
         },
       ])
       .returning({ id: ticket.id, number: ticket.number, assignedStaffId: ticket.assignedStaffId });
+    for (const row of created) residue.ticketIds.push(row.id);
     const own = created.find((row) => row.assignedStaffId === agent.id);
     if (!own) throw new Error('ticket missing');
     await database.db.insert(ticketEvent).values({
@@ -89,6 +107,7 @@ describe.skipIf(!databaseUrl)('phase 7 against postgres', () => {
         subprocessorsKnown: false,
       })
       .returning({ id: supplier.id });
+    if (vendor[0]) residue.supplierIds.push(vendor[0].id);
     const foreign = created.find((row) => row.assignedStaffId === other.id);
     if (!foreign || !vendor[0]) throw new Error('row missing');
     await database.db.insert(remoteSupportDetail).values({
@@ -145,5 +164,33 @@ describe.skipIf(!databaseUrl)('phase 7 against postgres', () => {
     expect(opened.body.subject).toBe(`Fremdes Ticket ${suffix}`);
     expect(opened.body.body).toBe('bleibt intern');
     expect(opened.body.remote.supplierName).toBe(`Dash ${suffix}`);
+  });
+
+  it('accepts the service token and ignores a wrong one', async () => {
+    await applyMigrations(database);
+    const previous = process.env.MCP_SERVICE_TOKEN;
+    process.env.MCP_SERVICE_TOKEN = 'test-token-not-a-secret-01';
+    try {
+      const app = buildApp({
+        database,
+        testAuthEnabled: false,
+        now: () => new Date('2026-10-27T12:00:00.000Z'),
+      });
+      apps.push(app);
+      await app.ready();
+      const wrong = await request(app.server)
+        .get('/api/v1/staff/dashboard')
+        .set('authorization', 'Bearer wrong-token-value');
+      expect(wrong.status).toBe(401);
+      const accepted = await request(app.server)
+        .get('/api/v1/staff/dashboard?range=month')
+        .set('authorization', 'Bearer test-token-not-a-secret-01');
+      expect(accepted.status).toBe(200);
+      expect(accepted.body.scope).toBe('firm');
+      expect(JSON.stringify(accepted.body)).not.toContain('test-token-not-a-secret-01');
+    } finally {
+      if (previous === undefined) delete process.env.MCP_SERVICE_TOKEN;
+      else process.env.MCP_SERVICE_TOKEN = previous;
+    }
   });
 });

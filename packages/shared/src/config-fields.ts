@@ -343,6 +343,14 @@ export const configFields: readonly ConfigField[] = [
       'The model provider key. It is not shown. Without the other three values it is not sent to a model.',
   },
   {
+    key: 'MCP_SERVICE_TOKEN',
+    secret: true,
+    textDe:
+      'Dienst-Token für die MCP-Werkzeuge. Mindestens 16 Zeichen. Er ist kein Mitarbeiter. Er wird nicht angezeigt und liegt nicht im Git. Die API liest ihn erst nach einem Neustart. Dieselbe Zeichenfolge steht in der Cursor-Konfiguration, nicht in diesem Feld als Klartext im Repository.',
+    textEn:
+      'Service token for the MCP tools. At least 16 characters. It is not a staff account. It is not shown and is not stored in git. The API reads it after a restart. The same value belongs in the Cursor configuration, not in the repository.',
+  },
+  {
     key: 'AI_AVV_REFERENCE',
     secret: false,
     textDe:

@@ -1,6 +1,6 @@
 # Status
 
-Phase 7 ist umgesetzt auf `phase/07-dashboard`. Nach der Sicherung und dem Commit lautet der nächste Auftrag: Phase 8 aus `PROMPT.md`. Der KI-Anbieter für kmbcloud.at bleibt offen bis zum 28.10.2026.
+Phase 8 ist auf `phase/08-mcp` committet. Phase 9 ist offen. Der KI-Anbieter für kmbcloud.at bleibt offen. Termin 28.10.2026. Bis der Anbieter vorliegt, kein Endpunkt, kein Schlüssel und kein AVV-Verweis eintragen.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -12,7 +12,7 @@ Phase 7 ist umgesetzt auf `phase/07-dashboard`. Nach der Sicherung und dem Commi
 | 5 | Übrige Prozessregeln | erledigt |
 | 6 | KI hinter Provider | erledigt |
 | 7 | Dashboard | erledigt |
-| 8 | MCP | offen |
+| 8 | MCP | erledigt |
 | 9 | Staff-Oberflächen, Playwright | offen |
 | 10 | Installation Linux, nginx, Apache | offen |
 | 11 | Expo, Store-Dokumentation | offen |
@@ -99,10 +99,10 @@ Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:work
 - [x] Sicherheitsvorfall startet als P1 mit `deadline_at` = Entdeckung plus 72 Stunden. Herabstufen nur mit Begründung
 - [x] Offboarding ohne letzten Arbeitstag wird abgelehnt. Die Checkliste hängt am Ticket
 - [x] Zertifikate erinnern bei 30 und bei 7 Tagen. Berechtigungen alle 180 Tage je Portal, Aufbewahrung alle 365 Tage je Datenort. IP-Zeilen älter als `ACCESS_LOG_RETENTION_DAYS` werden gelöscht
-- [x] Schlichte Formulare unter `/mitarbeit/vorgaenge`
+- [x] Die Regeln liegen in der API. Die Formularseite `/mitarbeit/vorgaenge` ist auf Wunsch entfernt. Die Genehmigungsseite `/beschaffung/:token` bleibt
 - [x] `pnpm test` und `pnpm typecheck`
 
-Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Die Vorgänge stehen auf `http://127.0.0.1:5173/mitarbeit/vorgaenge`. Aus `127.0.0.0/8` ohne Anmeldung, sonst als angemeldeter Mitarbeiter. Die Beschaffungsgrenzen und zusätzlichen Stoppfenster speichert der lokale Admin.
+Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Die Vorgänge ruft die API auf. Eine eigene Formularseite gibt es nicht. Die Beschaffungsgrenzen und zusätzlichen Stoppfenster speichert der lokale Admin.
 
 ## Phase 6 — Abnahme
 
@@ -132,7 +132,18 @@ Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:work
 
 Start: `pnpm dev`. Das Dashboard steht auf `http://127.0.0.1:5173/mitarbeit/dashboard`. Aus `127.0.0.0/8` ohne Anmeldung, sonst als angemeldeter Mitarbeiter.
 
-Am 27.10.2026 blieben je Kategorie zwei Tickets. 610 fehlgeschlagene Test-Tickets und ihre Ereignisse wurden entfernt. Der Append-only-Trigger an `ticket_event` ist danach wieder aktiv. Die stündliche Sicherung steht in `ENTWICKLUNGSUMGEBUNG.md`.
+Am 27.10.2026 wurden zuerst 610 fehlgeschlagene Test-Tickets entfernt und je Kategorie zwei behalten. Danach wurden auch diese Reste, die Personen mit Namen `Phase*` und die übrigen Testpersonen und Testlieferanten gelöscht. Die Append-only-Trigger an `ticket_event` und `login_audit` werden dafür nur in der Testfabrik kurz ausgeschaltet und danach wieder eingeschaltet. Jeder Integrationstest löscht seine eigenen Zeilen. Die Formularseite `/mitarbeit/vorgaenge` ist entfernt. Die stündliche Sicherung steht in `ENTWICKLUNGSUMGEBUNG.md`.
+
+## Phase 8 — Abnahme
+
+- [x] `apps/mcp` spricht nur die HTTP-API. Es gibt kein SQL-Werkzeug
+- [x] Lesen: Gesundheit, Kategorien, Staff-Liste, ein Ticket, Dashboard, Prozessdaten, Mail-Prüfung
+- [x] Staff-Aktionen spiegeln die vorhandenen POST-Routen. Admin-Routen und die öffentliche Beschaffungsentscheidung sind keine Werkzeuge
+- [x] Dienst-Token `MCP_SERVICE_TOKEN`, mindestens 16 Zeichen. Er ist kein Mitarbeiter und sieht die Kanzlei. Der Token liegt nicht im Git. Die API liest ihn nach einem Neustart
+- [x] `.cursor/mcp.json.example` zeigt, wie Cursor den Server einträgt. Die echte Datei `.cursor/mcp.json` bleibt ignoriert
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm db:migrate`, denselben Token in die lokale Geheimdatei und in die Cursor-Umgebung schreiben, API neu starten. `KMBHELP_API_ORIGIN` ist `http://127.0.0.1:3000`.
 
 ## Phase 9 — noch nicht bauen
 
@@ -152,5 +163,5 @@ Die Bearbeitung bleibt Phase 9. Eine schreibgeschützte Ticketseite unter `/mita
 ## Offene Rückfragen
 
 - Graph Admin-Consent und Kalender-Reichweite
-- KI-Anbieter mit AVV und EU-Region im Mandanten kmbcloud.at. Termin 28.10.2026. Bis dahin kein Endpunkt, kein Schlüssel und kein AVV-Verweis eintragen.
+- KI-Anbieter mit AVV und EU-Region im Mandanten kmbcloud.at. Termin 28.10.2026. Bis der Anbieter vorliegt, kein Endpunkt, kein Schlüssel und kein AVV-Verweis eintragen.
 - Apple- und Google-Konten der GmbH

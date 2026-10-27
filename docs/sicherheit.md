@@ -47,7 +47,7 @@ Admin-Oberflächen zusätzlich nur aus `192.168.36.0/24` und `192.168.191.0/24`,
 
 Systemmeldungen gehen zusätzlich als RFC-5424-Syslog per UDP an den Server, den der lokale Admin auf der Konfigurationsseite speichert. Der APP-NAME ist `KMBHelp`, die Facility `local0`, der Empfänger zuerst `192.168.191.215` Port `514`. Die Uhrzeit trägt `+01:00`, nicht `Z`. Der HOSTNAME der Zeile ist der Rechnername. Kategorien sind Informational, Warning und Error. Eine ignorierte Meldung wird nicht ausgelöst. Der Text enthält kein Passwort und kein Zertifikat.
 
-Die Verwaltung liest `HelpdeskAdmins` und gleicht sie über die E-Mail-Adresse mit der Datenbank ab. Der angezeigte Name kommt aus `cn`. Neue Mitglieder werden angelegt. Wer nur noch in der Datenbank steht, kann deaktiviert werden. Mitarbeiter-Zeilen werden nie gelöscht.
+Die Verwaltung liest `HelpdeskAdmins` und gleicht sie über die E-Mail-Adresse mit der Datenbank ab. Der angezeigte Name kommt aus `cn`. Neue Mitglieder werden angelegt. Wer nur noch in der Datenbank steht, kann deaktiviert werden. Die Anwendung löscht Mitarbeiter-Zeilen nicht. Die Testfabrik entfernt nur Zeilen, die ein Test selbst angelegt hat, und nur außerhalb von Produktion.
 
 ## KI
 

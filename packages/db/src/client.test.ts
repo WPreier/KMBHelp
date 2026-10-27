@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { createDatabase } from './client.js';
 import { applyMigrations } from './testing/apply-migrations.js';
 
@@ -30,6 +31,7 @@ describe('createDatabase', () => {
   });
 });
 
+loadWorkstationEnv();
 const databaseUrl = process.env.DATABASE_URL?.trim();
 
 describe.skipIf(!databaseUrl)('postgres', () => {

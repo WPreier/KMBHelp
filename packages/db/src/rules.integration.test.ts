@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
+import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { createDatabase } from './client.js';
 import { seedCatalog } from './seed.js';
 import { applyMigrations } from './testing/apply-migrations.js';
 
+loadWorkstationEnv();
 const databaseUrl = process.env.DATABASE_URL?.trim();
 
 describe.skipIf(!databaseUrl)('phase 1 database rules', () => {

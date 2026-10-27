@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { createDatabase, seedCatalog } from '@kmbhelp/db';
-import { applyMigrations, createTestStaff } from '@kmbhelp/db/testing';
+import { applyMigrations, createTestResidue, createTestStaff, deleteTestResidue } from '@kmbhelp/db/testing';
 import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { TEST_STAFF_HEADER } from './auth.js';
 import { buildApp } from './app.js';
@@ -14,6 +14,11 @@ const apps: FastifyInstance[] = [];
 
 describe.skipIf(!databaseUrl)('phase 5 against postgres', () => {
   const database = createDatabase(databaseUrl ?? '');
+  const residue = createTestResidue();
+
+  afterEach(async () => {
+    await deleteTestResidue(database, residue);
+  });
 
   afterAll(async () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -24,7 +29,7 @@ describe.skipIf(!databaseUrl)('phase 5 against postgres', () => {
     await applyMigrations(database);
     await seedCatalog(database);
     const email = `phase5-${randomUUID()}@example.com`;
-    await createTestStaff(database.db, { email, displayName: 'Phase 5' });
+    await createTestStaff(database.db, { email, displayName: 'Phase 5' }, residue);
     const app = buildApp({
       database,
       testAuthEnabled: true,
@@ -105,6 +110,7 @@ describe.skipIf(!databaseUrl)('phase 5 against postgres', () => {
         subprocessorsKnown: false,
       });
     expect(draft.status).toBe(200);
+    residue.supplierIds.push(draft.body.id);
     const blocked = await request(app.server)
       .post('/api/v1/staff/remote-support')
       .set(TEST_STAFF_HEADER, email)

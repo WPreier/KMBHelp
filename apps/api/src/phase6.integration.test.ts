@@ -2,10 +2,16 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { scriptedModel } from '@kmbhelp/ai';
 import { createDatabase, faqArticle, seedCatalog } from '@kmbhelp/db';
-import { applyMigrations, createTestStaff } from '@kmbhelp/db/testing';
+import {
+  applyMigrations,
+  createTestResidue,
+  createTestStaff,
+  deleteTestResidue,
+  rememberTicketNumber,
+} from '@kmbhelp/db/testing';
 import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { TEST_STAFF_HEADER } from './auth.js';
 import { buildApp } from './app.js';
@@ -16,6 +22,11 @@ const apps: FastifyInstance[] = [];
 
 describe.skipIf(!databaseUrl)('phase 6 against postgres', () => {
   const database = createDatabase(databaseUrl ?? '');
+  const residue = createTestResidue();
+
+  afterEach(async () => {
+    await deleteTestResidue(database, residue);
+  });
 
   afterAll(async () => {
     await Promise.all(apps.splice(0).map((app) => app.close()));
@@ -26,7 +37,7 @@ describe.skipIf(!databaseUrl)('phase 6 against postgres', () => {
     await applyMigrations(database);
     await seedCatalog(database);
     const email = `phase6-${randomUUID()}@example.com`;
-    await createTestStaff(database.db, { email, displayName: 'Phase 6' });
+    await createTestStaff(database.db, { email, displayName: 'Phase 6' }, residue);
     let explains = 0;
     const app = buildApp({
       database,
@@ -41,6 +52,7 @@ describe.skipIf(!databaseUrl)('phase 6 against postgres', () => {
     apps.push(app);
     await app.ready();
     const slug = `phase6-${randomUUID()}`;
+    residue.faqSlugs.push(slug);
     await database.db.insert(faqArticle).values({
       slug,
       titleDe: 'Phase Sechs Anleitung',
@@ -58,6 +70,9 @@ describe.skipIf(!databaseUrl)('phase 6 against postgres', () => {
           subject: `Modellsuche ${randomUUID()}`,
           body: 'nur ein Test',
         });
+      if (typeof created.body.number === 'number') {
+        await rememberTicketNumber(database, created.body.number, residue);
+      }
       const publicSearch = await request(app.server)
         .get('/api/v1/search')
         .query({ q: 'Phase Sechs' });

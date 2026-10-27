@@ -9,7 +9,7 @@ import {
   publicErrors,
 } from '@kmbhelp/shared';
 import { readActivity, writeActivity } from './activity-log.js';
-import { assertCsrf, localhostAdmin, requireStaff, staffFromSession } from './auth.js';
+import { assertCsrf, localhostAdmin, requireStaff, serviceTokenMatches, staffFromSession } from './auth.js';
 import { clientAddress, createRateLimiter, databaseDown, PublicError, rateLimited } from './http.js';
 import { loadReviewSettings, reviewInboundMail } from './mail-review.js';
 import { noteExternal } from './syslog.js';
@@ -67,6 +67,7 @@ export function registerActivity(app: FastifyInstance, options: {
 
   async function actorEmail(request: FastifyRequest): Promise<string> {
     if (localhostAdmin(request, env)) return 'localhost';
+    if (serviceTokenMatches(request, env)) return 'service';
     const database = db();
     const session = await staffFromSession(database, request, now());
     if (session && !session.mfaPending) {
@@ -82,6 +83,7 @@ export function registerActivity(app: FastifyInstance, options: {
 
   async function requireReader(request: FastifyRequest): Promise<string> {
     if (localhostAdmin(request, env)) return 'localhost';
+    if (serviceTokenMatches(request, env)) return 'service';
     const database = db();
     const session = await staffFromSession(database, request, now());
     if (session && !session.mfaPending) {

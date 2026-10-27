@@ -11,6 +11,7 @@ const secretKeys = [
   'LDAPS_CA_PEM',
   'GRAPH_CLIENT_SECRET',
   'AI_API_KEY',
+  'MCP_SERVICE_TOKEN',
   'LOCAL_ADMIN_PASSWORD',
 ];
 

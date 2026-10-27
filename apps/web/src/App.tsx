@@ -18,7 +18,7 @@ import { ArticlePage, FaqListPage, FaqPage, HomePage, MissingPage, SearchPage } 
 import { ActivityPage } from './activity-page.js';
 import { DashboardPage } from './dashboard-page.js';
 import { TicketPage } from './ticket-page.js';
-import { ProcessPage, ProcurementDecisionPage } from './process-pages.js';
+import { ProcurementDecisionPage } from './process-pages.js';
 import { readClientPreferences, writeClientPreference } from './preferences.js';
 
 const targets = publicLinkTargets({
@@ -159,7 +159,6 @@ function Shell({
           <Link to="/faq">{copy.guides}</Link>
           <Link to="/anmelden">{copy.signIn}</Link>
           <Link to="/verwaltung">{copy.adminTitle}</Link>
-          <Link to="/mitarbeit/vorgaenge">{copy.processesTitle}</Link>
           <Link to="/mitarbeit/dashboard">{copy.dashboardTitle}</Link>
           <Link to="/verwaltung/protokoll">{copy.activityTitle}</Link>
         </nav>
@@ -174,7 +173,6 @@ function Shell({
           <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
           <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
           <Route path="/verwaltung/protokoll" element={<ActivityPage />} />
-          <Route path="/mitarbeit/vorgaenge" element={<ProcessPage />} />
           <Route path="/mitarbeit/dashboard" element={<DashboardPage />} />
           <Route path="/mitarbeit/ticket/:number" element={<TicketPage />} />
           <Route path="/beschaffung/:token" element={<ProcurementDecisionPage />} />

@@ -42,7 +42,7 @@ import {
   securityIncidentInputSchema,
   supplierInputSchema,
 } from '@kmbhelp/shared';
-import { assertCsrf, localhostAdmin, requireStaff, staffFromSession } from './auth.js';
+import { assertCsrf, localhostAdmin, requireStaff, serviceTokenMatches, staffFromSession } from './auth.js';
 import {
   createSecretToken,
   databaseDown,
@@ -91,6 +91,7 @@ export function registerPhase5(app: FastifyInstance, options: Phase5Options): vo
   async function actor(request: FastifyRequest): Promise<{ id: string | null }> {
     const local = localhostAdmin(request, env);
     if (local) return { id: null };
+    if (serviceTokenMatches(request, env)) return { id: null };
     const database = db();
     const session = await staffFromSession(database, request, now());
     if (session && !session.mfaPending) {
