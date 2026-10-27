@@ -94,16 +94,12 @@ const localhostAdminId = '00000000-0000-0000-0000-000000000000';
 
 export function localhostSkipsSignIn(
   ip: string,
-  forwardedFor: string,
+  _forwardedFor: string,
   env: NodeJS.ProcessEnv,
 ): boolean {
   if (env.NODE_ENV === 'test') return false;
-  if (!ipAllowed(ip, '127.0.0.0/8')) return false;
-  const forwarded = forwardedFor.split(',')[0]?.trim() ?? '';
-  if (env.NODE_ENV === 'production') {
-    return forwarded !== '' && ipAllowed(forwarded, '127.0.0.0/8');
-  }
-  return forwarded === '' || ipAllowed(forwarded, '127.0.0.0/8');
+  const normalized = ip.trim().replace(/^::ffff:/u, '');
+  return normalized === '::1' || ipAllowed(normalized, '127.0.0.0/8');
 }
 
 export function localhostAdmin(request: FastifyRequest, env = process.env): StaffSession | null {

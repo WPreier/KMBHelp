@@ -10,6 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@kmbhelp/api": "workspace:*",
+    "@kmbhelp/db": "workspace:*",
     "@kmbhelp/shared": "workspace:*"
   },
   "devDependencies": {

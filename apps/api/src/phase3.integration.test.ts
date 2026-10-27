@@ -11,8 +11,10 @@ import {
   type MemoryDirectoryAccount,
 } from './directory.js';
 import { createLocalAdmin } from './local-admin.js';
+import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { decodeBase32, totpCode } from './totp.js';
 
+loadWorkstationEnv();
 const databaseUrl = process.env.DATABASE_URL?.trim();
 const apps: FastifyInstance[] = [];
 const secret = 'phase3-test-session-secret-value';

@@ -8,14 +8,13 @@ Gesundheit: `https://helpdesk.kmbcloud.at/api/health`
 ## 1. E-Mail
 
 - Postfach `helpdesk@kmbcloud.at`.
-- Abruf jede Minute über Microsoft Graph (`Mail.Read`, `Mail.Send` als Application-Permission mit Admin-Consent).
-- Idempotenz über `internetMessageId`. Dieselbe Mail erzeugt nie ein zweites Ticket.
-- Bewertung durch den KI-Dienst: Kategorie, Priorität, benötigte Kenntnis, ob eine FAQ-Antwort erlaubt ist.
-- Zuordnung eines Menschen mit passender Kenntnis und freiem Kalenderfenster.
-- Antwort an den Absender mit Ticketnummer. Einen Geheimlink gibt es nicht.
-- Kalendereintrag beim Bearbeiter: Betreff ohne Mandantendetails wenn möglich, Körper mit Beschreibung und Link auf die Staff-Ticketseite, Dauer aus der Kategorie-Vorgabe.
-- Einfache, erlaubte Antworten: Ticket auf erledigt, Mail an den Absender, Info-Mail an den IT-Mitarbeiter, Ereignis im Audit.
-- Der Worker ist ein eigener systemd-Dienst `kmbhelp-worker`. Die Webseite funktioniert weiter, wenn der Worker steht; der Gesundheitsstatus zeigt das.
+- Abruf über Microsoft Graph (`Mail.Read`, `Mail.Send`, `Calendars.ReadWrite` als Application-Permission mit Admin-Consent). Der Takt steht in `WORKER_SCHEDULE`. Auslieferung: 00:00–08:00 alle 30 Minuten, 08:00–12:00 alle 10 Minuten, 12:00–12:30 nicht, 12:30–17:00 alle 10 Minuten, 17:00–24:00 alle 30 Minuten. Die Uhr ist `SYSLOG_UTC_OFFSET`. Der Prozess schreibt trotzdem etwa jede Minute einen Herzschlag, damit `GET /api/health` ihn nicht als ausgefallen wertet.
+- Idempotenz über `internetMessageId`. Dieselbe Mail erzeugt nie ein zweites Ticket und keine zweite Antwort.
+- Ohne KI-Anbieter gilt eine Regel: der längste Kategorie-Name im Betreff oder Text gewinnt. Trifft keiner zu, gilt `FALLBACK_CATEGORY`. Auslieferung ist `printer` (Drucker). Der Code muss in der Tabelle `category` stehen. Priorität kommt aus Frist und Wirkung. Die Zuordnung nimmt den ersten aktiven Mitarbeiter mit passender Kenntnis, der im Kalender frei ist. Der Termin beginnt `CALENDAR_DELAY_P1` (0), `CALENDAR_DELAY_P2` (60) oder `CALENDAR_DELAY_P3` (240) Minuten nach dem Anlegen. Ist der Platz belegt, rückt er in 30-Minuten-Schritten. Ohne Microsoft-365-Freigabe bleibt der erste passende Mitarbeiter, und es wird kein Termin erfunden.
+- Antwort an den Absender von `GRAPH_MAILBOX` mit Nummer und Link auf die öffentliche Liste. Einen Geheimlink gibt es nicht.
+- Kalendereintrag beim Bearbeiter: Betreff `Neues Ticket` plus Mail-Betreff. Der Körper enthält die komplette Mail, Absender und den Link `/mitarbeit/ticket/{nummer}`. Diese Seite folgt in Phase 9. Die Dauer ist `CALENDAR_DEFAULT_MINUTES`, Auslieferung 30. Sobald Phase 6 eine Dauer zwischen 5 und 480 Minuten nennt, gilt diese Zahl für genau dieses Ticket. Zu viel Text löscht der Mitarbeiter im Kalender selbst. Eine P1-Mail an `ONCALL_EMAIL` geht nur, wenn die Adresse gesetzt und Graph konfiguriert ist.
+- Wird ein inaktives Ticket wieder geöffnet, geht eine Mail an alle aktiven Mitarbeiter: `Ticket {nummer} ist wieder offen`, plus der Listen-Link. Ohne Graph bleibt das Ereignis stehen, der Worker sendet es nach, sobald die Werte gesetzt sind.
+- Der Worker ist ein eigener Prozess `kmbhelp-worker`. Ohne Tenant-Werte protokolliert er `not_configured` und stürzt nicht ab. Die Webseite funktioniert weiter, wenn er steht. `GET /api/health` zeigt `worker` als `up`, `down` oder `not_configured`. `down` macht die API nicht unerreichbar.
 
 ## 2. Benutzer-Web
 
@@ -89,7 +88,7 @@ Bei `scripts/install.ts` einmalig abgefragt oder über Umgebungsvariable, die da
 
 `GET /api/v1/admin/staff` liest `HelpdeskAdmins`, gleicht sie über die E-Mail-Adresse ab und listet Konten, Skills und Kategorien ohne Passwort-Hash und ohne TOTP-Geheimnis. Der Name ist `cn`. `POST /api/v1/admin/directory/read` wiederholt den Abgleich. `POST /api/v1/admin/directory/deactivate` setzt ausgewählte Konten inaktiv, wenn sie nicht mehr in der Gruppe sind. Mitarbeiter werden nie gelöscht. `POST /api/v1/admin/password` ändert das eigene Passwort. `POST /api/v1/admin/staff/:id/mfa/reset` löscht TOTP, Passkeys und Sitzungen. `POST /api/v1/admin/staff/:id/access` ersetzt Skills und Kategorien.
 
-Diese Routen verlangen den lokalen Admin, eine fertige Sitzung, den CSRF-Header und eine Adresse aus `192.168.36.0/24` oder `192.168.191.0/24`. Eine leere Liste verweigert in Produktion jeden Zugriff. Aus `127.0.0.0/8` entfällt die Anmeldung, solange die API nicht in Produktion läuft. In Produktion entfällt sie nur, wenn die weitergeleitete Client-Adresse ebenfalls aus diesem Netz stammt.
+Diese Routen verlangen den lokalen Admin, eine fertige Sitzung, den CSRF-Header und eine Adresse aus `192.168.36.0/24` oder `192.168.191.0/24`. Eine leere Liste verweigert in Produktion jeden Zugriff von außen. Jede Verbindung, deren Socket in `127.0.0.0/8` oder `::1` liegt, ist ohne Anmeldung frei, auch in Produktion. Eine weitergeleitete Adresse zählt dafür nicht. Steht ein Reverse-Proxy auf demselben Rechner, darf er öffentliche Besucher nicht als Verbindung von `127.0.0.1` an die API durchreichen.
 
 `GET /api/v1/auth/session` sagt nur, ob die eigene Sitzung fertig ist und ob sie der lokale Admin ist.
 

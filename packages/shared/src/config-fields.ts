@@ -5,6 +5,23 @@ export type ConfigField = {
   textEn: string;
 };
 
+export const defaultCalendarMinutes = '30';
+export const defaultCalendarDelayP1 = '0';
+export const defaultCalendarDelayP2 = '60';
+export const defaultCalendarDelayP3 = '240';
+export const defaultFallbackCategory = 'printer';
+export const defaultWorkerSchedule =
+  '00:00-08:00=30,08:00-12:00=10,12:00-12:30=0,12:30-17:00=10,17:00-24:00=30';
+
+const shownWhenEmpty: Record<string, string> = {
+  CALENDAR_DEFAULT_MINUTES: defaultCalendarMinutes,
+  CALENDAR_DELAY_P1: defaultCalendarDelayP1,
+  CALENDAR_DELAY_P2: defaultCalendarDelayP2,
+  CALENDAR_DELAY_P3: defaultCalendarDelayP3,
+  FALLBACK_CATEGORY: defaultFallbackCategory,
+  WORKER_SCHEDULE: defaultWorkerSchedule,
+};
+
 export const configFields: readonly ConfigField[] = [
   {
     key: 'DATABASE_URL',
@@ -50,9 +67,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'ADMIN_IP_ALLOWLIST',
     secret: false,
     textDe:
-      'Die Netze, aus denen die Verwaltung eine Anmeldung verlangt. Kommagetrennt, zum Beispiel 192.168.36.0/24. Aus 127.0.0.0/8 entfällt die Anmeldung, solange die API nicht in Produktion läuft.',
+      'Die Netze, aus denen die Verwaltung eine Anmeldung verlangt. Kommagetrennt, zum Beispiel 192.168.36.0/24. Jeder Zugriff von 127.0.0.0/8 oder ::1 ist ohne Anmeldung frei, auch in Produktion. Eine weitergeleitete Adresse zählt dafür nicht.',
     textEn:
-      'The networks that must sign in for administration. Comma-separated, for example 192.168.36.0/24. From 127.0.0.0/8 sign-in is skipped while the API is not in production.',
+      'The networks that must sign in for administration. Comma-separated, for example 192.168.36.0/24. Every connection from 127.0.0.0/8 or ::1 is open without sign-in, including production. A forwarded address does not count.',
   },
   {
     key: 'LDAPS_URL',
@@ -150,30 +167,97 @@ export const configFields: readonly ConfigField[] = [
     key: 'GRAPH_TENANT_ID',
     secret: false,
     textDe:
-      'Die Mandanten-Nummer von Microsoft 365. Mail und Kalender warten auf sie. Der Versand selbst folgt in Phase 4.',
+      'Die Verzeichnis-ID (Tenant) aus der App-Registrierung im Microsoft-Entra-Verwaltungszentrum. Sie steht auf der Übersichtsseite der Anwendung. Zusammen mit Client und Geheimnis holt der Worker ein Token und kann damit alle Postfächer und Kalender lesen, für die der Admin-Consent erteilt wurde.',
     textEn:
-      'The Microsoft 365 tenant id. Mail and calendar wait for it. Sending itself follows in phase 4.',
+      'The directory id (tenant) from the app registration in the Microsoft Entra admin center. It is on the application overview. Together with the client and the secret, the worker requests a token and can then read every mailbox and calendar covered by admin consent.',
   },
   {
     key: 'GRAPH_CLIENT_ID',
     secret: false,
-    textDe: 'Die Anwendungsnummer, unter der KMBHelp bei Microsoft 365 bekannt ist.',
-    textEn: 'The application id under which KMBHelp is known to Microsoft 365.',
+    textDe:
+      'Die Anwendungs-ID (Client) derselben App-Registrierung. Unter API-Berechtigungen werden als Anwendungsberechtigungen Mail.Read, Mail.Send und Calendars.ReadWrite eingetragen und der Admin-Consent erteilt. Ohne Consent bleibt der Worker bei not_configured.',
+    textEn:
+      'The application id (client) of the same app registration. Under API permissions, add the application permissions Mail.Read, Mail.Send and Calendars.ReadWrite and grant admin consent. Without consent the worker stays at not_configured.',
   },
   {
     key: 'GRAPH_CLIENT_SECRET',
     secret: true,
     textDe:
-      'Das Geheimnis der Microsoft-365-Anwendung. Es wird nicht angezeigt. Ohne Admin-Consent holt die API noch kein Token.',
+      'Das Client-Geheimnis aus Zertifikate und Geheimnisse der App-Registrierung. Es wird nicht angezeigt und nur in der lokalen Geheimdatei gespeichert, nie in Git. Ein neues Geheimnis gilt nach dem Speichern für den nächsten Worker-Lauf.',
     textEn:
-      'The Microsoft 365 application secret. It is not shown. Without admin consent the API still does not request a token.',
+      'The client secret from Certificates and secrets of the app registration. It is not shown and is stored only in the local secrets file, never in git. A new secret applies on the next worker run.',
   },
   {
     key: 'GRAPH_MAILBOX',
     secret: false,
     textDe:
-      'Das Postfach helpdesk@kmbcloud.at, aus dem später die Mails gelesen und beantwortet werden.',
-    textEn: 'The mailbox helpdesk@kmbcloud.at from which mail will later be read and answered.',
+      'Das Postfach helpdesk@kmbcloud.at. Der Worker liest es im Zeitplan und verschickt Antworten von hier. Termine legt er in den Kalender des zugewiesenen Mitarbeiters.',
+    textEn:
+      'The mailbox helpdesk@kmbcloud.at. The worker reads it on the schedule and sends replies from here. It creates events on the assigned employee’s calendar.',
+  },
+  {
+    key: 'ONCALL_EMAIL',
+    secret: false,
+    textDe:
+      'Die E-Mail-Adresse der Bereitschaft. Bei einem neuen Ticket mit Priorität P1 geht eine kurze Mail dorthin, sobald Microsoft 365 konfiguriert ist. Leer heißt: keine Bereitschaftsmail.',
+    textEn:
+      'The on-call email address. A new priority-P1 ticket sends a short mail there once Microsoft 365 is configured. Empty means no on-call mail.',
+  },
+  {
+    key: 'FALLBACK_CATEGORY',
+    secret: false,
+    textDe:
+      'Der Kategorie-Code für Mails, in denen kein Kategorie-Name vorkommt. Standard ist printer (Drucker). Der Code muss in der Tabelle category stehen. Die Liste kommt aus dem Ticketkatalog und wird mit pnpm db:seed in PostgreSQL geschrieben. Eine eigene Seite zum Anlegen von Kategorien gibt es noch nicht. Auf der Verwaltung werden Kategorien nur den Mitarbeitern zugeordnet.',
+    textEn:
+      'The category code for mail that names no category. The default is printer. The code must exist in the category table. The list comes from the ticket catalog and is written to PostgreSQL by pnpm db:seed. There is no page yet for creating categories. Administration only assigns categories to employees.',
+  },
+  {
+    key: 'CALENDAR_DEFAULT_MINUTES',
+    secret: false,
+    textDe:
+      'Die Dauer eines neuen Termins in Minuten, solange kein Modell eine eigene Schätzung liefert. Standard ist 30. Sobald die KI in Phase 6 eine Dauer nennt, ersetzt diese Zahl die Vorgabe für genau dieses Ticket.',
+    textEn:
+      'The length of a new appointment in minutes, until a model supplies its own estimate. The default is 30. Once the phase 6 model names a duration, that number replaces the default for that ticket.',
+  },
+  {
+    key: 'CALENDAR_DELAY_P1',
+    secret: false,
+    textDe:
+      'Minuten nach dem Anlegen, wann ein P1-Termin beginnt. Standard ist 0: der Termin startet mit der Erstellung des Tickets.',
+    textEn:
+      'Minutes after creation when a P1 appointment starts. The default is 0: the appointment starts when the ticket is created.',
+  },
+  {
+    key: 'CALENDAR_DELAY_P2',
+    secret: false,
+    textDe:
+      'Minuten nach dem Anlegen, wann ein P2-Termin beginnt. Standard ist 60, also eine Stunde nach der Erstellung.',
+    textEn:
+      'Minutes after creation when a P2 appointment starts. The default is 60, one hour after creation.',
+  },
+  {
+    key: 'CALENDAR_DELAY_P3',
+    secret: false,
+    textDe:
+      'Minuten nach dem Anlegen, wann ein P3-Termin beginnt. Standard ist 240, also vier Stunden nach der Erstellung.',
+    textEn:
+      'Minutes after creation when a P3 appointment starts. The default is 240, four hours after creation.',
+  },
+  {
+    key: 'WORKER_SCHEDULE',
+    secret: false,
+    textDe:
+      'Wann der Worker Microsoft 365 abfragt. Jeder Abschnitt ist von-bis=Minuten, getrennt durch Komma. 0 bedeutet: in diesem Abschnitt nicht abfragen. Standard: 00:00-08:00=30, 08:00-12:00=10, 12:00-12:30=0, 12:30-17:00=10, 17:00-24:00=30. Die Uhr ist SYSLOG_UTC_OFFSET, Winter +01:00.',
+    textEn:
+      'When the worker calls Microsoft 365. Each part is from-to=minutes, separated by commas. 0 means do not call during that part. Default: 00:00-08:00=30, 08:00-12:00=10, 12:00-12:30=0, 12:30-17:00=10, 17:00-24:00=30. The clock is SYSLOG_UTC_OFFSET, winter +01:00.',
+  },
+  {
+    key: 'PUBLIC_ORIGIN',
+    secret: false,
+    textDe:
+      'Die Adresse in Antwortmail und Kalender. Lokal http://127.0.0.1:5173, in Produktion https://helpdesk.kmbcloud.at.',
+    textEn:
+      'The address used in the reply and the calendar entry. Locally http://127.0.0.1:5173, in production https://helpdesk.kmbcloud.at.',
   },
   {
     key: 'WEBAUTHN_RP_ID',
@@ -279,7 +363,8 @@ export function describeConfig(env: NodeJS.ProcessEnv): Array<{
   textEn: string;
 }> {
   return configFields.map((field) => {
-    const value = (env[field.key] ?? '').trim();
+    const raw = (env[field.key] ?? '').trim();
+    const value = raw === '' ? (shownWhenEmpty[field.key] ?? '') : raw;
     if (field.secret) {
       return {
         ...field,

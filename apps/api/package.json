@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "exports": {
+    "./mail-cycle": {
+      "types": "./src/mail-cycle.ts",
+      "default": "./src/mail-cycle.ts"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",

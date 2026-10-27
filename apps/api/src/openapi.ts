@@ -10,7 +10,10 @@ export const openApiDocument = {
       get: {
         operationId: 'getHealth',
         responses: {
-          '200': { description: 'API and database are reachable.' },
+          '200': {
+            description:
+              'API and database are reachable. worker is up, down, or not_configured. A stopped worker does not stop the site.',
+          },
           '503': { description: 'API is up and the database is not reachable.' },
         },
       },
@@ -65,7 +68,9 @@ export const openApiDocument = {
       get: {
         operationId: 'listAssignableStaff',
         responses: {
-          '200': { description: 'Active employees for a new ticket. Inactive employees are omitted.' },
+          '200': {
+            description: 'Active employees for a new ticket. Inactive employees are omitted.',
+          },
         },
       },
     },

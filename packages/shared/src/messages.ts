@@ -130,6 +130,10 @@ export const messages = {
     configurationTitle: 'Konfiguration',
     configurationLead:
       'Jeder Wert kann hier geändert und einzeln geprüft werden. Geheimnisse bleiben unsichtbar. Syslog folgt RFC 5424: der Servername ist der APP-NAME, der Rechnername bleibt der HOSTNAME.',
+    configurationSource:
+      'Die Daten kommen aus drei Orten. Ein hier gespeicherter Wert ohne Geheimnis liegt in der Datenbank, Tabelle app_setting, Schlüssel config.NAME, und gilt beim nächsten Start vor der Datei .env im Projektordner. Geheimnisse liegen nur in %LOCALAPPDATA%\\kmbhelp\\secrets.json und im laufenden Prozess, nie in Git. Was dort noch leer ist, füllt die Datei .env. Ein leeres Feld mit Vorgabe benutzt diese Vorgabe, bis es gespeichert wird.',
+    graphSetup:
+      'Microsoft 365: Im Entra-Verwaltungszentrum eine App-Registrierung anlegen. Die Verzeichnis-ID wird GRAPH_TENANT_ID, die Anwendungs-ID wird GRAPH_CLIENT_ID, ein neues Client-Geheimnis wird GRAPH_CLIENT_SECRET. Unter API-Berechtigungen die Anwendungsberechtigungen Mail.Read, Mail.Send und Calendars.ReadWrite hinzufügen und den Admin-Consent erteilen. Damit kann diese Anwendung alle Postfächer und Kalender lesen und beschreiben, die der Consent abdeckt. GRAPH_MAILBOX bleibt helpdesk@kmbcloud.at.',
     syslogServer: 'Syslog-Server',
     syslogPort: 'Port',
     saveSyslog: 'Syslog speichern',
@@ -279,6 +283,10 @@ export const messages = {
     configurationTitle: 'Configuration',
     configurationLead:
       'Every value can be changed and checked here on its own. Secrets stay invisible. Syslog follows RFC 5424: the server name is the APP-NAME, the machine name stays the HOSTNAME.',
+    configurationSource:
+      'The data comes from three places. A non-secret value saved here lives in the database, table app_setting, key config.NAME, and wins over the .env file in the project folder on the next start. Secrets live only in %LOCALAPPDATA%\\kmbhelp\\secrets.json and in the running process, never in git. The .env file fills whatever is still empty. An empty field that has a default uses that default until it is saved.',
+    graphSetup:
+      'Microsoft 365: create an app registration in the Entra admin center. The directory id becomes GRAPH_TENANT_ID, the application id becomes GRAPH_CLIENT_ID, and a new client secret becomes GRAPH_CLIENT_SECRET. Under API permissions add the application permissions Mail.Read, Mail.Send and Calendars.ReadWrite and grant admin consent. That application can then read and write every mailbox and calendar covered by the consent. GRAPH_MAILBOX stays helpdesk@kmbcloud.at.',
     syslogServer: 'Syslog server',
     syslogPort: 'Port',
     saveSyslog: 'Save syslog',

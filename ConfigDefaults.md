@@ -13,7 +13,7 @@ Diese Datei beschreibt die Werte, mit denen eine frische Installation startet. Z
 | `LDAPS_GROUP_DN` | leer | Gruppe `HelpdeskAdmins`. Bei der Kanzlei `CN=HelpdeskAdmins,OU=Sicherheitsgruppen,OU=kmb,DC=kmbcloud,DC=at`. |
 | `LDAPS_CA_PEM` oder `LDAPS_CA_FILE` | leer | Zertifikat von MADC1. Ein Blattzertifikat wird gepinnt, ein CA-Zertifikat wird als Vertrauensanker benutzt. |
 | `SESSION_SECRET` | leer | In Produktion startet die API nicht. In der Entwicklung gilt ein Schlüssel nur für diesen Prozess. |
-| `ADMIN_IP_ALLOWLIST` | leer | Leere Liste verweigert in Produktion jede Verwaltung. Die Kanzlei setzt `192.168.36.0/24,192.168.191.0/24`. Aus `127.0.0.0/8` ist die Verwaltung ohne Anmeldung erreichbar, solange die API nicht in Produktion läuft. |
+| `ADMIN_IP_ALLOWLIST` | leer | Leere Liste verweigert in Produktion jede Verwaltung von außen. Die Kanzlei setzt `192.168.36.0/24,192.168.191.0/24`. Jede Verbindung aus `127.0.0.0/8` oder `::1` ist ohne Anmeldung frei, auch in Produktion. Eine weitergeleitete Adresse zählt nicht. |
 | `ALLOW_TEST_AUTH` | leer | Darf in Produktion nicht gesetzt sein. |
 
 ## Syslog
@@ -62,7 +62,26 @@ Alle sind ausgelöst. Die Kategorie kann der lokale Admin ändern.
 
 ## Weitere Prüfungen auf der Konfigurationsseite
 
-Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen Prüfknopf. Geheimnisse erscheinen leer. Ein leeres Speichern lässt den hinterlegten Wert stehen. Werte ohne Geheimnis schreibt die Seite nach `app_setting` (`config.SCHLÜSSEL`) und in `.env`. Geheimnisse schreibt sie nur nach `secrets.json` und in den laufenden Prozess, nie nach `.env` und nie nach Git. Ein gespeicherter Wert ohne Geheimnis gilt beim nächsten Start vor der handgeschriebenen `.env`. Zusätzlich prüft die Seite Node 22, genau einen lokalen Admin, `MADC1.kmbcloud.at` Port 636, das Zertifikatsdatum, den Vergleich mit dem live vorgezeigten Zertifikat, die Graph-Werte und `login.microsoftonline.com`, den gespeicherten Syslog-Server und die Zusammengehörigkeit von WebAuthn-Host und Origin. Der Mailversand selbst ist Phase 4 und wird hier nur auf vollständige Werte geprüft.
+Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen Prüfknopf. Geheimnisse erscheinen leer. Ein leeres Speichern lässt den hinterlegten Wert stehen. Werte ohne Geheimnis schreibt die Seite nach `app_setting` (`config.SCHLÜSSEL`) und in `.env`. Geheimnisse schreibt sie nur nach `secrets.json` und in den laufenden Prozess, nie nach `.env` und nie nach Git. Ein gespeicherter Wert ohne Geheimnis gilt beim nächsten Start vor der handgeschriebenen `.env`. Zusätzlich prüft die Seite Node 22, genau einen lokalen Admin, `MADC1.kmbcloud.at` Port 636, das Zertifikatsdatum, den Vergleich mit dem live vorgezeigten Zertifikat, die Graph-Werte und `login.microsoftonline.com`, den gespeicherten Syslog-Server und die Zusammengehörigkeit von WebAuthn-Host und Origin. Der Worker liest das Postfach nach `WORKER_SCHEDULE`, wenn Tenant, Client, Geheimnis und Postfach gesetzt sind. Die Prüfung auf dieser Seite holt dafür kein Token. `PUBLIC_ORIGIN` ist die Adresse in der Antwort und im Kalender. Lokal ist das `http://127.0.0.1:5173`.
+
+## Mail, Kalender und Bereitschaft
+
+| Wert | Auslieferung | Bedeutung |
+|---|---|---|
+| `GRAPH_TENANT_ID` | leer | Verzeichnis-ID der App-Registrierung in Entra. |
+| `GRAPH_CLIENT_ID` | leer | Anwendungs-ID derselben Registrierung. |
+| `GRAPH_CLIENT_SECRET` | leer | Client-Geheimnis. Nur in `secrets.json`, nie in Git. |
+| `GRAPH_MAILBOX` | `helpdesk@kmbcloud.at` | Postfach, das der Worker liest, und Absender der Antworten. |
+| `PUBLIC_ORIGIN` | `http://127.0.0.1:5173` | Adresse in Antwort und Kalender. Produktion: `https://helpdesk.kmbcloud.at`. |
+| `ONCALL_EMAIL` | leer | Bereitschaft. Eine P1-Mail geht nur hin, wenn die Adresse gesetzt ist. |
+| `FALLBACK_CATEGORY` | `printer` | Kategorie-Code, wenn kein Kategorie-Name in der Mail steht. Muss in der Tabelle `category` existieren. |
+| `CALENDAR_DEFAULT_MINUTES` | `30` | Termindauer, bis Phase 6 eine Schätzung zwischen 5 und 480 Minuten liefert. |
+| `CALENDAR_DELAY_P1` | `0` | Minuten nach dem Anlegen, wann ein P1-Termin beginnt. |
+| `CALENDAR_DELAY_P2` | `60` | Minuten nach dem Anlegen, wann ein P2-Termin beginnt. |
+| `CALENDAR_DELAY_P3` | `240` | Minuten nach dem Anlegen, wann ein P3-Termin beginnt. |
+| `WORKER_SCHEDULE` | `00:00-08:00=30,08:00-12:00=10,12:00-12:30=0,12:30-17:00=10,17:00-24:00=30` | Abruf bei Microsoft 365. `0` ist eine Pause. Die Uhr ist `SYSLOG_UTC_OFFSET`. |
+
+Die Kategorien selbst stehen nicht in dieser Datei. Sie liegen in `packages/db/src/catalog.ts`, fachlich in `docs/ticketkatalog.md`, und `pnpm db:seed` schreibt sie in die Tabelle `category`. Eine Seite zum Anlegen von Kategorien gibt es nicht. `/verwaltung` ordnet vorhandene Kategorien nur den Mitarbeitern zu.
 
 ## Helpdeskmitarbeiter
 

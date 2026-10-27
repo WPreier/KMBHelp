@@ -88,6 +88,12 @@ export {
 export {
   configField,
   configFields,
+  defaultCalendarDelayP1,
+  defaultCalendarDelayP2,
+  defaultCalendarDelayP3,
+  defaultCalendarMinutes,
+  defaultFallbackCategory,
+  defaultWorkerSchedule,
   describeConfig,
   isSecretConfig,
   type ConfigField,

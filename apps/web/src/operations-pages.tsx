@@ -123,7 +123,10 @@ function ConfigField({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const wide = entry.key === 'LDAPS_CA_PEM' || entry.key === 'ADMIN_IP_ALLOWLIST';
+  const wide =
+    entry.key === 'LDAPS_CA_PEM' ||
+    entry.key === 'ADMIN_IP_ALLOWLIST' ||
+    entry.key === 'WORKER_SCHEDULE';
 
   async function run(
     path: '/api/v1/admin/configuration/value' | '/api/v1/admin/configuration/value/check',
@@ -306,6 +309,8 @@ export function ConfigurationPage() {
       <AdminLinks />
       <h2>{copy.configurationTitle}</h2>
       <p>{copy.configurationLead}</p>
+      <p>{copy.configurationSource}</p>
+      <p>{copy.graphSetup}</p>
       <form className="form" onSubmit={(event) => void saveSyslog(event)}>
         <h3>{copy.syslogServer}</h3>
         <label>

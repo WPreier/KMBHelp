@@ -26,6 +26,7 @@ describe('GET /api/health', () => {
       status: 'degraded',
       service: 'kmbhelp-api',
       database: 'down',
+      worker: 'down',
     });
   });
 
@@ -34,6 +35,8 @@ describe('GET /api/health', () => {
     const response = await request(app.server).get('/api/health');
     expect(response.status).toBe(200);
     expect(response.body.database).toBe('up');
+    expect(response.body.worker).toBe('down');
+    expect(response.body.status).toBe('ok');
   });
 
   it('serves the OpenAPI document', async () => {

@@ -5,10 +5,12 @@ import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDatabase, faqArticle, seedCatalog, staffSearch, ticket } from '@kmbhelp/db';
 import { applyMigrations, createTestStaff } from '@kmbhelp/db/testing';
+import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { TEST_STAFF_HEADER } from './auth.js';
 import { buildApp } from './app.js';
 import { queryHash } from './http.js';
 
+loadWorkstationEnv();
 const databaseUrl = process.env.DATABASE_URL?.trim();
 const apps: FastifyInstance[] = [];
 

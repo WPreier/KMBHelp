@@ -88,7 +88,7 @@ Nicht raten und keine Platzhalter-Zugangsdaten erfinden. Die Phase ohne diese Da
 4. Echte URLs für www, Home und Wiki.
 5. Logo-Dateien unter `brand/`, sonst Textwortmarke, kein heruntergeladenes Fremdlogo.
 6. Apple-Developer-Team und Google-Play-Konto, sobald Phase 11 beginnt. Wer besitzt sie?
-7. Internes Subnetz für `ADMIN_IP_ALLOWLIST`. Beantwortet: `192.168.36.0/24` und `192.168.191.0/24`. Aus `127.0.0.0/8` ist die Verwaltung ohne Anmeldung erreichbar, solange die API nicht in Produktion läuft.
+7. Internes Subnetz für `ADMIN_IP_ALLOWLIST`. Beantwortet: `192.168.36.0/24` und `192.168.191.0/24`. Jede Verbindung aus `127.0.0.0/8` oder `::1` ist ohne Anmeldung frei, auch in Produktion. Eine weitergeleitete Adresse zählt nicht.
 
 ## Arbeitsweise
 

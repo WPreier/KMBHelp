@@ -7,6 +7,7 @@ import type { SearchExplainer } from './explain.js';
 import { PublicError } from './http.js';
 import { withDevelopmentLoopback } from './network.js';
 import { openApiDocument } from './openapi.js';
+import { readWorkerState } from './mail-cycle.js';
 import { registerPhase2 } from './phase2.js';
 import { registerOperations } from './operations.js';
 import { registerPhase3 } from './phase3.js';
@@ -26,6 +27,7 @@ export type BuildAppOptions = {
   adminAllowlist?: string | undefined;
   webauthnRpId?: string | undefined;
   webauthnOrigin?: string | undefined;
+  worker?: 'up' | 'down' | 'not_configured' | undefined;
 };
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -72,6 +74,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         status: up ? 'ok' : 'degraded',
         service: 'kmbhelp-api',
         database: up ? 'up' : 'down',
+        worker: up ? (options.worker ?? (await readWorkerState(database))) : 'down',
       }),
     };
   }

@@ -2,7 +2,6 @@ import {
   LANG_COOKIE,
   THEME_COOKIE,
   publicLinkTargets,
-  sessionViewSchema,
   type Lang,
   type ThemeName,
 } from '@kmbhelp/shared';
@@ -14,7 +13,6 @@ import malamaDark from '../../../brand/malama-logo-dark.svg';
 import malamaLight from '../../../brand/malama-logo-light.svg';
 import { LocaleProvider, useLocale } from './locale.js';
 import { AdminPage, SignInPage } from './auth-pages.js';
-import { getJson } from './api.js';
 import { ConfigurationPage, NoticesPage } from './operations-pages.js';
 import { ArticlePage, FaqListPage, FaqPage, HomePage, MissingPage, SearchPage } from './pages.js';
 import { readClientPreferences, writeClientPreference } from './preferences.js';
@@ -59,22 +57,6 @@ function Shell({
   onTheme: (theme: ThemeName) => void;
 }) {
   const { lang, copy } = useLocale();
-  const [localAdmin, setLocalAdmin] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    getJson('/api/v1/auth/session', sessionViewSchema.parse)
-      .then((view) => {
-        if (!cancelled) setLocalAdmin(view.isLocalAdmin);
-      })
-      .catch(() => {
-        if (!cancelled) setLocalAdmin(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   useEffect(() => {
     document.title = copy.documentTitle;
     document.documentElement.lang = lang;
@@ -162,7 +144,7 @@ function Shell({
           <Link to="/">{copy.fileTicket}</Link>
           <Link to="/faq">{copy.guides}</Link>
           <Link to="/anmelden">{copy.signIn}</Link>
-          {localAdmin ? <Link to="/verwaltung">{copy.adminTitle}</Link> : null}
+          <Link to="/verwaltung">{copy.adminTitle}</Link>
         </nav>
         <Routes>
           <Route path="/" element={<HomePage />} />

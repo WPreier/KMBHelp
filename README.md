@@ -6,7 +6,7 @@ Markenname der Anwendung: **KMBHelp**
 Host und DNS-Name: `helpdesk.kmbcloud.at`
 Postfach: `helpdesk@kmbcloud.at`
 
-Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 3 meldet Staff an: Verzeichnis, Passkey oder TOTP, lokaler Admin. Der Start prüft `MADC1.kmbcloud.at` und schreibt Syslog nach RFC 5424. Der erste Empfänger ist `192.168.191.215` Port 514 UDP, der Name `KMBHelp`, die Facility `local0`, die Uhrzeit `+01:00`. Die Konfigurationsseite ändert und prüft jeden Wert. Die Verwaltung liest `HelpdeskAdmins` und deaktiviert fehlende Mitarbeiter, ohne sie zu löschen. Aus `127.0.0.0/8` ist die Verwaltung ohne Anmeldung erreichbar, solange die API nicht in Produktion läuft. Einstellungen ohne Geheimnis stehen in `.env` im Projektordner. Die Auslieferung steht in `ConfigDefaults.md`. Graph-Mail folgt in Phase 4.
+Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 3 meldet Staff an: Verzeichnis, Passkey oder TOTP, lokaler Admin. Der Start prüft `MADC1.kmbcloud.at` und schreibt Syslog nach RFC 5424. Der erste Empfänger ist `192.168.191.215` Port 514 UDP, der Name `KMBHelp`, die Facility `local0`, die Uhrzeit `+01:00`. Die Konfigurationsseite ändert und prüft jeden Wert. Die Verwaltung liest `HelpdeskAdmins` und deaktiviert fehlende Mitarbeiter, ohne sie zu löschen. Jede Verbindung aus `127.0.0.0/8` oder `::1` öffnet die Verwaltung ohne Anmeldung, auch in Produktion. Einstellungen ohne Geheimnis stehen in `.env` im Projektordner. Ein gespeicherter Wert ohne Geheimnis liegt in `app_setting` und gilt vor `.env`. Die Auslieferung steht in `ConfigDefaults.md`. Der Mail-Worker ist Phase 4.
 
 | Datei | Inhalt |
 |---|---|
@@ -53,7 +53,7 @@ pnpm dev
 
 `pnpm dev` startet die API auf `http://127.0.0.1:3000` und die Seite auf `http://127.0.0.1:5173`. Gesundheit: `GET /api/health`. Ohne erreichbare Datenbank antwortet die API mit 503.
 
-Der Mail-Worker (`pnpm dev:worker`) protokolliert `not_configured`, solange Graph-Zugangsdaten fehlen, und stürzt nicht ab.
+Der Mail-Worker (`pnpm dev:worker`) liest `helpdesk@kmbcloud.at` nach `WORKER_SCHEDULE`, sobald die Graph-Werte gesetzt sind. Dieselbe Mail wird ein Ticket, die Antwort nennt Nummer und Listen-Link, der erste freie Mitarbeiter bekommt einen Termin mit Betreff `Neues Ticket` plus Mail-Betreff, der kompletten Mail und einem direkten Link. Ohne Zugangsdaten protokolliert er `not_configured` und stürzt nicht ab. `GET /api/health` zeigt den Worker, die Seite bleibt erreichbar.
 
 Nur eine Phase pro Branch. Externe Zugänge (AD, Graph, KI-Anbieter) nicht raten.
 

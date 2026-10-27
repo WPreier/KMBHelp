@@ -172,6 +172,12 @@ importers:
 
   apps/worker:
     dependencies:
+      '@kmbhelp/api':
+        specifier: workspace:*
+        version: link:../api
+      '@kmbhelp/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@kmbhelp/shared':
         specifier: workspace:*
         version: link:../../packages/shared

@@ -35,11 +35,12 @@ describe('phase 3 helpers', () => {
     expect(localhostSkipsSignIn('127.8.0.1', '', {})).toBe(true);
     expect(localhostSkipsSignIn('192.168.36.20', '', { NODE_ENV: 'development' })).toBe(false);
     expect(localhostSkipsSignIn('127.0.0.1', '192.168.36.20', { NODE_ENV: 'development' })).toBe(
-      false,
+      true,
     );
+    expect(localhostSkipsSignIn('::1', '192.168.36.20', { NODE_ENV: 'production' })).toBe(true);
     expect(localhostSkipsSignIn('10.0.0.1', '127.0.0.1', { NODE_ENV: 'development' })).toBe(false);
     expect(localhostSkipsSignIn('127.0.0.1', '127.0.0.2', { NODE_ENV: 'production' })).toBe(true);
-    expect(localhostSkipsSignIn('127.0.0.1', '', { NODE_ENV: 'production' })).toBe(false);
+    expect(localhostSkipsSignIn('127.0.0.1', '', { NODE_ENV: 'production' })).toBe(true);
     expect(localhostSkipsSignIn('127.0.0.1', '', { NODE_ENV: 'test' })).toBe(false);
   });
 

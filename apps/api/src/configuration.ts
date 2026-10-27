@@ -26,6 +26,14 @@ const shownKeys = [
   'GRAPH_TENANT_ID',
   'GRAPH_CLIENT_ID',
   'GRAPH_MAILBOX',
+  'PUBLIC_ORIGIN',
+  'ONCALL_EMAIL',
+  'FALLBACK_CATEGORY',
+  'CALENDAR_DEFAULT_MINUTES',
+  'CALENDAR_DELAY_P1',
+  'CALENDAR_DELAY_P2',
+  'CALENDAR_DELAY_P3',
+  'WORKER_SCHEDULE',
   'WEBAUTHN_RP_ID',
   'WEBAUTHN_ORIGIN',
   'AI_ENDPOINT',
@@ -341,8 +349,8 @@ export async function inspectConfiguration(
       ? check(
           'mail',
           'ok',
-          'Die Mail-Werte sind gesetzt. Der Versand folgt in Phase 4.',
-          'The mail values are set. Sending follows in phase 4.',
+          'Die Mail-Werte sind gesetzt. Der Worker liest das Postfach nach WORKER_SCHEDULE.',
+          'The mail values are set. The worker reads the mailbox on WORKER_SCHEDULE.',
         )
       : check(
           'mail.not_configured',
@@ -371,8 +379,8 @@ export async function inspectConfiguration(
         ? check(
             'graph',
             'ok',
-            'login.microsoftonline.com ist erreichbar. Ein Token wird noch nicht geholt.',
-            'login.microsoftonline.com is reachable. No token is requested yet.',
+            'login.microsoftonline.com ist erreichbar. Die Prüfung selbst holt kein Token.',
+            'login.microsoftonline.com is reachable. This check does not request a token.',
           )
         : check(
             'graph.not_configured',

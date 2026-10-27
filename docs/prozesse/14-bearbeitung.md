@@ -4,7 +4,7 @@ Dieser Prozess gehört zu Phase 9. Er wird nicht früher gebaut. Die öffentlich
 
 ## Ticketseite
 
-Ein angemeldeter Mitarbeiter der Gruppe `HelpdeskAdmins` öffnet eine Seite, auf der er jedes offene Ticket bearbeiten kann. Er darf alle Felder ändern. Die Zufriedenheit darf er nicht ändern.
+Ein angemeldeter Mitarbeiter der Gruppe `HelpdeskAdmins` öffnet `/mitarbeit/ticket/{nummer}`. Diesen Pfad trägt der Kalender aus Phase 4 schon ein. Er darf alle Felder ändern. Die Zufriedenheit darf er nicht ändern.
 
 Er kann eine Erklärung am Ticket speichern.
 

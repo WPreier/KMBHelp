@@ -39,6 +39,7 @@ import {
 } from '@kmbhelp/shared';
 import { optionalStaff, readRequestCookie, requireStaff, SESSION_COOKIE } from './auth.js';
 import { calendarFromEnv, mailerFromEnv, type CalendarReader, type Mailer } from './graph.js';
+import { deliverReopen } from './mail-cycle.js';
 import { categoryTitleExplainer, type SearchExplainer } from './explain.js';
 import {
   createRateLimiter,
@@ -184,6 +185,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     const rows = await database.db
       .select({
         id: ticket.id,
+        number: ticket.number,
         status: ticket.status,
         priority: ticket.priority,
       })
@@ -191,7 +193,11 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
       .where(eq(ticket.number, number));
     const row = rows[0];
     if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
-    const next = await applyPublicAction(database, row, parsed.data, current);
+    const next = await applyPublicAction(database, row, parsed.data, current, {
+      mailer,
+      origin: publicOrigin(request.headers.origin),
+      number,
+    });
     await writeAccessLog(database, request, row.id);
     return publicTicketStateSchema.parse({ number, ...next });
   });
@@ -497,6 +503,7 @@ async function applyPublicAction(
   row: { id: string; status: string; priority: string },
   action: { action: 'toggle' | 'close' | 'priority'; priority?: 'p1' | 'p2' | 'p3' },
   current: Date,
+  notice: { mailer: Mailer; origin: string; number: number },
 ): Promise<{ status: string; priority: string }> {
   if (row.status === 'closed') {
     throw new PublicError(409, 'cannot_reopen', publicErrors.cannotReopen);
@@ -545,16 +552,32 @@ async function applyPublicAction(
     return { status: 'inactive', priority: row.priority };
   }
   if (row.status === 'inactive') {
-    await database.db.transaction(async (tx) => {
+    const inserted = await database.db.transaction(async (tx) => {
       await tx
         .update(ticket)
         .set({ status: 'open', updatedAt: current })
         .where(eq(ticket.id, row.id));
-      await tx.insert(ticketEvent).values([
-        { ticketId: row.id, kind: 'reopened', payload: {} },
-        { ticketId: row.id, kind: 'notification', payload: { audience: 'all' } },
-      ]);
+      return tx
+        .insert(ticketEvent)
+        .values([
+          { ticketId: row.id, kind: 'reopened', payload: {} },
+          { ticketId: row.id, kind: 'notification', payload: { audience: 'all' } },
+        ])
+        .returning({ id: ticketEvent.id, kind: ticketEvent.kind });
     });
+    const source = inserted.find((event) => event.kind === 'notification');
+    if (source) {
+      try {
+        await deliverReopen(database, notice.mailer, {
+          ticketId: row.id,
+          sourceEventId: source.id,
+          number: notice.number,
+          origin: notice.origin,
+        });
+      } catch {
+        // The notification row stays. The worker sends it once mail is configured.
+      }
+    }
     return { status: 'open', priority: row.priority };
   }
   throw new PublicError(409, 'not_toggleable', publicErrors.notToggleable);

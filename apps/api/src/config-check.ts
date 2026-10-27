@@ -1,6 +1,7 @@
 import { createDatabase } from '@kmbhelp/db';
 import { configField, describeConfig } from '@kmbhelp/shared';
 import { directoryCertificate, ldapsConfigFromEnv, serviceBindWorks } from './directory.js';
+import { parseWorkerSchedule } from './worker-schedule.js';
 import { ldapsHost, peerFingerprint, tcpOpen } from './probes.js';
 import { formatSyslog, sendSyslog, syslogTarget } from './syslog.js';
 
@@ -290,6 +291,64 @@ export async function checkConfigField(
           'warning',
           'Mindestens ein Eintrag ist keine IPv4-Adresse.',
           'At least one entry is not an IPv4 address.',
+        );
+  }
+  if (key === 'ONCALL_EMAIL') {
+    if (!value) {
+      return line(
+        key,
+        'ok',
+        'Keine Bereitschaftsadresse hinterlegt.',
+        'No on-call address is stored.',
+      );
+    }
+    return value.includes('@') && !/\s/u.test(value)
+      ? line(key, 'ok', 'Die Bereitschaftsadresse ist lesbar.', 'The on-call address can be read.')
+      : line(
+          key,
+          'warning',
+          'Die Bereitschaftsadresse ist keine E-Mail-Adresse.',
+          'The on-call address is not an email address.',
+        );
+  }
+  if (key === 'FALLBACK_CATEGORY') {
+    return /^[a-z0-9_]+$/u.test(value)
+      ? line(
+          key,
+          'ok',
+          `Nicht erkannte Mails werden ${value}.`,
+          `Unrecognised mail becomes ${value}.`,
+        )
+      : line(
+          key,
+          'warning',
+          'Der Code besteht aus Kleinbuchstaben, Ziffern und Unterstrich.',
+          'The code uses lower case, digits and underscore.',
+        );
+  }
+  if (
+    key === 'CALENDAR_DEFAULT_MINUTES' ||
+    key === 'CALENDAR_DELAY_P1' ||
+    key === 'CALENDAR_DELAY_P2' ||
+    key === 'CALENDAR_DELAY_P3'
+  ) {
+    return /^\d+$/u.test(value) && Number(value) <= 1440
+      ? line(key, 'ok', `${value} Minuten.`, `${value} minutes.`)
+      : line(
+          key,
+          'warning',
+          'Eine ganze Zahl Minuten, höchstens 1440.',
+          'A whole number of minutes, at most 1440.',
+        );
+  }
+  if (key === 'WORKER_SCHEDULE') {
+    return parseWorkerSchedule(value)
+      ? line(key, 'ok', 'Der Zeitplan ist lesbar.', 'The schedule can be read.')
+      : line(
+          key,
+          'warning',
+          'Jeder Abschnitt hat die Form 08:00-12:00=10. 0 Minuten bedeutet Pause.',
+          'Each part looks like 08:00-12:00=10. 0 minutes means a pause.',
         );
   }
   if (key === 'GRAPH_MAILBOX') {
