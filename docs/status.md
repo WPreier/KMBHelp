@@ -1,6 +1,6 @@
 # Status
 
-Phase 10 ist auf `phase/10-installation` committet und auf GitHub. Die Linux-Anleitung reicht. Als Nächstes ist Phase 11, die Expo-App. Die Platzhalteradresse `192.0.2.10` ist vor dem Einsatz die interne Adresse des Servers.
+Phase 10 ist auf `phase/10-installation` committet und auf GitHub. Die Linux-Anleitung reicht. Phase 11 ist die App auf `phase/11-app`. Zu prüfen sind `apps/mobile` und `docs/mobile-stores.md`. Die Apple- und Google-Konten der GmbH fehlen noch.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -15,7 +15,7 @@ Phase 10 ist auf `phase/10-installation` committet und auf GitHub. Die Linux-Anl
 | 8 | MCP | erledigt |
 | 9 | Staff-Oberflächen, Playwright | erledigt |
 | 10 | Installation Linux, nginx, Apache | erledigt |
-| 11 | Expo, Store-Dokumentation | offen |
+| 11 | Expo, Store-Dokumentation | zur Kontrolle |
 | 12 | Härtung, Betrieb, Notfallblatt | offen |
 
 ## Phase 0 — Abnahme
@@ -179,6 +179,18 @@ Verbindlich ist `docs/installation-linux.md`. Die Beispiele liegen unter `infra/
 - [x] `pnpm test` und `pnpm typecheck`
 
 Start: die Schritte in `docs/installation-linux.md` auf dem Linux-Rechner. Auf diesem Arbeitsplatz bleibt `pnpm dev`.
+
+## Phase 11 — zur Kontrolle
+
+Die App liegt in `apps/mobile`. Verbindlich für die Stores ist `docs/mobile-stores.md`. Der erste Satz dort sagt, dass Zertifikate und Store-Richtlinien nachgezogen werden.
+
+- [x] Öffentlich: Ticket mit Quelle `app`, Liste ohne Beschreibung, Anleitungen, Suche
+- [x] IT-Liste und Dashboard erst nach Server-Sitzung und Gerätefreigabe. Biometrie oder Gerätecode. Das Passwort wird nicht gespeichert
+- [x] Dieselbe HTTP-API. Keine zweite Geschäftslogik
+- [x] `eas.json` ohne Token, ohne Team-ID und ohne Schlüssel
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm --filter @kmbhelp/mobile start`. Produktion spricht `https://helpdesk.kmbcloud.at`.
 
 ## Offene Rückfragen
 

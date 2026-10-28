@@ -219,3 +219,12 @@ export const staffTicketSchema = z
   .strict();
 
 export type StaffTicket = z.infer<typeof staffTicketSchema>;
+
+export const staffTicketListSchema = z
+  .object({
+    open: z.array(staffTicketSchema),
+    recent: z.array(staffTicketSchema),
+  })
+  .strict();
+
+export type StaffTicketList = z.infer<typeof staffTicketListSchema>;

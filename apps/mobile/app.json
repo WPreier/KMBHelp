@@ -6,9 +6,17 @@
   "orientation": "portrait",
   "userInterfaceStyle": "automatic",
   "ios": {
-    "bundleIdentifier": "at.kmbcloud.helpdesk"
+    "bundleIdentifier": "at.kmbcloud.helpdesk",
+    "supportsTablet": false,
+    "infoPlist": {
+      "NSFaceIDUsageDescription": "KMBHelp entsperrt die Mitarbeiteransicht auf diesem Gerät."
+    }
   },
   "android": {
     "package": "at.kmbcloud.helpdesk"
+  },
+  "plugins": ["expo-local-authentication", "expo-secure-store"],
+  "extra": {
+    "apiOrigin": "https://helpdesk.kmbcloud.at"
   }
 }

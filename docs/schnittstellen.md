@@ -150,7 +150,7 @@ Expo-App für die Funktionen der Punkte 2, 3, 4 und 6 sowie das Dashboard (Punkt
 
 ## 17. Installation
 
-Siehe `ENTWICKLUNGSUMGEBUNG.md` und die vom Agenten zu schreibenden Dateien `docs/installation-linux.md` und `docs/mobile-stores.md`.
+Linux steht in `docs/installation-linux.md`. Die App und die Stores stehen in `docs/mobile-stores.md`. Zertifikate und die Konten der GmbH werden dort nachgezogen.
 
 ## 18. KI
 

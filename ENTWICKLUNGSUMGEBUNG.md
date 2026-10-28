@@ -140,7 +140,7 @@ Google
 - Interner Test-Track.
 - App-Id dieselbe Rückwärtsdomäne.
 
-Die ausführliche Click-Strecke schreibt der Agent in Phase 11 nach `docs/mobile-stores.md`, weil sich die Konsolenmasken ändern. Der erste Satz dieser Datei muss sagen, dass sie nachgezogen wird.
+Die Click-Strecke steht in `docs/mobile-stores.md`. Der erste Satz sagt, dass Zertifikate, Store-Richtlinien und die Konten der GmbH nachgezogen werden.
 
 Lokale MFA der App (Biometrie oder Gerätecode) ist zusätzlich zur Server-MFA. Sie schützt das Gerät, sie ersetzt LDAPS nicht.
 

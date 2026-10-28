@@ -55,6 +55,7 @@ export {
   searchHitSchema,
   searchQuerySchema,
   searchResultSchema,
+  staffTicketListSchema,
   staffTicketSchema,
   type CategoryOption,
   type CreateTicketInput,
@@ -63,6 +64,7 @@ export {
   type PublicTicket,
   type SearchHit,
   type StaffTicket,
+  type StaffTicketList,
 } from './contracts.js';
 export {
   departmentLabel,

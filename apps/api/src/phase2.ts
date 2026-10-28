@@ -32,13 +32,20 @@ import {
   resolvePriority,
   searchHitSchema,
   searchQuerySchema,
+  staffTicketListSchema,
   staffTicketSchema,
   ticketStatuses,
   type PublicTicket,
   type SearchHit,
   type StaffTicket,
 } from '@kmbhelp/shared';
-import { optionalStaff, readRequestCookie, requireStaff, serviceTokenMatches, SESSION_COOKIE } from './auth.js';
+import {
+  optionalStaff,
+  readRequestCookie,
+  requireStaff,
+  serviceTokenMatches,
+  SESSION_COOKIE,
+} from './auth.js';
 import { calendarFromEnv, mailerFromEnv, type CalendarReader, type Mailer } from './graph.js';
 import { deliverReopen } from './mail-cycle.js';
 import { categoryTitleExplainer, type SearchExplainer } from './explain.js';
@@ -326,10 +333,10 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
       .where(inArray(ticket.status, [...recentStatuses]))
       .orderBy(desc(ticket.updatedAt))
       .limit(10);
-    return {
+    return staffTicketListSchema.parse({
       open: openRows.map((row) => toStaffTicket(row, current, false)),
       recent: recentRows.map((row) => toStaffTicket(row, current, true)),
-    };
+    });
   });
 
   app.get('/api/v1/categories', async () => {

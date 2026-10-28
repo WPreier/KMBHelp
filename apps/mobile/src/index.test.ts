@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { mobileShell } from './index.js';
 
 describe('mobile shell', () => {
-  it('waits for the Expo screens', () => {
+  it('names the app and the production origin', () => {
     expect(mobileShell.name).toBe('KMBHelp');
-    expect(mobileShell.screensInPhase).toBe(11);
+    expect(mobileShell.origin).toBe('https://helpdesk.kmbcloud.at');
   });
 });
