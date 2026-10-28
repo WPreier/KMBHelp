@@ -13,6 +13,8 @@ Die fachliche Vorgabe steht in `docs/` und in `PROMPT.md`. Phase 3 meldet Staff 
 | [docs/prompt.md](docs/prompt.md) | Fachliche Anfrage: Umfang, Prozesse, Schnittstellen. |
 | [PROMPT.md](PROMPT.md) | Kopierfertiger Arbeitsauftrag an Grok in Cursor. Phasen, Verbote, Akzeptanz. |
 | [ENTWICKLUNGSUMGEBUNG.md](ENTWICKLUNGSUMGEBUNG.md) | Rechner, GitHub, Cursor, Grok, Geheimnisse, Build, iOS, Android. |
+| [docs/installation-linux.md](docs/installation-linux.md) | Debian, systemd, nginx oder Apache, PostgreSQL-Rolle, Backup, Upgrade. |
+| [docs/betriebsskizze.drawio](docs/betriebsskizze.drawio) | Prozesse, Verzeichnisse, Speicher, API, MCP, Mail, Kalender und KI. |
 | [docs/stack-entscheidung.md](docs/stack-entscheidung.md) | Warum TypeScript, PostgreSQL, Fastify, Vite, Expo. |
 | [docs/sicherheit.md](docs/sicherheit.md) | WTBG, DSGVO, was öffentlich sein darf und was nicht. |
 | [docs/schnittstellen.md](docs/schnittstellen.md) | Mail, Web, Admin, API, MCP, Graph, AD. |

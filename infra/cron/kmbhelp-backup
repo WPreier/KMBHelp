@@ -1,0 +1,3 @@
+SHELL=/bin/sh
+PATH=/usr/bin:/bin
+0 * * * * kmbhelp /usr/bin/node /opt/kmbhelp/scripts/backup-database.mjs

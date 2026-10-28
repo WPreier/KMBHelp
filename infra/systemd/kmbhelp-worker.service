@@ -1,0 +1,23 @@
+[Unit]
+Description=KMBHelp mail worker
+After=network-online.target postgresql.service kmbhelp-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kmbhelp
+Group=kmbhelp
+WorkingDirectory=/opt/kmbhelp
+EnvironmentFile=/etc/kmbhelp/kmbhelp.env
+Environment=NODE_ENV=production
+Environment=PATH=/usr/bin:/bin
+ExecStart=/usr/bin/pnpm --filter @kmbhelp/worker start
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/kmbhelp /var/lib/kmbhelp
+
+[Install]
+WantedBy=multi-user.target

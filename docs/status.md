@@ -1,6 +1,6 @@
 # Status
 
-Phase 9 ist auf `phase/09-bearbeitung` committet. Als Nächstes ist Phase 10 zu prüfen: die Linux-Installation in `docs/installation-linux.md`, sobald der Branch `phase/10-installation` vorliegt. Die Ticketseite steht auf `http://127.0.0.1:5173/mitarbeit/ticket/{nummer}`. Ausgehende Mails liegen als Entwurf im Ordner Entwürfe von `helpdesk@kmbcloud.at`.
+Phase 9 ist auf `phase/09-bearbeitung` committet und auf GitHub. Phase 10 liegt lokal auf `phase/10-installation`, noch ohne Commit, und wartet auf Kontrolle. Zu prüfen ist `docs/installation-linux.md`: die Unit-Dateien, nginx, Apache, die PostgreSQL-Rolle und der stündliche Backup-Cron. Der Upgrade-Weg ist `pnpm db:migrate` und danach `systemctl restart` für `kmbhelp-api` und `kmbhelp-worker`. Die Platzhalteradresse `192.0.2.10` ist vor dem Einsatz die interne Adresse des Servers.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -14,7 +14,7 @@ Phase 9 ist auf `phase/09-bearbeitung` committet. Als Nächstes ist Phase 10 zu 
 | 7 | Dashboard | erledigt |
 | 8 | MCP | erledigt |
 | 9 | Staff-Oberflächen, Playwright | erledigt |
-| 10 | Installation Linux, nginx, Apache | offen |
+| 10 | Installation Linux, nginx, Apache | zur Kontrolle |
 | 11 | Expo, Store-Dokumentation | offen |
 | 12 | Härtung, Betrieb, Notfallblatt | offen |
 
@@ -163,6 +163,22 @@ Die Formularseite `/mitarbeit/vorgaenge` bleibt entfernt. Die Bearbeitung steht 
 - [x] `pnpm test` und `pnpm typecheck`
 
 Start: `pnpm dev`. Die Ticketseite steht auf `http://127.0.0.1:5173/mitarbeit/ticket/{nummer}`. Der Rauchtest ist `pnpm --filter @kmbhelp/web e2e`.
+
+## Phase 10 — zur Kontrolle
+
+Verbindlich ist `docs/installation-linux.md`. Die Beispiele liegen unter `infra/`.
+
+- [x] Unit-Dateien für API und Worker, Benutzer `kmbhelp`, `NODE_ENV=production`, Umgebungsdatei `/etc/kmbhelp/kmbhelp.env`
+- [x] nginx und Apache mit TLS-Platzhaltern. `/api/` geht an die interne Adresse, die Website kommt aus `apps/web/dist`. Port 80 liefert `/.well-known/acme-challenge/` für Certbot und leitet den Rest auf HTTPS um
+- [x] Debian 13, Verwaltungspakete, Node 22, PostgreSQL 17. Größe für 250 Benutzer, 5 IT-Mitarbeiter, 10 Tickets am Tag, 10 Jahre: 2 vCPU, 4 GB Hauptspeicher, 80 GB Platte
+- [x] Betriebsskizze `docs/betriebsskizze.drawio`: Prozesse, Verzeichnisse, Speicher, API, MCP, Mail, Kalender, KI
+- [x] `API_HOST` ist die interne Adresse des Servers. `127.0.0.1` würde jeden Besucher als localhost zeigen und die Verwaltung ohne Anmeldung öffnen
+- [x] PostgreSQL-Rolle `kmbhelp`, kein Superuser, Eigentümer der Datenbank `kmbhelp`
+- [x] Stündlicher Backup-Cron, Custom-Format, sieben Tage, Passwort nur in der Umgebungsdatei
+- [x] Upgrade `pnpm db:migrate` und `systemctl restart kmbhelp-api kmbhelp-worker`
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: die Schritte in `docs/installation-linux.md` auf dem Linux-Rechner. Auf diesem Arbeitsplatz bleibt `pnpm dev`.
 
 ## Offene Rückfragen
 

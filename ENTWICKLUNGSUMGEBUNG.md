@@ -157,7 +157,7 @@ Lokale MFA der App (Biometrie oder Gerätecode) ist zusätzlich zur Server-MFA. 
 
 Die Sicherung liegt im selben Ordner wie das Zugriffsprotokoll: `%LOCALAPPDATA%\kmbhelp\backups`. Die Datei heißt `kmbhelp-yyyyMMdd-HH.backup` und ist ein `pg_dump` im Custom-Format. Dateien, die älter als sieben Tage sind, löscht das Skript. Das Kennwort bleibt in `dev.env` und steht nicht in der Aufgabenplanung.
 
-Das Skript im Repository ist `scripts/backup-database.ps1`. Die geplante Aufgabe `KMBHelp-Database-Backup` startet die Kopie unter `%LOCALAPPDATA%\kmbhelp\backup-database.ps1`, stündlich, solange dieser Windows-Benutzer angemeldet ist. Ein Dump gehört nicht ins Git und nicht auf das Laufwerk der Ablage.
+Das Skript im Repository ist `scripts/backup-database.ps1`. Die geplante Aufgabe `KMBHelp-Database-Backup` startet die Kopie unter `%LOCALAPPDATA%\kmbhelp\backup-database.ps1`, stündlich, solange dieser Windows-Benutzer angemeldet ist. Ein Dump gehört nicht ins Git und nicht auf das Laufwerk der Ablage. Auf dem Linux-Server gilt `docs/installation-linux.md`: dort sichert `scripts/backup-database.mjs` nach `/var/backups/kmbhelp`.
 
 Zurückspielen, nur auf eine leere Testdatenbank:
 

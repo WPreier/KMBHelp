@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="app.diagrams.net" agent="KMBHelp" version="22.1.0" type="device">
+  <diagram id="kmbhelp-betrieb" name="Betriebsskizze">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="8" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1120" background="#f3f0e8" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b&gt;KMBHelp — Betriebsskizze&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:12px;color:#5c6560&quot;&gt;helpdesk.kmbcloud.at · ein Debian-Rechner · Stand der ausgelieferten Prozesse&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=20;fontColor=#1c2830;" vertex="1" parent="1">
+          <mxGeometry x="24" y="16" width="900" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="Grün: eigener Prozess · Braun: Verzeichnis oder Datenbank · Blau: außen · Ocker, gestrichelt: geprüft, von der Mailprüfung nicht aufgerufen" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=#5c6560;" vertex="1" parent="1">
+          <mxGeometry x="860" y="24" width="916" height="36" as="geometry" />
+        </mxCell>
+
+        <mxCell id="people" value="Personen" style="swimlane;horizontal=1;startSize=28;fillColor=#f7f5f2;strokeColor=#2c3338;fontColor=#1c2830;fontStyle=1;fontSize=13;rounded=1;arcSize=4;html=1;collapsible=0;swimlaneFillColor=#f7f5f2;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="24" y="108" width="230" height="430" as="geometry" />
+        </mxCell>
+        <mxCell id="user" value="&lt;b&gt;Benutzer&lt;/b&gt;&lt;br&gt;Browser&lt;br&gt;Ticket erfassen, öffentliche Liste&lt;br&gt;ohne Beschreibung und ohne Absender" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3338;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="people">
+          <mxGeometry x="14" y="40" width="202" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="staff" value="&lt;b&gt;IT-Mitarbeiter&lt;/b&gt;&lt;br&gt;Browser, fünf Personen&lt;br&gt;Anmeldung, Ticket, Dashboard&lt;br&gt;Verwaltung nur aus den Büronetzen" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3338;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="people">
+          <mxGeometry x="14" y="136" width="202" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="cursor" value="&lt;b&gt;Cursor&lt;/b&gt;&lt;br&gt;MCP-Client&lt;br&gt;liest .cursor/mcp.json&lt;br&gt;die echte Datei bleibt außerhalb von Git" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3338;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="people">
+          <mxGeometry x="14" y="232" width="202" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="expo" value="&lt;b&gt;Expo-App&lt;/b&gt;&lt;br&gt;apps/mobile · Phase 11&lt;br&gt;spricht nur HTTPS&lt;br&gt;kein Prozess auf diesem Server" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c3338;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="people">
+          <mxGeometry x="14" y="328" width="202" height="84" as="geometry" />
+        </mxCell>
+
+        <mxCell id="edge" value="Rand" style="swimlane;horizontal=1;startSize=28;fillColor=#e7f2ec;strokeColor=#1d6b45;fontColor=#1c2830;fontStyle=1;fontSize=13;rounded=1;arcSize=4;html=1;collapsible=0;swimlaneFillColor=#e7f2ec;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="270" y="108" width="250" height="430" as="geometry" />
+        </mxCell>
+        <mxCell id="https" value="&lt;b&gt;nginx oder Apache&lt;/b&gt;&lt;br&gt;TCP 443, TLS&lt;br&gt;helpdesk.kmbcloud.at&lt;br&gt;/api geht an die interne Adresse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1d6b45;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="edge">
+          <mxGeometry x="14" y="40" width="222" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="acme" value="&lt;b&gt;Port 80&lt;/b&gt;&lt;br&gt;nur /.well-known/acme-challenge/&lt;br&gt;aus dem Internet erreichbar&lt;br&gt;alles andere nach HTTPS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1d6b45;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="edge">
+          <mxGeometry x="14" y="156" width="222" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="static" value="&lt;b&gt;Statische Seiten&lt;/b&gt;&lt;br&gt;apps/web/dist&lt;br&gt;React, Deutsch und Englisch&lt;br&gt;kein Node-Prozess für die Seiten" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1d6b45;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="edge">
+          <mxGeometry x="14" y="272" width="222" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="host" value="Debian-Rechner — eigene Prozesse, Verzeichnisse, Speicher" style="swimlane;horizontal=1;startSize=32;fillColor=#f7f6f3;strokeColor=#1c2830;fontColor=#1c2830;fontStyle=1;fontSize=13;rounded=1;arcSize=3;html=1;collapsible=0;swimlaneFillColor=#f7f6f3;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="536" y="108" width="760" height="960" as="geometry" />
+        </mxCell>
+        <mxCell id="lab-proc" value="PROZESSE" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontFamily=Helvetica;fontSize=10;fontStyle=1;fontColor=#1d6b45;" vertex="1" parent="host">
+          <mxGeometry x="16" y="38" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="&lt;b&gt;kmbhelp-api&lt;/b&gt;&lt;br&gt;systemd · apps/api&lt;br&gt;Fastify, OpenAPI&lt;br&gt;einzige Geschäftslogik&lt;br&gt;Port 3000, interne Adresse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1d6b45;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="16" y="58" width="236" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="worker" value="&lt;b&gt;kmbhelp-worker&lt;/b&gt;&lt;br&gt;systemd · apps/worker&lt;br&gt;Postfach im Takt&lt;br&gt;Entwürfe und Termine&lt;br&gt;Herzschlag für /api/health" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1d6b45;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="262" y="58" width="236" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="mcp" value="&lt;b&gt;MCP&lt;/b&gt;&lt;br&gt;apps/mcp&lt;br&gt;nur die HTTP-API&lt;br&gt;kein SQL, kein systemd&lt;br&gt;Cursor startet den Prozess" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1d6b45;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="508" y="58" width="236" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="certbot" value="&lt;b&gt;certbot.timer&lt;/b&gt;&lt;br&gt;zweimal am Tag&lt;br&gt;HTTP-01, Webroot&lt;br&gt;schreibt /etc/letsencrypt" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1d6b45;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="16" y="190" width="236" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="cron" value="&lt;b&gt;Sicherung&lt;/b&gt;&lt;br&gt;cron, jede Stunde&lt;br&gt;backup-database.mjs&lt;br&gt;pg_dump, sieben Tage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#1d6b45;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="262" y="190" width="236" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="aipkg" value="&lt;b&gt;packages/ai&lt;/b&gt;&lt;br&gt;kein eigener Prozess&lt;br&gt;API und Worker rufen auf&lt;br&gt;Maskierung, JA oder NEIN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbf4;strokeColor=#8a6a32;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="508" y="190" width="236" height="96" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lab-dir" value="VERZEICHNISSE" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontFamily=Helvetica;fontSize=10;fontStyle=1;fontColor=#6b5e4e;" vertex="1" parent="host">
+          <mxGeometry x="16" y="302" width="240" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="opt" value="&lt;b&gt;/opt/kmbhelp&lt;/b&gt;&lt;br&gt;Repository, apps, packages&lt;br&gt;apps/web/dist, .env ohne Geheimnis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbf8f2;strokeColor=#6b5e4e;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="16" y="322" width="236" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="etc" value="&lt;b&gt;/etc/kmbhelp&lt;/b&gt;&lt;br&gt;kmbhelp.env, Modus 0640&lt;br&gt;madc1.crt, TLS-Symlinks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbf8f2;strokeColor=#6b5e4e;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="262" y="322" width="236" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="lets" value="&lt;b&gt;/etc/letsencrypt&lt;/b&gt;&lt;br&gt;Zertifikat und Schlüssel&lt;br&gt;Certbot, nicht im Git" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbf8f2;strokeColor=#6b5e4e;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="508" y="322" width="236" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="varlib" value="&lt;b&gt;/var/lib/kmbhelp&lt;/b&gt;&lt;br&gt;activity.log&lt;br&gt;Home des Benutzers kmbhelp" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbf8f2;strokeColor=#6b5e4e;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="16" y="418" width="236" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="backups" value="&lt;b&gt;/var/backups/kmbhelp&lt;/b&gt;&lt;br&gt;168 Custom-Kopien&lt;br&gt;älter als sieben Tage fällt weg" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbf8f2;strokeColor=#6b5e4e;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="262" y="418" width="236" height="84" as="geometry" />
+        </mxCell>
+        <mxCell id="acmedir" value="&lt;b&gt;/var/www/acme&lt;/b&gt;&lt;br&gt;.well-known/acme-challenge&lt;br&gt;nur die Prüfdatei" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbf8f2;strokeColor=#6b5e4e;strokeWidth=1.25;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="host">
+          <mxGeometry x="508" y="418" width="236" height="84" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lab-db" value="SPEICHER" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontFamily=Helvetica;fontSize=10;fontStyle=1;fontColor=#6b5e4e;" vertex="1" parent="host">
+          <mxGeometry x="16" y="518" width="200" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="pg" value="&lt;b&gt;PostgreSQL 17 · Datenbank kmbhelp&lt;/b&gt;&lt;br&gt;127.0.0.1:5432 · Rolle kmbhelp, Eigentümer, kein Superuser&lt;br&gt;Tickets, Ereignisse, activity_log, access_log für 90 Tage, app_setting&lt;br&gt;packages/db nur aus API und Worker. MCP hat kein SQL.&lt;br&gt;Anhänge bleiben in Microsoft 365, keine Binärspalte." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbf8f2;strokeColor=#6b5e4e;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=12;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;arcSize=8;" vertex="1" parent="host">
+          <mxGeometry x="16" y="538" width="728" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="lab-desk" value="ARBEITSPLATZ, NICHT DIESER SERVER" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontFamily=Helvetica;fontSize=10;fontStyle=1;fontColor=#6b5e4e;" vertex="1" parent="host">
+          <mxGeometry x="16" y="672" width="360" height="16" as="geometry" />
+        </mxCell>
+        <mxCell id="desk" value="&lt;b&gt;%LOCALAPPDATA%\kmbhelp&lt;/b&gt;&lt;br&gt;secrets.json, dev.env, activity.log, stündliche Sicherung&lt;br&gt;NODE_ENV=production liest diesen Ordner nicht.&lt;br&gt;pnpm dev auf dem Arbeitsplatz ist ein anderer Lauf als die Units." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fbf8f2;strokeColor=#6b5e4e;strokeWidth=1.25;dashed=1;dashPattern=6 4;fontColor=#1c2830;fontFamily=Helvetica;fontSize=12;align=left;verticalAlign=top;spacingLeft=12;spacingTop=10;arcSize=8;" vertex="1" parent="host">
+          <mxGeometry x="16" y="692" width="728" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="out" value="Außen" style="swimlane;horizontal=1;startSize=32;fillColor=#e8eef5;strokeColor=#2c4a6e;fontColor=#1c2830;fontStyle=1;fontSize=13;rounded=1;arcSize=3;html=1;collapsible=0;swimlaneFillColor=#e8eef5;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="1312" y="108" width="464" height="960" as="geometry" />
+        </mxCell>
+        <mxCell id="graph" value="Microsoft Graph" style="swimlane;horizontal=1;startSize=26;fillColor=#ffffff;strokeColor=#2c4a6e;fontColor=#1c2830;fontStyle=1;fontSize=12;rounded=1;arcSize=6;html=1;collapsible=0;swimlaneFillColor=#ffffff;fontFamily=Helvetica;" vertex="1" parent="out">
+          <mxGeometry x="16" y="44" width="432" height="188" as="geometry" />
+        </mxCell>
+        <mxCell id="mail" value="&lt;b&gt;Postfach helpdesk@kmbcloud.at&lt;/b&gt;&lt;br&gt;Lesen und Entwürfe. Kein sendMail.&lt;br&gt;Anwendungs-Token aus Tenant, Client, Geheimnis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4f7fb;strokeColor=#2c4a6e;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;arcSize=8;" vertex="1" parent="graph">
+          <mxGeometry x="12" y="34" width="408" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="cal" value="&lt;b&gt;Kalender der Helpdesk-Mitarbeiter&lt;/b&gt;&lt;br&gt;Calendars.ReadWrite · freier Mitarbeiter&lt;br&gt;Betreff „Neues Ticket“, Dauer aus der Konfiguration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f4f7fb;strokeColor=#2c4a6e;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=6;arcSize=8;" vertex="1" parent="graph">
+          <mxGeometry x="12" y="110" width="408" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="ldaps" value="&lt;b&gt;LDAPS · MADC1.kmbcloud.at:636&lt;/b&gt;&lt;br&gt;Gruppe HelpdeskAdmins&lt;br&gt;erste Passwortprüfung, danach Passkey oder TOTP&lt;br&gt;Zertifikat madc1.crt, Dienstkonto kein Domänenadmin" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c4a6e;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="out">
+          <mxGeometry x="16" y="248" width="432" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="ai" value="&lt;b&gt;KI mit eigenem Schlüssel&lt;/b&gt;&lt;br&gt;AI_ENDPOINT https, Region Europe&lt;br&gt;AI_API_KEY und AVV-Verweis&lt;br&gt;AI_PROVIDER ist nur der Anzeigename&lt;br&gt;Mail JA/NEIN, Staff-Suche, Zufriedenheit&lt;br&gt;fehlt ein Feld, bleibt die Mail ungelesen" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbf4;strokeColor=#8a6a32;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="out">
+          <mxGeometry x="16" y="360" width="432" height="132" as="geometry" />
+        </mxCell>
+        <mxCell id="copilot" value="&lt;b&gt;Microsoft 365 Copilot&lt;/b&gt;&lt;br&gt;POST /beta/copilot/conversations&lt;br&gt;Benutzer Helpdesk@kmbcloud.at: 201&lt;br&gt;Anwendungs-Token: 401&lt;br&gt;die Mailprüfung ruft diese Schnittstelle nicht auf" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffbf4;strokeColor=#8a6a32;strokeWidth=1.5;dashed=1;dashPattern=6 4;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="out">
+          <mxGeometry x="16" y="508" width="432" height="112" as="geometry" />
+        </mxCell>
+        <mxCell id="syslog" value="&lt;b&gt;Syslog&lt;/b&gt;&lt;br&gt;UDP 192.168.191.215:514 · RFC 5424&lt;br&gt;local0, Uhr +01:00, ohne Mailtext und ohne Schlüssel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c4a6e;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="out">
+          <mxGeometry x="16" y="636" width="432" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="le" value="&lt;b&gt;Let’s Encrypt&lt;/b&gt;&lt;br&gt;holt die Prüfdatei von außen über Port 80&lt;br&gt;Erneuerung über denselben Weg" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2c4a6e;strokeWidth=1.5;fontColor=#1c2830;fontFamily=Helvetica;fontSize=11;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;arcSize=10;" vertex="1" parent="out">
+          <mxGeometry x="16" y="732" width="432" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e-user" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#1d6b45;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="user" target="https">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-staff" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#1d6b45;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="staff" target="https">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-expo" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#1d6b45;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="expo" target="https">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-cursor" value="startet" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#1d6b45;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="cursor" target="mcp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-api" value="/api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#1d6b45;strokeWidth=1.5;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="https" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-static" value="Dateien" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#6b5e4e;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="static" target="opt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-mcp" value="nur HTTP" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#1d6b45;strokeWidth=1.5;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="mcp" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-api-pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;strokeColor=#6b5e4e;strokeWidth=1.25;" edge="1" parent="1" source="api" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-worker-pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;startArrow=blockThin;startFill=1;strokeColor=#6b5e4e;strokeWidth=1.25;" edge="1" parent="1" source="worker" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-worker-mail" value="lesen, Entwürfe" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#2c4a6e;strokeWidth=1.5;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="worker" target="mail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-worker-cal" value="Termine" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#2c4a6e;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="worker" target="cal">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-api-mail" value="Entwürfe" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#2c4a6e;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="api" target="mail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-ldaps" value="Anmeldung" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#2c4a6e;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="api" target="ldaps">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-ai" value="vier Felder" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#8a6a32;strokeWidth=1.5;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="aipkg" target="ai">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-copilot" value="nicht dieser Weg" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=none;dashed=1;dashPattern=6 4;strokeColor=#8a6a32;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="ai" target="copilot">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-api-log" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#2c4a6e;strokeWidth=1;dashed=1;" edge="1" parent="1" source="api" target="syslog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-worker-log" value="Syslog" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#2c4a6e;strokeWidth=1;dashed=1;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="worker" target="syslog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-dump" value="pg_dump" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#6b5e4e;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="cron" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-bak" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#6b5e4e;strokeWidth=1.25;" edge="1" parent="1" source="cron" target="backups">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-acme-dir" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#6b5e4e;strokeWidth=1.25;" edge="1" parent="1" source="certbot" target="acmedir">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-le-files" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#2c4a6e;strokeWidth=1.25;" edge="1" parent="1" source="certbot" target="lets">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-le" value="Port 80" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#2c4a6e;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="le" target="acme">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-act" value="Protokoll" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#6b5e4e;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="api" target="varlib">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e-env" value="Geheimnisse" style="edgeStyle=orthogonalEdgeStyle;rounded=1;jumpStyle=arc;jumpSize=6;html=1;endArrow=blockThin;endFill=1;strokeColor=#6b5e4e;strokeWidth=1.25;fontSize=10;fontColor=#1c2830;fontFamily=Helvetica;labelBackgroundColor=#f3f0e8;" edge="1" parent="1" source="etc" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
