@@ -13,6 +13,13 @@ export function readSessionCookies(headers: CookieSource): SessionCookies | null
   return { session, csrf };
 }
 
+export function restoreSession(session: string | null, csrf: string | null): SessionCookies | null {
+  const storedSession = session?.trim() ?? '';
+  const storedCsrf = csrf?.trim() ?? '';
+  if (storedSession === '' || storedCsrf === '') return null;
+  return { session: storedSession, csrf: storedCsrf };
+}
+
 export function cookieHeader(cookies: SessionCookies): string {
   return `kmbhelp_session=${cookies.session}; kmbhelp_csrf=${cookies.csrf}`;
 }

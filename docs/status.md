@@ -1,6 +1,6 @@
 # Status
 
-Phase 10 ist auf `phase/10-installation` committet und auf GitHub. Die Linux-Anleitung reicht. Phase 11 ist die App auf `phase/11-app`. Zu prüfen sind `apps/mobile` und `docs/mobile-stores.md`. Die Apple- und Google-Konten der GmbH fehlen noch.
+Phase 11 ist abgenommen. Die App auf `phase/11-app` reicht ohne Store-Konten. Die Apple- und Google-Konten der GmbH kommen später. Phase 12 bleibt offen.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -15,7 +15,7 @@ Phase 10 ist auf `phase/10-installation` committet und auf GitHub. Die Linux-Anl
 | 8 | MCP | erledigt |
 | 9 | Staff-Oberflächen, Playwright | erledigt |
 | 10 | Installation Linux, nginx, Apache | erledigt |
-| 11 | Expo, Store-Dokumentation | zur Kontrolle |
+| 11 | Expo, Store-Dokumentation | erledigt |
 | 12 | Härtung, Betrieb, Notfallblatt | offen |
 
 ## Phase 0 — Abnahme
@@ -180,14 +180,15 @@ Verbindlich ist `docs/installation-linux.md`. Die Beispiele liegen unter `infra/
 
 Start: die Schritte in `docs/installation-linux.md` auf dem Linux-Rechner. Auf diesem Arbeitsplatz bleibt `pnpm dev`.
 
-## Phase 11 — zur Kontrolle
+## Phase 11 — Abnahme
 
 Die App liegt in `apps/mobile`. Verbindlich für die Stores ist `docs/mobile-stores.md`. Der erste Satz dort sagt, dass Zertifikate und Store-Richtlinien nachgezogen werden.
 
-- [x] Öffentlich: Ticket mit Quelle `app`, Liste ohne Beschreibung, Anleitungen, Suche
+- [x] Öffentlich: Ticket mit Quelle `app`, Kategorie, Auswirkung und Datum, Liste ohne Beschreibung, Anleitungen mit Text, Suche
 - [x] IT-Liste und Dashboard erst nach Server-Sitzung und Gerätefreigabe. Biometrie oder Gerätecode. Das Passwort wird nicht gespeichert
 - [x] Dieselbe HTTP-API. Keine zweite Geschäftslogik
 - [x] `eas.json` ohne Token, ohne Team-ID und ohne Schlüssel
+- [x] Start über `index.ts` im App-Ordner. `expo/AppEntry.js` findet `App.tsx` unter pnpm nicht
 - [x] `pnpm test` und `pnpm typecheck`
 
 Start: `pnpm --filter @kmbhelp/mobile start`. Produktion spricht `https://helpdesk.kmbcloud.at`.

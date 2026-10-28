@@ -1,12 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
-import { messages, type DashboardRange, type Lang } from '@kmbhelp/shared';
-import { createHelpdeskClient } from './src/client.js';
+import {
+  impacts,
+  messages,
+  priorities,
+  type CategoryOption,
+  type DashboardRange,
+  type Impact,
+  type Lang,
+  type Priority,
+} from '@kmbhelp/shared';
+import { createHelpdeskClient, HelpdeskRequestError } from './src/client.js';
 import { canShowStaffDetail, presentStaffTicket, type StaffRow } from './src/gate.js';
 import { apiOrigin } from './src/origin.js';
-import type { SessionCookies } from './src/session.js';
+import { presentDashboard, presentPublicRow, presentSearchHit } from './src/present.js';
+import { restoreSession, type SessionCookies } from './src/session.js';
 
 type Screen = 'file' | 'list' | 'faq' | 'search' | 'staff' | 'dashboard' | 'signIn';
 
@@ -19,11 +29,24 @@ export default function App() {
   const [deviceUnlocked, setDeviceUnlocked] = useState(false);
   const [note, setNote] = useState('');
   const text = messages[lang];
-  const client = createHelpdeskClient({
-    origin: apiOrigin(process.env),
-    fetch: globalThis.fetch.bind(globalThis),
-    session,
-  });
+  useEffect(() => {
+    void (async () => {
+      const restored = restoreSession(
+        await SecureStore.getItemAsync('kmbhelp_session'),
+        await SecureStore.getItemAsync('kmbhelp_csrf'),
+      );
+      if (restored) setSession(restored);
+    })();
+  }, []);
+  const client = useMemo(
+    () =>
+      createHelpdeskClient({
+        origin: apiOrigin(process.env),
+        fetch: globalThis.fetch.bind(globalThis),
+        session,
+      }),
+    [session],
+  );
 
   async function unlock(): Promise<boolean> {
     if (deviceUnlocked) return true;
@@ -109,26 +132,82 @@ type Client = ReturnType<typeof createHelpdeskClient>;
 
 function FileScreen(props: { lang: Lang; client: Client }) {
   const text = messages[props.lang];
-  const [categoryCode, setCategoryCode] = useState('printer');
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [categoryCode, setCategoryCode] = useState('');
+  const [impact, setImpact] = useState<Impact>('workplace');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [dueOn, setDueOn] = useState('');
+  const [requesterName, setRequesterName] = useState('');
+  const [clientPriority, setClientPriority] = useState<Priority | ''>('');
   const [number, setNumber] = useState<number | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    void props.client.categories().then((list) => {
+      setCategories(list.categories);
+      setCategoryCode((current) => current || list.categories[0]?.code || '');
+    });
+  }, [props.client]);
+  const impactLabel: Record<Impact, string> = {
+    filing: text.impactFiling,
+    payroll: text.impactPayroll,
+    workplace: text.impactWorkplace,
+    cosmetic: text.impactCosmetic,
+  };
   return (
     <View>
       <Text style={styles.h}>{text.fileTicket}</Text>
-      <Field label={text.category} value={categoryCode} onChange={setCategoryCode} />
+      <Text style={styles.label}>{text.category}</Text>
+      {categories.map((category) => (
+        <Pressable key={category.code} onPress={() => setCategoryCode(category.code)}>
+          <Text style={category.code === categoryCode ? styles.chosen : styles.row}>
+            {props.lang === 'de' ? category.labelDe : category.labelEn}
+          </Text>
+        </Pressable>
+      ))}
+      <Text style={styles.label}>{text.impact}</Text>
+      {impacts.map((item) => (
+        <Pressable key={item} onPress={() => setImpact(item)}>
+          <Text style={item === impact ? styles.chosen : styles.row}>{impactLabel[item]}</Text>
+        </Pressable>
+      ))}
       <Field label={text.subject} value={subject} onChange={setSubject} />
       <Field label={text.description} value={body} onChange={setBody} />
+      <Field label={`${text.dueOn} dd.MM.yyyy`} value={dueOn} onChange={setDueOn} />
+      <Field label={text.name} value={requesterName} onChange={setRequesterName} />
+      <Text style={styles.label}>{text.reportedPriority}</Text>
+      <Text style={styles.note}>{text.priorityHint}</Text>
+      <Pressable onPress={() => setClientPriority('')}>
+        <Text style={clientPriority === '' ? styles.chosen : styles.row}>{text.priorityUnset}</Text>
+      </Pressable>
+      {priorities.map((item) => (
+        <Pressable key={item} onPress={() => setClientPriority(item)}>
+          <Text style={item === clientPriority ? styles.chosen : styles.row}>
+            {item === 'p1' ? text.priorityP1 : item === 'p2' ? text.priorityP2 : text.priorityP3}
+          </Text>
+        </Pressable>
+      ))}
       <Pressable
         style={styles.button}
         onPress={() => {
+          setError('');
           void props.client
-            .createTicket({ categoryCode, impact: 'workplace', subject, body })
-            .then((created) => setNumber(created.number));
+            .createTicket({
+              categoryCode,
+              impact,
+              subject,
+              body,
+              dueOn,
+              requesterName,
+              clientPriority: clientPriority || undefined,
+            })
+            .then((created) => setNumber(created.number))
+            .catch((cause: unknown) => setError(failureText(cause, props.lang)));
         }}
       >
         <Text style={styles.buttonText}>{text.submit}</Text>
       </Pressable>
+      {error ? <Text style={styles.note}>{error}</Text> : null}
       {number ? (
         <Text style={styles.note}>
           {text.ticketCreated} {number}
@@ -140,19 +219,24 @@ function FileScreen(props: { lang: Lang; client: Client }) {
 
 function ListScreen(props: { lang: Lang; client: Client }) {
   const text = messages[props.lang];
-  const [rows, setRows] = useState<Array<{ number: number; subject: string }>>([]);
+  const [rows, setRows] = useState<Array<{ number: number; subject: string; meta: string }>>([]);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    void props.client
+      .publicTickets()
+      .then((list) => setRows(list.tickets.map((ticket) => presentPublicRow(ticket, props.lang))))
+      .catch((cause: unknown) => setError(failureText(cause, props.lang)));
+  }, [props.client, props.lang]);
   return (
     <View>
       <Text style={styles.h}>{text.openTickets}</Text>
-      <Pressable
-        style={styles.button}
-        onPress={() => void props.client.publicTickets().then((list) => setRows(list.tickets))}
-      >
-        <Text style={styles.buttonText}>{text.openTickets}</Text>
-      </Pressable>
+      {error ? <Text style={styles.note}>{error}</Text> : null}
+      {rows.length === 0 && !error ? <Text style={styles.note}>{text.noOpenTickets}</Text> : null}
       {rows.map((row) => (
         <Text key={row.number} style={styles.row}>
           {row.number} {row.subject}
+          {'\n'}
+          {row.meta}
         </Text>
       ))}
     </View>
@@ -161,31 +245,44 @@ function ListScreen(props: { lang: Lang; client: Client }) {
 
 function FaqScreen(props: { lang: Lang; client: Client }) {
   const text = messages[props.lang];
-  const [titles, setTitles] = useState<string[]>([]);
+  const [articles, setArticles] = useState<Array<{ slug: string; title: string }>>([]);
+  const [open, setOpen] = useState<{ title: string; body: string } | null>(null);
+  useEffect(() => {
+    void props.client.faq().then((list) =>
+      setArticles(
+        list.articles.map((article) => ({
+          slug: article.slug,
+          title: props.lang === 'de' ? article.titleDe : article.titleEn,
+        })),
+      ),
+    );
+  }, [props.client, props.lang]);
   return (
     <View>
       <Text style={styles.h}>{text.guides}</Text>
-      <Pressable
-        style={styles.button}
-        onPress={() =>
-          void props.client
-            .faq()
-            .then((list) =>
-              setTitles(
-                list.articles.map((article) =>
-                  props.lang === 'de' ? article.titleDe : article.titleEn,
-                ),
-              ),
+      {articles.length === 0 ? <Text style={styles.note}>{text.noGuides}</Text> : null}
+      {articles.map((article) => (
+        <Pressable
+          key={article.slug}
+          onPress={() =>
+            void props.client.faqArticle(article.slug).then((loaded) =>
+              setOpen({
+                title: props.lang === 'de' ? loaded.titleDe : loaded.titleEn,
+                body: props.lang === 'de' ? loaded.bodyDe : loaded.bodyEn,
+              }),
             )
-        }
-      >
-        <Text style={styles.buttonText}>{text.guides}</Text>
-      </Pressable>
-      {titles.map((title) => (
-        <Text key={title} style={styles.row}>
-          {title}
-        </Text>
+          }
+        >
+          <Text style={styles.row}>{article.title}</Text>
+        </Pressable>
       ))}
+      {open ? (
+        <Text style={styles.note}>
+          {open.title}
+          {'\n'}
+          {open.body}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -193,7 +290,7 @@ function FaqScreen(props: { lang: Lang; client: Client }) {
 function SearchScreen(props: { lang: Lang; client: Client }) {
   const text = messages[props.lang];
   const [q, setQ] = useState('');
-  const [hits, setHits] = useState<string[]>([]);
+  const [hits, setHits] = useState<Array<{ title: string; sentence: string }>>([]);
   return (
     <View>
       <Text style={styles.h}>{text.searchTitle}</Text>
@@ -203,18 +300,17 @@ function SearchScreen(props: { lang: Lang; client: Client }) {
         onPress={() =>
           void props.client
             .search(q)
-            .then((result) =>
-              setHits(
-                result.hits.map((hit) => (props.lang === 'de' ? hit.sentenceDe : hit.sentenceEn)),
-              ),
-            )
+            .then((result) => setHits(result.hits.map((hit) => presentSearchHit(hit, props.lang))))
         }
       >
         <Text style={styles.buttonText}>{text.searchSubmit}</Text>
       </Pressable>
+      {hits.length === 0 ? <Text style={styles.note}>{text.noHits}</Text> : null}
       {hits.map((hit) => (
-        <Text key={hit} style={styles.row}>
-          {hit}
+        <Text key={`${hit.title}-${hit.sentence}`} style={styles.row}>
+          {hit.title}
+          {'\n'}
+          {hit.sentence}
         </Text>
       ))}
     </View>
@@ -230,6 +326,7 @@ function SignInScreen(props: {
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [secret, setSecret] = useState('');
+  const [error, setError] = useState('');
   return (
     <View>
       <Text style={styles.h}>{text.signIn}</Text>
@@ -244,39 +341,46 @@ function SignInScreen(props: {
       <Pressable
         style={styles.button}
         onPress={() => {
+          setError('');
           void props.client
             .login({ email, password: secret, code: code || undefined })
-            .then((next) => props.onSession(next.cookies));
+            .then((next) => props.onSession(next.cookies))
+            .catch((cause: unknown) => setError(failureText(cause, props.lang)));
         }}
       >
         <Text style={styles.buttonText}>{text.signInSubmit}</Text>
       </Pressable>
+      {error ? <Text style={styles.note}>{error}</Text> : null}
     </View>
   );
 }
 
 function StaffScreen(props: { lang: Lang; client: Client }) {
-  const [rows, setRows] = useState<StaffRow[]>([]);
+  const text = messages[props.lang];
+  const [open, setOpen] = useState<StaffRow[]>([]);
+  const [recent, setRecent] = useState<StaffRow[]>([]);
+  useEffect(() => {
+    void props.client.staffTickets().then((list) => {
+      setOpen(list.open.map((ticket) => presentStaffTicket(ticket, true)));
+      setRecent(list.recent.map((ticket) => presentStaffTicket(ticket, true)));
+    });
+  }, [props.client]);
   return (
     <View>
-      <Text style={styles.h}>{messages[props.lang].openTickets}</Text>
-      <Pressable
-        style={styles.button}
-        onPress={() =>
-          void props.client
-            .staffTickets()
-            .then((list) =>
-              setRows(
-                [...list.open, ...list.recent].map((ticket) => presentStaffTicket(ticket, true)),
-              ),
-            )
-        }
-      >
-        <Text style={styles.buttonText}>{messages[props.lang].openTickets}</Text>
-      </Pressable>
-      {rows.map((row) => (
-        <Text key={row.number} style={styles.row}>
+      <Text style={styles.h}>{text.openTickets}</Text>
+      {open.map((row) => (
+        <Text key={`open-${row.number}`} style={styles.row}>
           {row.number} {row.subject}
+          {row.body ? `\n${row.body}` : ''}
+        </Text>
+      ))}
+      <Text style={styles.h}>{text.done}</Text>
+      {recent.map((row) => (
+        <Text key={`recent-${row.number}`} style={styles.row}>
+          {row.number} {row.subject}
+          {row.durationSeconds !== null
+            ? `\n${Math.floor(row.durationSeconds / 60)} ${text.minutes}`
+            : ''}
           {row.body ? `\n${row.body}` : ''}
         </Text>
       ))}
@@ -287,7 +391,7 @@ function StaffScreen(props: { lang: Lang; client: Client }) {
 function DashboardScreen(props: { lang: Lang; client: Client }) {
   const text = messages[props.lang];
   const [range, setRange] = useState<DashboardRange>('month');
-  const [line, setLine] = useState('');
+  const [lines, setLines] = useState<string[]>([]);
   const label: Record<DashboardRange, string> = {
     day: text.dashboardDay,
     week: text.dashboardWeek,
@@ -306,18 +410,25 @@ function DashboardScreen(props: { lang: Lang; client: Client }) {
       <Pressable
         style={styles.button}
         onPress={() =>
-          void props.client.dashboard(range).then((report) => {
-            setLine(
-              `${text.dashboardIncoming} ${report.incoming}. ${text.dashboardOpenP1} ${report.openP1}.`,
-            );
-          })
+          void props.client
+            .dashboard(range)
+            .then((report) => setLines(presentDashboard(report, props.lang)))
         }
       >
         <Text style={styles.buttonText}>{text.dashboardTitle}</Text>
       </Pressable>
-      {line ? <Text style={styles.row}>{line}</Text> : null}
+      {lines.map((line) => (
+        <Text key={line} style={styles.row}>
+          {line}
+        </Text>
+      ))}
     </View>
   );
+}
+
+function failureText(error: unknown, lang: Lang): string {
+  if (error instanceof HelpdeskRequestError && error.text) return error.text[lang];
+  return messages[lang].loadFailed;
 }
 
 function Field(props: {
@@ -368,6 +479,7 @@ const styles = StyleSheet.create({
   },
   button: { backgroundColor: '#1d6b45', padding: 12, marginTop: 16, alignSelf: 'flex-start' },
   buttonText: { color: '#ffffff', fontSize: 15 },
+  chosen: { color: '#1d6b45', fontSize: 15, marginTop: 8, fontWeight: '600' },
   row: { color: '#1c2830', fontSize: 15, marginTop: 10 },
   note: { color: '#1c2830', fontSize: 15, marginBottom: 8 },
 });

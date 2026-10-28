@@ -1,4 +1,5 @@
 import {
+  readPublicError,
   categoryListSchema,
   createTicketSchema,
   createdTicketSchema,
@@ -31,6 +32,28 @@ export type HelpdeskInit = {
 
 export type HelpdeskHttp = (input: string, init?: HelpdeskInit) => Promise<HttpResponse>;
 
+export class HelpdeskRequestError extends Error {
+  readonly status: number;
+  readonly text: { de: string; en: string } | null;
+
+  constructor(status: number, text: { de: string; en: string } | null) {
+    super(`http ${status}`);
+    this.status = status;
+    this.text = text;
+  }
+}
+
+async function readAnswer<T>(response: HttpResponse, parse: (value: unknown) => T): Promise<T> {
+  let body: unknown = null;
+  try {
+    body = await response.json();
+  } catch {
+    body = null;
+  }
+  if (!response.ok) throw new HelpdeskRequestError(response.status, readPublicError(body));
+  return parse(body);
+}
+
 export function createHelpdeskClient(options: {
   origin: string;
   fetch: HelpdeskHttp;
@@ -47,37 +70,35 @@ export function createHelpdeskClient(options: {
 
   return {
     async publicTickets() {
-      const response = await send('/api/v1/tickets/public');
-      return publicTicketListSchema.parse(await response.json());
+      return readAnswer(await send('/api/v1/tickets/public'), publicTicketListSchema.parse);
     },
     async createTicket(input: Omit<CreateTicketInput, 'source'> & { source?: 'web' | 'app' }) {
       const body = createTicketSchema.parse({ ...input, source: 'app' });
-      const response = await send('/api/v1/tickets', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) throw new Error(`ticket ${response.status}`);
-      return createdTicketSchema.parse(await response.json());
+      return readAnswer(
+        await send('/api/v1/tickets', { method: 'POST', body: JSON.stringify(body) }),
+        createdTicketSchema.parse,
+      );
     },
     async categories() {
-      const response = await send('/api/v1/categories');
-      return categoryListSchema.parse(await response.json());
+      return readAnswer(await send('/api/v1/categories'), categoryListSchema.parse);
     },
     async faq() {
-      const response = await send('/api/v1/faq');
-      return faqListSchema.parse(await response.json());
+      return readAnswer(await send('/api/v1/faq'), faqListSchema.parse);
     },
     async faqArticle(slug: string) {
-      const response = await send(`/api/v1/faq/${encodeURIComponent(slug)}`);
-      return faqArticleSchema.parse(await response.json());
+      return readAnswer(
+        await send(`/api/v1/faq/${encodeURIComponent(slug)}`),
+        faqArticleSchema.parse,
+      );
     },
     async search(q: string) {
-      const response = await send(`/api/v1/search?q=${encodeURIComponent(q)}`);
-      return searchResultSchema.parse(await response.json());
+      return readAnswer(
+        await send(`/api/v1/search?q=${encodeURIComponent(q)}`),
+        searchResultSchema.parse,
+      );
     },
     async session() {
-      const response = await send('/api/v1/auth/session');
-      return sessionViewSchema.parse(await response.json());
+      return readAnswer(await send('/api/v1/auth/session'), sessionViewSchema.parse);
     },
     async login(input: { email: string; password?: string; code?: string }) {
       const body = loginRequestSchema.parse(input);
@@ -86,17 +107,16 @@ export function createHelpdeskClient(options: {
         body: JSON.stringify(body),
       });
       const cookies = readSessionCookies(response.headers);
-      return { result: loginResultSchema.parse(await response.json()), cookies };
+      return { result: await readAnswer(response, loginResultSchema.parse), cookies };
     },
     async staffTickets() {
-      const response = await send('/api/v1/staff/tickets');
-      if (!response.ok) throw new Error(`staff ${response.status}`);
-      return staffTicketListSchema.parse(await response.json());
+      return readAnswer(await send('/api/v1/staff/tickets'), staffTicketListSchema.parse);
     },
     async dashboard(range: DashboardRange) {
-      const response = await send(`/api/v1/staff/dashboard?range=${range}`);
-      if (!response.ok) throw new Error(`dashboard ${response.status}`);
-      return dashboardSchema.parse(await response.json());
+      return readAnswer(
+        await send(`/api/v1/staff/dashboard?range=${range}`),
+        dashboardSchema.parse,
+      );
     },
   };
 }

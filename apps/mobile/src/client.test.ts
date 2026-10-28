@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { StaffTicket } from '@kmbhelp/shared';
-import { createHelpdeskClient } from './client.js';
+import { createHelpdeskClient, HelpdeskRequestError } from './client.js';
 import { canShowStaffDetail, presentStaffTicket } from './gate.js';
 import { apiOrigin } from './origin.js';
-import { readSessionCookies } from './session.js';
+import { presentPublicRow } from './present.js';
+import { readSessionCookies, restoreSession } from './session.js';
 import type { HelpdeskHttp } from './client.js';
 
 const ticket: StaffTicket = {
@@ -77,6 +78,49 @@ describe('mobile client', () => {
     expect(created.number).toBe(4);
     expect(JSON.parse(calls[0]?.body ?? '{}')).toMatchObject({ source: 'app' });
     await expect(client.publicTickets()).rejects.toThrow();
+    const failed = createHelpdeskClient({
+      origin: 'https://helpdesk.kmbcloud.at',
+      fetch: async () => ({
+        ok: false,
+        status: 422,
+        headers: { get: () => null },
+        json: async () => ({ message: { de: 'Das Datum fehlt.', en: 'The date is missing.' } }),
+      }),
+    });
+    await expect(
+      failed.createTicket({
+        categoryCode: 'printer',
+        impact: 'workplace',
+        subject: 'Papierstau',
+        body: 'Fach 2',
+      }),
+    ).rejects.toBeInstanceOf(HelpdeskRequestError);
+  });
+
+  it('shows the public subject and never a description field', () => {
+    const row = presentPublicRow(
+      {
+        number: 4,
+        groupCode: 'workplace',
+        groupLabelDe: 'Arbeitsplatz',
+        groupLabelEn: 'Workplace',
+        categoryCode: 'printer',
+        categoryLabelDe: 'Drucker',
+        categoryLabelEn: 'Printer',
+        subject: 'Sichtbarer Betreff',
+        status: 'open',
+        priority: 'p3',
+        ageSeconds: 120,
+        dueOn: '2026-10-26',
+        staffMark: null,
+      },
+      'de',
+    );
+    expect(row.subject).toBe('Sichtbarer Betreff');
+    expect(row.meta).toContain('26.10.2026');
+    expect(Object.hasOwn(row, 'body')).toBe(false);
+    expect(restoreSession('abc', 'def')).toEqual({ session: 'abc', csrf: 'def' });
+    expect(restoreSession('abc', ' ')).toBeNull();
   });
 
   it('hides the staff description until the server session and the device are both open', () => {
@@ -101,6 +145,13 @@ describe('mobile client', () => {
     expect(app).toContain('presentStaffTicket');
     expect(app).toContain('authenticateAsync');
     expect(app).not.toContain('kmbhelp_password');
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      main: string;
+    };
+    expect(pkg.main).toBe('index.ts');
+    const entry = readFileSync(new URL('../index.ts', import.meta.url), 'utf8');
+    expect(entry).toContain("from './App'");
+    expect(entry).not.toContain('../../App');
   });
 });
 
