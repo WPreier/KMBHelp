@@ -14,6 +14,7 @@ export {
   faqArticle,
   knowledgeArticle,
   license,
+  mailLesson,
   portal,
   procurement,
   procurementPolicy,

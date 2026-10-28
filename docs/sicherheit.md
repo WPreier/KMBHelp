@@ -25,7 +25,7 @@ Verbindlich für die Umsetzung:
 
 Anonim anlegen bleibt möglich. Die IP wird gespeichert. Eine E-Mail für einen Geheimlink wird nicht abgefragt. Den Geheimlink gibt es nicht. Die Nummer steht in der öffentlichen Liste. Beschreibung, Absender und Kommentare bleiben dort unsichtbar. Datumseingaben haben die Form `dd.MM.yyyy`. Die Prioritäten heißen in der Oberfläche „Sehr wichtig“, „bitte heute noch“ und „bei Gelegenheit“.
 
-Die öffentliche Arbeitsliste kennt die Status `open`, `inactive`, `expired` und `closed`. Weitere Status bleiben für spätere Prozesse. Ein offenes Ticket mit Fälligkeit vor heute wird `expired`. Die Checkbox setzt `open` auf `inactive`. Ist es `inactive`, öffnet sie es wieder und speichert, dass alle zu informieren sind. Ist Graph konfiguriert, geht die Mail sofort an alle aktiven Mitarbeiter. Sonst sendet der Worker sie, sobald die Werte gesetzt sind. `expired` und `closed` schaltet die Checkbox nicht um. Der Knopf Erledigt setzt `closed`. Ein geschlossenes Ticket kann nicht wieder geöffnet werden. Die Priorität in der Liste ist eine spätere menschliche Änderung und wird als Ereignis festgehalten.
+Die öffentliche Arbeitsliste kennt die Status `open`, `inactive`, `expired` und `closed`. Weitere Status bleiben für spätere Prozesse. Ein offenes Ticket mit Fälligkeit vor heute wird `expired`. Die Checkbox setzt `open` auf `inactive`. Ist es `inactive`, öffnet sie es wieder und speichert, dass alle zu informieren sind. Ist Graph konfiguriert, legt der Worker die Mail an alle aktiven Mitarbeiter als Entwurf im Ordner Entwürfe ab. Sonst bleibt das Ereignis stehen, bis die Werte gesetzt sind. Es wird nichts verschickt. `expired` und `closed` schaltet die Checkbox nicht um. Der Knopf Erledigt setzt `closed`. Ein geschlossenes Ticket kann nicht wieder geöffnet werden. Die Priorität in der Liste ist eine spätere menschliche Änderung und wird als Ereignis festgehalten.
 
 ## IP-Adressen
 
@@ -52,7 +52,7 @@ Die Verwaltung liest `HelpdeskAdmins` und gleicht sie über die E-Mail-Adresse m
 ## KI
 
 - Eine Mail an `helpdesk@kmbcloud.at` wird nur dann ein Ticket, wenn die Prüfung `is_support` mit `true` meldet. Vor dem Modell gelten drei Ausschlüsse: die Absenderdomäne steht nicht in `INTERNAL_MAIL_DOMAINS`, der lokale Teil ist `helpdesk` oder die Adresse ist `GRAPH_MAILBOX`, oder die Adresse gehört einem aktiven Mitarbeiter. Diese Mails werden gelesen markiert und erzeugen kein Ticket. Das Modell wird dafür nicht gefragt. Ist der Anbieter nicht konfiguriert, antwortet er nicht oder ist die Antwort nicht als JA oder NEIN lesbar, bleibt eine nicht ausgeschlossene Mail ungelesen, außer die Antwort ist unlesbar: dann wird sie gelesen markiert, damit sie nicht in einer Schleife hängt. Es entsteht kein Ticket, keine Antwort und kein Termin.
-- Der Auftrag steht in `AI_MAIL_PROMPT`. Leer verwendet den eingebauten Text: JA für ein Anliegen, NEIN für Newsletter, Werbung, automatische Nachricht oder Spam, dazu ein Satz Begründung. `AI_PROVIDER` ist nur der Name, derzeit `grok`. Gemini, Deepseek oder ein anderer Name gehen an dieselbe Adresse `AI_ENDPOINT`.
+- Der Auftrag steht in `AI_MAIL_PROMPT`. Leer verwendet den eingebauten Text: JA für ein Anliegen, NEIN für Newsletter, Werbung, automatische Nachricht oder Spam, dazu ein Satz Begründung. `AI_PROVIDER` ist nur der Anzeigename, derzeit `grok`. Ein anderer Name schaltet die Schnittstelle nicht um. Microsoft 365 Copilot ist damit nicht ausgewählt. Der Prüfstand vom 28.10.2026 steht in `docs/schnittstellen.md`.
 - Jeder Aufruf nach außen, also Modell und Microsoft Graph, schreibt eine Syslog-Zeile ohne Mailtext und ohne Schlüssel. Jeder Seiten- und Mailzugriff schreibt eine Zeile in `activity_log` und, außerhalb des Projektordners, nach `%LOCALAPPDATA%\kmbhelp\activity.log`. Darin stehen Zeitpunkt, Akteur, Art, Ziel, ein kurzer Entscheid und die IP. Kein Mailtext. `/verwaltung/protokoll` zeigt das einem angemeldeten Mitarbeiter oder localhost und kann nach Datum und Suchtext filtern und als Text, CSV oder PDF ausgeben.
 - Vor dem Modell: SVNR, IBAN, Kreditkartenmuster, offensichtliche Geburtsdaten maskieren.
 - Vertrag: Auftragsverarbeitung, keine Verwendung zu Trainingszwecken, Verarbeitungsort EU, soweit der gewählte Anbieter das hergibt. Vor der ersten echten Ticketmail den Anbieter festlegen. Nicht still auf einen Consumer-Endpunkt gehen.
@@ -70,7 +70,7 @@ Die Verwaltung liest `HelpdeskAdmins` und gleicht sie über die E-Mail-Adresse m
 7. Sicherheitsvorfall: Feld `detected_at`, abgeleitete Frist `detected_at + 72h`, Status offen bis Geschäftsführung und Datenschutz als informiert markiert sind. Die App ersetzt nicht die Meldung.
 8. Anhänge: Typallowlist, Größenlimit, kein Ausführen. Hinweis in der Oberfläche: keine Mandantenbelege in den Helpdesk, dafür den freigegebenen Mandantenkanal.
 9. Rate-Limit auf anonyme POST-Endpunkte und auf die KI-Suche.
-10. Audit-Ereignisse sind append-only. Kein Update, kein Delete aus der Anwendung heraus.
+10. Audit-Ereignisse sind append-only. Kein Update, kein Delete aus der Anwendung heraus. Die einzige Ausnahme ist eine Fehlinterpretation: genau dieses Ticket aus einer Mail wird gelöscht, der Grund bleibt in `mail_lesson`, und künftig erzeugt diese Mail kein Ticket. Alle anderen Ereignisse bleiben append-only.
 
 ## Nachweise, die ein Ticket erzeugen können muss
 

@@ -8,12 +8,23 @@ export type ModelResult = { decision: ModelDecision; model: string };
 
 export type MailReview = { answer: string; model: string };
 
+export type Satisfaction = 'satisfied' | 'neutral' | 'dissatisfied';
+
+export function parseSatisfaction(answer: string): Satisfaction | null {
+  const text = answer.toLowerCase();
+  if (text.includes('unzufrieden') || text.includes('dissatisfied')) return 'dissatisfied';
+  if (text.includes('neutral')) return 'neutral';
+  if (text.includes('zufrieden') || text.includes('satisfied')) return 'satisfied';
+  return null;
+}
+
 export type ModelProvider = {
   readonly configured: boolean;
   readonly name: string;
   classify(text: string): Promise<ModelResult | null>;
   explain(query: string, hits: readonly ExplainHit[]): Promise<{ de: string; en: string } | null>;
   review(prompt: string, text: string): Promise<MailReview | null>;
+  satisfaction(text: string): Promise<Satisfaction | null>;
 };
 
 export const unconfiguredModel: ModelProvider = {
@@ -26,6 +37,9 @@ export const unconfiguredModel: ModelProvider = {
     return null;
   },
   async review() {
+    return null;
+  },
+  async satisfaction() {
     return null;
   },
 };
@@ -105,6 +119,14 @@ export function httpModelProvider(options: {
       if (!de || !en) return null;
       return { de, en };
     },
+    async satisfaction(text) {
+      const body = await post(fetchImpl, options, {
+        task: 'satisfaction',
+        text: maskPersonalData(text),
+      });
+      const answer = typeof body?.answer === 'string' ? body.answer : '';
+      return parseSatisfaction(answer);
+    },
     async review(prompt, text) {
       const body = await post(fetchImpl, options, {
         task: 'review_mail',
@@ -124,6 +146,7 @@ export function scriptedModel(input: {
   decision?: ModelDecision | null;
   sentence?: { de: string; en: string } | null;
   answer?: string | null;
+  satisfaction?: Satisfaction | null;
   onClassify?: (text: string) => void;
   onExplain?: (query: string) => void;
   onReview?: (text: string) => void;
@@ -143,6 +166,9 @@ export function scriptedModel(input: {
       input.onReview?.(text);
       if (!input.answer) return null;
       return { answer: input.answer, model: 'scripted' };
+    },
+    async satisfaction() {
+      return input.satisfaction ?? null;
     },
   };
 }

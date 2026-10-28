@@ -99,12 +99,35 @@ function memoryStore(
     activeStaffEmails: async () => people.map((person) => person.email),
     pendingReopens: async () => [],
     heartbeat: async () => undefined,
+    lesson: async () => null,
+    rememberLesson: async () => undefined,
+    recentLessons: async () => [],
+    ticketByNumber: async (number) => {
+      const row = tickets.find((ticket) => ticket.number === number);
+      if (!row) return null;
+      return {
+        id: row.id,
+        number: row.number,
+        status: closed.includes(row.id) ? 'closed' : 'open',
+        requesterEmail: row.requesterEmail,
+      };
+    },
+    setSatisfaction: async (ticketId, satisfaction, reply) => {
+      events.push({
+        id: `event-${events.length + 1}`,
+        ticketId,
+        kind: 'satisfaction',
+        payload: { satisfaction, reply },
+      });
+    },
   };
   return store;
 }
 
 function doubles(): {
-  mailer: Mailer & { sent: { to: string; subject: string; text: string }[] };
+  mailer: Mailer & {
+    sent: { to: string; subject: string; text: string; attachments?: { content: string }[] }[];
+  };
   calendar: CalendarReader;
   writer: CalendarWriter & { events: { email: string; subject: string; body: string }[] };
 } {
@@ -178,8 +201,10 @@ describe('ingestMail', () => {
     expect(await ingestMail(mail, deps)).toBe('duplicate');
     expect(store.tickets).toHaveLength(1);
     expect(store.tickets[0]?.assignedStaffId).toBe('bea');
-    expect(ports.mailer.sent).toHaveLength(1);
+    expect(ports.mailer.sent).toHaveLength(2);
     expect(ports.mailer.sent[0]?.text).toContain('https://helpdesk.kmbcloud.at/?ticket=1');
+    expect(ports.mailer.sent[1]?.to).toBe('bea@example.com');
+    expect(ports.mailer.sent[1]?.attachments?.[0]?.content).toContain('ELDA');
     expect(ports.mailer.sent[0]?.text.toLowerCase()).not.toContain('token');
     expect(ports.writer.events).toEqual([
       expect.objectContaining({

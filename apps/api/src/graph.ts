@@ -2,6 +2,7 @@ export type OutboundMail = {
   to: string;
   subject: string;
   text: string;
+  attachments?: { name: string; contentType: string; content: string }[];
 };
 
 export type Mailer = {
@@ -90,22 +91,38 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
       if (!config) throw new Error('mail not configured');
       const token = await accessToken(config, fetchImpl);
       const response = await fetchImpl(
-        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/sendMail`,
+        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/drafts/messages`,
         {
           method: 'POST',
           headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
           body: JSON.stringify({
-            message: {
-              subject: mail.subject,
-              body: { contentType: 'Text', content: mail.text },
-              from: { emailAddress: { address: config.mailbox } },
-              toRecipients: [{ emailAddress: { address: mail.to } }],
-            },
-            saveToSentItems: true,
+            subject: mail.subject,
+            body: { contentType: 'Text', content: mail.text },
+            from: { emailAddress: { address: config.mailbox } },
+            toRecipients: [{ emailAddress: { address: mail.to } }],
+            ...((mail.attachments ?? []).length > 0
+              ? {
+                  attachments: (mail.attachments ?? []).map((file) => ({
+                    '@odata.type': '#microsoft.graph.fileAttachment',
+                    name: file.name,
+                    contentType: file.contentType,
+                    contentBytes: Buffer.from(file.content, 'utf8').toString('base64'),
+                  })),
+                }
+              : {}),
           }),
         },
       );
-      if (!response.ok) throw new Error('graph send failed');
+      if (!response.ok) throw new Error('graph draft failed');
+      const created: unknown = await response.json().catch(() => null);
+      if (
+        created &&
+        typeof created === 'object' &&
+        'isDraft' in created &&
+        created.isDraft === false
+      ) {
+        throw new Error('graph draft failed');
+      }
     },
   };
 }

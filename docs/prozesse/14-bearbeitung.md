@@ -8,7 +8,7 @@ Ein angemeldeter Mitarbeiter der Gruppe `HelpdeskAdmins` öffnet `/mitarbeit/tic
 
 Er kann eine Erklärung am Ticket speichern.
 
-Er kann das Ticket als erledigt markieren. Das schließt es und sendet eine Mail. Der Betreff nennt das Ticket und seine Nummer. Der Text sagt, dass es gelöst ist, und bittet um eine kurze Antwort, wenn es zur Zufriedenheit gelöst wurde. Absender ist `GRAPH_MAILBOX`.
+Er kann das Ticket als erledigt markieren. Das schließt es und legt eine Mail als Entwurf im Ordner Entwürfe von `GRAPH_MAILBOX` ab. Der Betreff nennt das Ticket und seine Nummer. Der Text sagt, dass es gelöst ist, und bittet um eine kurze Antwort, wenn es zur Zufriedenheit gelöst wurde. Die Mail wird nicht verschickt.
 
 ## Zufriedenheit
 
@@ -20,15 +20,15 @@ Die Antwort des Benutzers wird, sobald ein KI-Anbieter mit Endpunkt, Region und 
 | neutral | grün | neutrales Zeichen |
 | unzufrieden | orange | unzufriedenes Zeichen |
 
-Die Zeichen sind SVG, keine Emoji. Nur der Benutzer setzt oder ändert den Zustand. Der Mitarbeiter sieht ihn und kann ihn nicht umstellen.
+Die Zeichen sind SVG, keine Emoji. Nur die Antwort des Benutzers setzt den Zustand, und nur wenn der KI-Anbieter mit Endpunkt, EU-Region, Schlüssel und AVV konfiguriert ist. Sonst bleibt die Antwort ungelesen. Der Mitarbeiter sieht den Zustand und kann ihn nicht umstellen.
 
 ## Mails vom Mitarbeiter
 
-Ein Knopf sendet an den Auftraggeber den Satz, dass der Mitarbeiter jetzt an diesem Ticket arbeitet.
+Ein Knopf legt an den Auftraggeber einen Entwurf mit dem Satz ab, dass der Mitarbeiter jetzt an diesem Ticket arbeitet.
 
-Eine Rückfrage wird im Ticket gespeichert und zusätzlich als Mail an den Benutzer gesendet.
+Eine Rückfrage wird im Ticket gespeichert und zusätzlich als Entwurf an den Benutzer abgelegt.
 
-Ohne Microsoft-365-Freigabe wird keine Mail erfunden. Die Aktion antwortet, dass der Versand nicht verbunden ist.
+Ohne Microsoft-365-Freigabe wird keine Mail erfunden. Die Aktion antwortet, dass der Entwurf nicht angelegt werden kann. Keine ausgehende Mail verlässt das Postfach.
 
 ## Postfach
 
@@ -40,6 +40,6 @@ Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelös
 
 ## Grok
 
-Helpdesk-Mails gehen zur Prüfung an den konfigurierten Anbieter. Der Name steht in `AI_PROVIDER`, die Adresse in `AI_ENDPOINT`. Fehlen Endpunkt, EU-Region, Schlüssel oder AVV, gibt es keinen Aufruf und aus der Mail wird kein Ticket. Die Ausschlüsse für Domäne, Helpdesk und Mitarbeiter gelten davor.
+Helpdesk-Mails gehen zur Prüfung an den konfigurierten Anbieter. Der Name steht in `AI_PROVIDER` und ist nur eine Anzeige. Die Adresse steht in `AI_ENDPOINT`. Fehlen Endpunkt, EU-Region, Schlüssel oder AVV, gibt es keinen Aufruf und aus der Mail wird kein Ticket. Microsoft 365 Copilot wird über diesen Namen nicht eingeschaltet. Der Prüfstand steht in `docs/schnittstellen.md`. Die Ausschlüsse für Domäne, Helpdesk und Mitarbeiter gelten davor.
 
-Meldet der Agent, dass ein Mail ein Ticket werden soll, entstehen Kategorie, Priorität, Benutzer und Mitarbeiter. Der Mitarbeiter muss aktiv sein und laut seinem Microsoft-365-Kalender verfügbar. Er erhält eine Mail mit der Ticketnummer, allen Ticketangaben und dem Originalmail als Anhang. Absender ist `GRAPH_MAILBOX`.
+Meldet der Agent, dass ein Mail ein Ticket werden soll, entstehen Kategorie, Priorität, Benutzer und Mitarbeiter. Der Mitarbeiter muss aktiv sein und laut seinem Microsoft-365-Kalender verfügbar. Für ihn liegt eine Mail mit der Ticketnummer, allen Ticketangaben und dem Originalmail als Anhang als Entwurf im Ordner Entwürfe. Absender ist `GRAPH_MAILBOX`.

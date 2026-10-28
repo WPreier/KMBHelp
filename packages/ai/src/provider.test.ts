@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { modelProviderFromEnv, httpModelProvider } from './provider.js';
+import { modelProviderFromEnv, httpModelProvider, parseSatisfaction, unconfiguredModel } from './provider.js';
 
 describe('model provider', () => {
   it('stays unconfigured until endpoint, EU region, key and AVV are all set', async () => {
@@ -57,5 +57,13 @@ describe('model provider', () => {
     expect(sent).toContain('[SVNR]');
     expect(sent).not.toContain('1234');
     expect(sent).not.toContain('secret-key');
+  });
+
+  it('reads satisfaction only from the answer words and does not call a model when unconfigured', async () => {
+    expect(parseSatisfaction('unzufrieden')).toBe('dissatisfied');
+    expect(parseSatisfaction('neutral')).toBe('neutral');
+    expect(parseSatisfaction('zufrieden')).toBe('satisfied');
+    expect(parseSatisfaction('vielleicht')).toBeNull();
+    expect(await unconfiguredModel.satisfaction('zufrieden')).toBeNull();
   });
 });

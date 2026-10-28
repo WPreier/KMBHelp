@@ -44,6 +44,7 @@ export async function reviewInboundMail(
     staffEmails: readonly string[];
     providerName?: AiProviderName | string | undefined;
     syslog?: ((category: 'informational' | 'warning', message: string) => Promise<void>) | undefined;
+    lessons?: readonly { outcome: 'accepted' | 'rejected'; reason: string }[] | undefined;
   },
 ): Promise<MailVerdict> {
   const excluded = exclusionReason({
@@ -65,7 +66,16 @@ export async function reviewInboundMail(
   if (!provider.configured) {
     return { is_support: false, excluded: false, held: true, reason: 'unreachable', model: 'none' };
   }
-  const prompt = mailPromptText(deps.prompt);
+  const learned = (deps.lessons ?? [])
+    .slice(0, 20)
+    .map((lesson) =>
+      `${lesson.outcome === 'accepted' ? 'JA' : 'NEIN'}: ${maskPersonalData(lesson.reason).slice(0, 200)}`,
+    )
+    .filter((line) => line.length > 4)
+    .join('\n');
+  const prompt = learned
+    ? `${mailPromptText(deps.prompt)}\n\nBisherige Entscheidungen:\n${learned}`
+    : mailPromptText(deps.prompt);
   const text = maskPersonalData(`${mail.subject}\n${mail.body}`);
   let answer: { answer: string; model: string } | null = null;
   try {

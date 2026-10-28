@@ -131,7 +131,14 @@ export {
   type DashboardReport,
   type PieSliceKey,
 } from './dashboard.js';
-export { staffTicketViewSchema, type StaffTicketView } from './ticket-view.js';
+export {
+  staffTicketViewSchema,
+  ticketPatchSchema,
+  ticketQuestionSchema,
+  ticketReasonSchema,
+  unreadMailListSchema,
+  type StaffTicketView,
+} from './ticket-view.js';
 export {
   activityListSchema,
   activityViewSchema,

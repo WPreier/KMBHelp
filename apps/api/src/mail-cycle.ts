@@ -91,6 +91,38 @@ type IngestDeps = {
 
 export { readWorkerState };
 
+export async function mailIngestDeps(
+  database: Database,
+  env: NodeJS.ProcessEnv,
+  at: Date,
+  fetchImpl: typeof fetch = fetch,
+): Promise<IngestDeps> {
+  const store = drizzleMailStore(database);
+  const settings = await readCycleSettings(database, env);
+  return {
+    store,
+    mailer: mailerFromEnv(env, fetchImpl),
+    calendar: calendarFromEnv(env, fetchImpl),
+    writer: calendarWriterFromEnv(env, fetchImpl),
+    now: at,
+    origin: publicOriginFromEnv(env),
+    fallbackCategory: settings.fallbackCategory,
+    duration: settings.duration,
+    delays: settings.delays,
+    oncallEmail: settings.oncallEmail,
+    estimatedMinutes: null,
+    model: modelProviderFromEnv(env, fetchImpl),
+    autoReplyCategories: autoReplyAllowlist(settings.autoReplyCategories),
+    domains: settings.domains,
+    mailPrompt: settings.mailPrompt,
+    helpdeskMailbox: env.GRAPH_MAILBOX ?? '',
+    staffEmails: await reviewStaffEmails(database),
+    providerName: settings.providerName,
+    syslog: (category, message) => noteExternal(env, category, message),
+    record: (entry) => writeActivity(database, entry, env),
+  };
+}
+
 export async function runMailCycle(options: {
   database: Database | undefined;
   env: NodeJS.ProcessEnv;
@@ -121,28 +153,7 @@ export async function runMailCycle(options: {
     await store.heartbeat('polling', at);
     return { event: 'waiting', created: 0, slot: decision.slot };
   }
-  const deps: IngestDeps = {
-    store,
-    mailer,
-    calendar: calendarFromEnv(options.env, fetchImpl),
-    writer: calendarWriterFromEnv(options.env, fetchImpl),
-    now: at,
-    origin: publicOriginFromEnv(options.env),
-    fallbackCategory: settings.fallbackCategory,
-    duration: settings.duration,
-    delays: settings.delays,
-    oncallEmail: settings.oncallEmail,
-    estimatedMinutes: null,
-    model: modelProviderFromEnv(options.env, fetchImpl),
-    autoReplyCategories: autoReplyAllowlist(settings.autoReplyCategories),
-    domains: settings.domains,
-    mailPrompt: settings.mailPrompt,
-    helpdeskMailbox: options.env.GRAPH_MAILBOX ?? '',
-    staffEmails: await reviewStaffEmails(database),
-    providerName: settings.providerName,
-    syslog: (category, message) => noteExternal(options.env, category, message),
-    record: (entry) => writeActivity(database, entry, options.env),
-  };
+  const deps = await mailIngestDeps(database, options.env, at, fetchImpl);
   const mails = await mailbox.listUnread(25);
   await noteExternal(options.env, 'informational', `external graph list unread=${mails.length}`);
   let created = 0;
@@ -164,21 +175,57 @@ export async function runMailCycle(options: {
   return { event: 'polled', created, slot: decision.slot };
 }
 
+export function replyTicketNumber(subject: string): number | null {
+  const match = /(?:^|\b)(?:re|aw|wg|fw)\s*:\s*ticket\s+(\d+)\b/iu.exec(subject.trim());
+  const number = Number(match?.[1] ?? '');
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
 export async function ingestMail(
   mail: InboundMail,
   deps: IngestDeps,
-): Promise<'created' | 'duplicate' | 'skip' | 'declined' | 'retry'> {
+  manual?: { reason: string },
+): Promise<'created' | 'duplicate' | 'skip' | 'declined' | 'blocked' | 'retry'> {
   if (!addressPattern.test(mail.fromEmail) || mail.internetMessageId.trim() === '') return 'skip';
+  if ((await deps.store.lesson(mail.internetMessageId)) === 'rejected') return 'blocked';
+  const replyTo = replyTicketNumber(mail.subject);
+  if (replyTo && !manual) {
+    const prior = await deps.store.ticketByNumber(replyTo);
+    if (
+      prior &&
+      prior.status === 'closed' &&
+      prior.requesterEmail.toLowerCase() === mail.fromEmail.toLowerCase()
+    ) {
+      if (!deps.model?.configured) return 'retry';
+      const satisfaction = await deps.model.satisfaction(`${mail.subject}\n${mail.body}`);
+      await deps.syslog?.(
+        satisfaction ? 'informational' : 'warning',
+        `external ${deps.providerName || deps.model.name} satisfaction ${satisfaction ? 'ok' : 'failed'}`,
+      );
+      if (!satisfaction) return 'retry';
+      await deps.store.setSatisfaction(prior.id, satisfaction, mail.body);
+      return 'declined';
+    }
+  }
   const existing = await deps.store.byMessageId(mail.internetMessageId);
   if (existing) {
     await ensureCalendar(existing, deps, null);
     await ensureReply(existing, deps);
+    await notifyAssignee(existing, mail, deps);
     return 'duplicate';
   }
   const categories = await deps.store.categories();
   const text = `${mail.subject}\n${mail.body}`;
   const staffEmails = deps.staffEmails ?? (await deps.store.activeStaffEmails());
-  const verdict = await reviewInboundMail(
+  const verdict = manual
+    ? {
+        is_support: true,
+        excluded: false,
+        held: false,
+        reason: manual.reason,
+        model: 'manual',
+      }
+    : await reviewInboundMail(
     { fromEmail: mail.fromEmail, subject: mail.subject, body: mail.body },
     {
       provider: deps.model,
@@ -188,6 +235,7 @@ export async function ingestMail(
       staffEmails,
       providerName: deps.providerName,
       syslog: deps.syslog,
+      lessons: await deps.store.recentLessons(),
     },
   );
   await deps.record?.({
@@ -253,11 +301,19 @@ export async function ingestMail(
     internetMessageId: mail.internetMessageId,
     assignedStaffId: null,
   });
+  if (manual) {
+    await deps.store.rememberLesson({
+      internetMessageId: mail.internetMessageId,
+      outcome: 'accepted',
+      reason: manual.reason,
+    });
+  }
   if (!created) {
     const raced = await deps.store.byMessageId(mail.internetMessageId);
     if (!raced) return 'retry';
     await ensureCalendar(raced, deps, null);
     await ensureReply(raced, deps);
+    await notifyAssignee(raced, mail, deps);
     return 'duplicate';
   }
   await deps.store.addEvent(created.id, 'created', {
@@ -301,6 +357,7 @@ export async function ingestMail(
     await ensureCalendar(stored, deps, assignee.slot);
   }
   await ensureReply(stored, deps);
+  await notifyAssignee(stored, mail, deps);
   await notifyOnCall(stored, deps, priority);
   return 'created';
 }
@@ -360,6 +417,33 @@ async function ensureCalendar(
     await deps.store.addEvent(stored.id, 'calendar', { id: event.id });
   } catch {
     await deps.store.addEvent(stored.id, 'calendar_failed', {});
+  }
+}
+
+async function notifyAssignee(
+  stored: StoredMailTicket,
+  mail: InboundMail,
+  deps: IngestDeps,
+): Promise<void> {
+  if (!stored.assigneeEmail || !deps.mailer.configured) return;
+  if (await deps.store.hasEvent(stored.id, 'assignee_mail')) return;
+  try {
+    await deps.mailer.send({
+      to: stored.assigneeEmail,
+      subject: `Ticket ${stored.number}`,
+      text: `Ticket ${stored.number}\n${stored.subject}\n${stored.requesterName ?? ''} ${stored.requesterEmail}\n${deps.origin}${staffTicketPath}/${stored.number}\n\n${stored.body}\n`,
+      attachments: [
+        {
+          name: 'original.txt',
+          contentType: 'text/plain',
+          content: `${mail.subject}\n\n${mail.body}`,
+        },
+      ],
+    });
+    await deps.store.addEvent(stored.id, 'assignee_mail', {});
+    await deps.syslog?.('informational', 'external graph assignee-mail');
+  } catch {
+    // The ticket stays. The next pass can send the mail.
   }
 }
 

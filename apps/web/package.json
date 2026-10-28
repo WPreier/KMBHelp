@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@kmbhelp/shared": "workspace:*",
@@ -17,6 +18,7 @@
     "react-router-dom": "^7.9.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@testing-library/react": "^16.3.0",
     "@types/node": "catalog:",
     "@types/react": "^19.2.2",

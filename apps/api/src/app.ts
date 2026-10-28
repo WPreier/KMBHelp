@@ -16,6 +16,7 @@ import { registerPhase5 } from './phase5.js';
 import { registerActivity } from './activity-routes.js';
 import { registerDashboard } from './dashboard-routes.js';
 import { registerStaffTicket } from './ticket-view-routes.js';
+import type { Mailbox, Mailer } from './graph.js';
 
 export type BuildAppOptions = {
   databaseUrl?: string | undefined;
@@ -34,6 +35,8 @@ export type BuildAppOptions = {
   webauthnOrigin?: string | undefined;
   worker?: 'up' | 'down' | 'not_configured' | undefined;
   model?: ModelProvider | undefined;
+  mailer?: Mailer | undefined;
+  mailbox?: Mailbox | undefined;
 };
 
 export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
@@ -156,6 +159,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     database,
     testAuthEnabled: options.testAuthEnabled ?? false,
     now: options.now,
+    mailer: options.mailer,
+    mailbox: options.mailbox,
   });
 
   app.get('/api/docs', async () => openApiDocument);

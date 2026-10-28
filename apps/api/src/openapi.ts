@@ -307,6 +307,52 @@ export const openApiDocument = {
           '404': { description: 'No ticket with that number.' },
         },
       },
+      patch: {
+        operationId: 'patchStaffTicket',
+        responses: {
+          '200': { description: 'The open ticket was saved. Satisfaction is not accepted.' },
+          '422': { description: 'Closed, inactive staff, or a lower priority without a reason.' },
+        },
+      },
+    },
+    '/api/v1/staff/tickets/{number}/done': {
+      post: {
+        operationId: 'closeStaffTicket',
+        responses: {
+          '200': { description: 'Closed. The solved mail is a draft in the Drafts folder of GRAPH_MAILBOX.' },
+          '503': { description: 'Microsoft 365 is not connected, so no draft was created.' },
+        },
+      },
+    },
+    '/api/v1/staff/tickets/{number}/working': {
+      post: {
+        operationId: 'workingStaffTicket',
+        responses: { '503': { description: 'Microsoft 365 is not connected, so no draft was created.' } },
+      },
+    },
+    '/api/v1/staff/tickets/{number}/question': {
+      post: {
+        operationId: 'questionStaffTicket',
+        responses: { '503': { description: 'Microsoft 365 is not connected, so no draft was created.' } },
+      },
+    },
+    '/api/v1/staff/tickets/{number}/misread': {
+      post: {
+        operationId: 'misreadStaffTicket',
+        responses: { '200': { description: 'That mail ticket was removed and the reason stored.' } },
+      },
+    },
+    '/api/v1/staff/mailbox': {
+      get: {
+        operationId: 'unreadMailbox',
+        responses: { '503': { description: 'The mailbox is not connected.' } },
+      },
+    },
+    '/api/v1/staff/mailbox/{graphId}/accept': {
+      post: {
+        operationId: 'acceptMailbox',
+        responses: { '422': { description: 'This mail must not become a ticket.' } },
+      },
     },
     '/api/v1/staff/reviews/run': {
       post: {

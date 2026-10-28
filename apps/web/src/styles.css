@@ -228,6 +228,12 @@ header .search button {
   margin-top: 0;
 }
 
+.satisfaction {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .form-actions {
   display: flex;
   flex-wrap: wrap;

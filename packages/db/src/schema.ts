@@ -114,6 +114,8 @@ export const ticket = pgTable(
     source: text('source').notNull(),
     subject: text('subject').notNull(),
     body: text('body').notNull(),
+    explanation: text('explanation').notNull().default(''),
+    satisfaction: text('satisfaction'),
     requesterEmail: text('requester_email'),
     requesterName: text('requester_name'),
     dueOn: date('due_on', { mode: 'string' }),
@@ -138,6 +140,10 @@ export const ticket = pgTable(
     ),
     check('ticket_impact', sql`${table.impact} in ('filing', 'payroll', 'workplace', 'cosmetic')`),
     check('ticket_priority', sql`${table.priority} in ('p1', 'p2', 'p3')`),
+    check(
+      'ticket_satisfaction',
+      sql`${table.satisfaction} is null or ${table.satisfaction} in ('satisfied', 'neutral', 'dissatisfied')`,
+    ),
     check(
       'ticket_status',
       sql`${table.status} in ('open', 'inactive', 'expired', 'in_progress', 'waiting_approval', 'manual', 'closed')`,
@@ -484,6 +490,14 @@ export const retentionLocation = pgTable('retention_location', {
   backupsFollowSamePeriod: boolean('backups_follow_same_period').notNull(),
   lastReviewOn: date('last_review_on', { mode: 'string' }),
   ownerStaffId: uuid('owner_staff_id').references(() => staff.id),
+});
+
+export const mailLesson = pgTable('mail_lesson', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  internetMessageId: text('internet_message_id').notNull().unique(),
+  outcome: text('outcome').notNull(),
+  reason: text('reason').notNull(),
+  createdAt: createdAtColumn(),
 });
 
 export const appSetting = pgTable('app_setting', {

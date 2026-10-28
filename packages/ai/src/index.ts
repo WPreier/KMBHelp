@@ -15,6 +15,7 @@ export {
   httpModelProvider,
   inputHash,
   modelProviderFromEnv,
+  parseSatisfaction,
   regionAllowsProcessing,
   scriptedModel,
   unconfiguredModel,
@@ -22,4 +23,5 @@ export {
   type MailReview,
   type ModelProvider,
   type ModelResult,
+  type Satisfaction,
 } from './provider.js';

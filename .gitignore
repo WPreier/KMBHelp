@@ -13,3 +13,6 @@ madc1.crt
 .cursor/mcp.json
 coverage/
 *.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/

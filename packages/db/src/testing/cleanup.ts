@@ -130,6 +130,9 @@ async function deleteTracked(database: Database, residue: TestResidue, sweep: bo
     const supplierIds = unique(suppliers.rows.map((row) => row.id));
 
     if (sweep) {
+      await client.query(
+        `delete from mail_lesson where internet_message_id ~* '@example\\.(com|invalid)>?$'`,
+      );
       await client.query(`delete from faq_article where slug like 'phase6-%' or slug = any($1::text[])`, [
         textList(residue.faqSlugs),
       ]);

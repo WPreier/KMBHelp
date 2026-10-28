@@ -186,9 +186,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'GRAPH_CLIENT_ID',
     secret: false,
     textDe:
-      'Die Anwendungs-ID (Client) derselben App-Registrierung. Unter API-Berechtigungen werden als Anwendungsberechtigungen Mail.Read, Mail.Send und Calendars.ReadWrite eingetragen und der Admin-Consent erteilt. Ohne Consent bleibt der Worker bei not_configured.',
+      'Die Anwendungs-ID (Client) derselben App-Registrierung. Unter API-Berechtigungen werden als Anwendungsberechtigungen Mail.Read, Mail.ReadWrite und Calendars.ReadWrite eingetragen und der Admin-Consent erteilt. Ohne Consent bleibt der Worker bei not_configured.',
     textEn:
-      'The application id (client) of the same app registration. Under API permissions, add the application permissions Mail.Read, Mail.Send and Calendars.ReadWrite and grant admin consent. Without consent the worker stays at not_configured.',
+      'The application id (client) of the same app registration. Under API permissions, add the application permissions Mail.Read, Mail.ReadWrite and Calendars.ReadWrite and grant admin consent. Without consent the worker stays at not_configured.',
   },
   {
     key: 'GRAPH_CLIENT_SECRET',
@@ -202,17 +202,17 @@ export const configFields: readonly ConfigField[] = [
     key: 'GRAPH_MAILBOX',
     secret: false,
     textDe:
-      'Das Postfach helpdesk@kmbcloud.at. Der Worker liest es im Zeitplan und verschickt Antworten von hier. Termine legt er in den Kalender des zugewiesenen Mitarbeiters.',
+      'Das Postfach helpdesk@kmbcloud.at. Der Worker liest es im Zeitplan. Ausgehende Mails legt er als Entwurf in den Ordner Entwürfe, er verschickt sie nicht. Termine legt er in den Kalender des zugewiesenen Mitarbeiters.',
     textEn:
-      'The mailbox helpdesk@kmbcloud.at. The worker reads it on the schedule and sends replies from here. It creates events on the assigned employee’s calendar.',
+      'The mailbox helpdesk@kmbcloud.at. The worker reads it on the schedule. Outgoing mail is stored as a draft in Drafts and is not sent. It creates events on the assigned employee’s calendar.',
   },
   {
     key: 'ONCALL_EMAIL',
     secret: false,
     textDe:
-      'Die E-Mail-Adresse der Bereitschaft. Bei einem neuen Ticket mit Priorität P1 geht eine kurze Mail dorthin, sobald Microsoft 365 konfiguriert ist. Leer heißt: keine Bereitschaftsmail.',
+      'Die E-Mail-Adresse der Bereitschaft. Bei einem neuen Ticket mit Priorität P1 liegt eine kurze Mail als Entwurf im Ordner Entwürfe, sobald Microsoft 365 konfiguriert ist. Leer heißt: kein Bereitschaftsentwurf.',
     textEn:
-      'The on-call email address. A new priority-P1 ticket sends a short mail there once Microsoft 365 is configured. Empty means no on-call mail.',
+      'The on-call email address. A new priority-P1 ticket stores a short draft once Microsoft 365 is configured. Empty means no on-call draft.',
   },
   {
     key: 'FALLBACK_CATEGORY',
@@ -298,9 +298,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'AI_PROVIDER',
     secret: false,
     textDe:
-      'Der Name des KI-Anbieters. Derzeit grok. Später können gemini, deepseek oder other denselben Aufruf nutzen. Der Name wählt keine Adresse. Der Aufruf geht an AI_ENDPOINT.',
+      'Anzeigename für den Aufruf an AI_ENDPOINT. Auslieferung grok. Ein anderer Name, auch MS 365 Copilot, schaltet keine andere Schnittstelle ein. Copilot hat auf dieser Seite keinen Schalter. Der Prüfstand steht in docs/schnittstellen.md.',
     textEn:
-      'The model provider name. It is grok for now. Later gemini, deepseek or other can use the same call. The name does not choose an address. The call goes to AI_ENDPOINT.',
+      'Display name for the call to AI_ENDPOINT. The delivered name is grok. Another name, including MS 365 Copilot, does not switch the interface. Copilot has no switch on this page. The check is recorded in docs/schnittstellen.md.',
   },
   {
     key: 'INTERNAL_MAIL_DOMAINS',
@@ -322,9 +322,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'AI_ENDPOINT',
     secret: false,
     textDe:
-      'Die https-Adresse des KI-Anbieters. Ein Aufruf erfolgt nur zusammen mit EU-Region, Vertrag und Schlüssel. Ohne erreichbare KI bleibt eine Helpdesk-Mail ungelesen und wird kein Ticket. Die Suche bleibt dann beim Satz aus Phase 2.',
+      'Die https-Adresse eines Anbieters mit eigenem Schlüssel. Für Microsoft 365 Copilot leer lassen. Copilot nutzt die Graph-Adresse und die Anmeldung von helpdesk@kmbcloud.at. Ohne erreichbare KI bleibt eine Helpdesk-Mail ungelesen.',
     textEn:
-      'The https address of the model provider. A call happens only together with an EU region, the contract and the key. Without a reachable model a helpdesk mail stays unread and does not become a ticket. Search then keeps the phase 2 sentence.',
+      'The https address of a provider that issues its own key. Leave this empty for Microsoft 365 Copilot. Copilot uses the Graph address and the sign-in of helpdesk@kmbcloud.at. Without a reachable model a helpdesk mail stays unread.',
   },
   {
     key: 'AI_REGION',
@@ -338,9 +338,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'AI_API_KEY',
     secret: true,
     textDe:
-      'Der Schlüssel des KI-Anbieters. Er wird nicht angezeigt. Ohne die übrigen drei Angaben geht er an kein Modell.',
+      'Der Schlüssel eines Anbieters mit AI_ENDPOINT. Er wird nicht angezeigt. Für Microsoft 365 Copilot gibt es keinen Schlüssel. Das Client-Geheimnis der Graph-App und der Anwendungs-Token gehören nicht in dieses Feld.',
     textEn:
-      'The model provider key. It is not shown. Without the other three values it is not sent to a model.',
+      'The key of a provider that uses AI_ENDPOINT. It is not shown. Microsoft 365 Copilot has no such key. The Graph app client secret and the application token do not belong in this field.',
   },
   {
     key: 'MCP_SERVICE_TOKEN',

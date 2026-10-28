@@ -1,7 +1,8 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
   appSetting,
   category,
+  mailLesson,
   faqArticle,
   staff,
   staffCategory,
@@ -56,6 +57,24 @@ export type MailStore = {
   activeStaffEmails(): Promise<string[]>;
   pendingReopens(): Promise<{ eventId: string; ticketId: string; number: number }[]>;
   heartbeat(state: WorkerState, at: Date): Promise<void>;
+  lesson(internetMessageId: string): Promise<'accepted' | 'rejected' | null>;
+  rememberLesson(input: {
+    internetMessageId: string;
+    outcome: 'accepted' | 'rejected';
+    reason: string;
+  }): Promise<void>;
+  recentLessons(): Promise<{ outcome: 'accepted' | 'rejected'; reason: string }[]>;
+  ticketByNumber(number: number): Promise<{
+    id: string;
+    number: number;
+    status: string;
+    requesterEmail: string;
+  } | null>;
+  setSatisfaction(
+    ticketId: string,
+    satisfaction: 'satisfied' | 'neutral' | 'dissatisfied',
+    reply: string,
+  ): Promise<void>;
 };
 
 export function drizzleMailStore(database: Database): MailStore {
@@ -210,6 +229,62 @@ export function drizzleMailStore(database: Database): MailStore {
           { key: workerStateKey, value: state },
         ])
         .onConflictDoUpdate({ target: appSetting.key, set: { value: sql`excluded.value` } });
+    },
+    async lesson(internetMessageId) {
+      const rows = await database.db
+        .select({ outcome: mailLesson.outcome })
+        .from(mailLesson)
+        .where(eq(mailLesson.internetMessageId, internetMessageId))
+        .limit(1);
+      const outcome = rows[0]?.outcome;
+      return outcome === 'accepted' || outcome === 'rejected' ? outcome : null;
+    },
+    async rememberLesson(input) {
+      await database.db
+        .insert(mailLesson)
+        .values(input)
+        .onConflictDoUpdate({
+          target: mailLesson.internetMessageId,
+          set: { outcome: input.outcome, reason: input.reason },
+        });
+    },
+    async recentLessons() {
+      const rows = await database.db
+        .select({ outcome: mailLesson.outcome, reason: mailLesson.reason })
+        .from(mailLesson)
+        .orderBy(desc(mailLesson.createdAt))
+        .limit(20);
+      return rows.flatMap((row) =>
+        row.outcome === 'accepted' || row.outcome === 'rejected'
+          ? [{ outcome: row.outcome, reason: row.reason }]
+          : [],
+      );
+    },
+    async ticketByNumber(number) {
+      const rows = await database.db
+        .select({
+          id: ticket.id,
+          number: ticket.number,
+          status: ticket.status,
+          requesterEmail: ticket.requesterEmail,
+        })
+        .from(ticket)
+        .where(eq(ticket.number, number))
+        .limit(1);
+      const row = rows[0];
+      if (!row) return null;
+      return { ...row, requesterEmail: row.requesterEmail ?? '' };
+    },
+    async setSatisfaction(ticketId, satisfaction, reply) {
+      await database.db
+        .update(ticket)
+        .set({ satisfaction, updatedAt: new Date() })
+        .where(eq(ticket.id, ticketId));
+      await database.db.insert(ticketEvent).values({
+        ticketId,
+        kind: 'satisfaction',
+        payload: { satisfaction, reply: reply.slice(0, 4000) },
+      });
     },
   };
 }

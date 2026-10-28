@@ -1,6 +1,6 @@
 # Status
 
-Phase 8 ist auf `phase/08-mcp` committet. Phase 9 ist offen. Der KI-Anbieter für kmbcloud.at bleibt offen. Termin 28.10.2026. Bis der Anbieter vorliegt, kein Endpunkt, kein Schlüssel und kein AVV-Verweis eintragen.
+Phase 9 ist auf `phase/09-bearbeitung` committet. Als Nächstes ist Phase 10 zu prüfen: die Linux-Installation in `docs/installation-linux.md`, sobald der Branch `phase/10-installation` vorliegt. Die Ticketseite steht auf `http://127.0.0.1:5173/mitarbeit/ticket/{nummer}`. Ausgehende Mails liegen als Entwurf im Ordner Entwürfe von `helpdesk@kmbcloud.at`.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -13,7 +13,7 @@ Phase 8 ist auf `phase/08-mcp` committet. Phase 9 ist offen. Der KI-Anbieter fü
 | 6 | KI hinter Provider | erledigt |
 | 7 | Dashboard | erledigt |
 | 8 | MCP | erledigt |
-| 9 | Staff-Oberflächen, Playwright | offen |
+| 9 | Staff-Oberflächen, Playwright | erledigt |
 | 10 | Installation Linux, nginx, Apache | offen |
 | 11 | Expo, Store-Dokumentation | offen |
 | 12 | Härtung, Betrieb, Notfallblatt | offen |
@@ -145,23 +145,26 @@ Am 27.10.2026 wurden zuerst 610 fehlgeschlagene Test-Tickets entfernt und je Kat
 
 Start: `pnpm db:migrate`, denselben Token in die lokale Geheimdatei und in die Cursor-Umgebung schreiben, API neu starten. `KMBHELP_API_ORIGIN` ist `http://127.0.0.1:3000`.
 
-## Phase 9 — noch nicht bauen
+## Phase 9 — Abnahme
 
-Die Bearbeitung bleibt Phase 9. Eine schreibgeschützte Ticketseite unter `/mitarbeit/ticket/{nummer}` gibt es bereits, damit Dashboard und Kalender auf das Ticket zeigen. Verbindlich ist zusätzlich `docs/prozesse/14-bearbeitung.md`.
+Die Formularseite `/mitarbeit/vorgaenge` bleibt entfernt. Die Bearbeitung steht auf `/mitarbeit/ticket/{nummer}`. Verbindlich ist `docs/prozesse/14-bearbeitung.md`.
 
-- [ ] Dieselbe Ticketseite bearbeiten: jeder Mitarbeiter darf jedes offene Ticket ändern, außer die Zufriedenheit.
-- [ ] Erledigt setzt das Ticket auf geschlossen und sendet eine Mail mit Betreff `Ticket` plus Nummer und dem Text: das Ticket ist gelöst, und wenn es zur Zufriedenheit gelöst wurde, würde man sich über eine kurze Antwort freuen.
-- [ ] Diese Antwort liest die KI, hängt sie an das Ticket und trägt die Zufriedenheit ein. Drei Zustände, als SVG und nicht als Emoji: zufrieden gelb, neutral grün, unzufrieden orange. Nur der Benutzer ändert das, nie der Mitarbeiter.
-- [ ] Der Mitarbeiter kann eine Erklärung am Ticket speichern.
-- [ ] Ein Knopf sendet an den Auftraggeber: ich arbeite jetzt an diesem Ticket. Absender ist `GRAPH_MAILBOX`.
-- [ ] Eine Rückfrage wird am Ticket gespeichert und als Mail an den Benutzer gesendet.
-- [ ] Die Seite listet Helpdesk-Mails, die noch kein Ticket sind, und kann jede davon von Hand in ein Ticket umwandeln.
-- [ ] Wird ein Mail als Ticket angenommen, merkt sich die KI den Grund. Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelöscht und der Grund gespeichert, damit ein Mail künftig kein Ticket erzeugen darf. Das ist keine allgemeine Löschfunktion.
-- [ ] Die Liste unverarbeiteter Helpdesk-Mails und die Umwandlung von Hand. Die Prüfung selbst liegt seit Phase 6 auf `POST /api/v1/mail/review` und dem MCP-Werkzeug `review_mail`, nur mit Endpunkt, EU-Region, Schlüssel und AVV. Sonst kein Aufruf.
-- [ ] Der Agent meldet, ob ein Mail ein Ticket werden soll, dazu Kategorie, Priorität, Benutzer und einen verfügbaren Mitarbeiter. Die Verfügbarkeit kommt aus dem Microsoft-365-Kalender. Der Mitarbeiter erhält eine Mail mit Ticketnummer, allen Angaben und dem Originalmail als Anhang.
+- [x] Dieselbe Ticketseite bearbeiten: jeder Mitarbeiter darf jedes offene Ticket ändern, außer die Zufriedenheit.
+- [x] Erledigt setzt das Ticket auf geschlossen und legt eine Mail als Entwurf ab, Betreff `Ticket` plus Nummer und der Text: das Ticket ist gelöst, und wenn es zur Zufriedenheit gelöst wurde, würde man sich über eine kurze Antwort freuen.
+- [x] Diese Antwort liest die KI, hängt sie an das Ticket und trägt die Zufriedenheit ein. Drei Zustände, als SVG und nicht als Emoji: zufrieden gelb, neutral grün, unzufrieden orange. Nur der Benutzer ändert das, nie der Mitarbeiter. Ohne Endpunkt, EU-Region, Schlüssel und AVV bleibt die Antwort ungelesen.
+- [x] Der Mitarbeiter kann eine Erklärung am Ticket speichern.
+- [x] Ein Knopf legt an den Auftraggeber einen Entwurf ab: ich arbeite jetzt an diesem Ticket. Absender ist `GRAPH_MAILBOX`. Ohne Microsoft 365 antwortet die Aktion, dass der Entwurf nicht angelegt werden kann.
+- [x] Eine Rückfrage wird am Ticket gespeichert und als Entwurf an den Benutzer abgelegt.
+- [x] Die Seite listet Helpdesk-Mails, die noch kein Ticket sind, und kann jede davon von Hand in ein Ticket umwandeln.
+- [x] Wird ein Mail als Ticket angenommen, merkt sich die Anwendung den Grund. Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelöscht und der Grund gespeichert, damit ein Mail künftig kein Ticket erzeugen darf. Das ist keine allgemeine Löschfunktion.
+- [x] Die Prüfung selbst liegt seit Phase 6 auf `POST /api/v1/mail/review` und dem MCP-Werkzeug `review_mail`, nur mit Endpunkt, EU-Region, Schlüssel und AVV. Sonst kein Aufruf. Gespeicherte Gründe gehen in den nächsten Auftrag mit.
+- [x] Der Agent meldet, ob ein Mail ein Ticket werden soll, dazu Kategorie, Priorität, Benutzer und einen verfügbaren Mitarbeiter. Die Verfügbarkeit kommt aus dem Microsoft-365-Kalender. Der Mitarbeiter erhält eine Mail mit Ticketnummer, allen Angaben und dem Originalmail als Anhang.
+- [x] Playwright-Rauchtest: Ticket anlegen, die Beschreibung steht nicht in der öffentlichen Liste, Sprache und Darstellung wechseln.
+- [x] `pnpm test` und `pnpm typecheck`
+
+Start: `pnpm dev`. Die Ticketseite steht auf `http://127.0.0.1:5173/mitarbeit/ticket/{nummer}`. Der Rauchtest ist `pnpm --filter @kmbhelp/web e2e`.
 
 ## Offene Rückfragen
 
 - Graph Admin-Consent und Kalender-Reichweite
-- KI-Anbieter mit AVV und EU-Region im Mandanten kmbcloud.at. Termin 28.10.2026. Bis der Anbieter vorliegt, kein Endpunkt, kein Schlüssel und kein AVV-Verweis eintragen.
 - Apple- und Google-Konten der GmbH
