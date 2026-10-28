@@ -135,15 +135,18 @@ describe('mobile client', () => {
     expect(presentStaffTicket(ticket, true).body).toContain('Lohn');
   });
 
-  it('reads the session cookies and keeps the device prompt in the screen', () => {
+  it('reads the session cookies and keeps the public shell to three menus', () => {
     const cookies = readSessionCookies({
       get: () => null,
       getSetCookie: () => ['kmbhelp_session=abc', 'kmbhelp_csrf=def'],
     });
     expect(cookies).toEqual({ session: 'abc', csrf: 'def' });
     const app = readFileSync(new URL('../App.tsx', import.meta.url), 'utf8');
-    expect(app).toContain('presentStaffTicket');
-    expect(app).toContain('authenticateAsync');
+    expect(app).toContain('text.fileTicket');
+    expect(app).toContain('text.guides');
+    expect(app).toContain('text.dashboardTitle');
+    expect(app).toContain('text.searchSubmit');
+    expect(app).not.toContain('text.openTickets');
     expect(app).not.toContain('kmbhelp_password');
     const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
       main: string;

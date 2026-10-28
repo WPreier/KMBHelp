@@ -6,11 +6,11 @@ Die App ist `apps/mobile`. Eine Codebasis für iOS und Android. Sie spricht in P
 
 ## Was die App zeigt
 
-Ohne Anmeldung: Ticket erfassen mit Quelle `app` (Kategorie, Auswirkung, Betreff, Beschreibung, Datum, Name), die öffentliche Liste ohne Beschreibung, Anleitungen mit Text und die Suche.
+Die Titelleiste hat die Suche, die Sprache und Hell/Dunkel. Das Menü hat Ticket erfassen, Anleitungen und Dashboard. Die Seite Ticket erfassen entspricht der Website: Kategorie, Wirkung, Betreff, Beschreibung, Datum, Name, Mitarbeiter, Kalender und Priorität, Quelle `app`. Die Liste offener Tickets zeigt die App nicht. Anleitungen enthalten den Text. Die Suche steht in der Titelleiste.
 
 Die Apple- und Google-Konten der GmbH kommen später. Bis dahin lässt sich die App mit `pnpm start` auf einem Gerät prüfen. Builds und Store-Einträge warten auf diese Konten.
 
-Mit Server-Sitzung und danach Gerätefreigabe: die IT-Liste und das Dashboard. Die Gerätefreigabe ist Biometrie oder der Gerätecode über `expo-local-authentication`. Sie ersetzt LDAPS, Passkey und TOTP nicht. Die erste Einrichtung von Passkey oder TOTP bleibt im Browser. Die App speichert danach nur die Sitzungscookies `kmbhelp_session` und `kmbhelp_csrf` in der sicheren Ablage des Geräts. Das Passwort wird nicht gespeichert. Ohne beide Freigaben zeichnet die App keine Beschreibung und keinen Melder.
+Anmeldung, Logos und die IT-Liste sind in der App nicht eingeblendet. Das Dashboard nutzt eine schon gespeicherte Sitzung. Die App speichert nur die Sitzungscookies `kmbhelp_session` und `kmbhelp_csrf` in der sicheren Ablage des Geräts. Das Passwort wird nicht gespeichert. Die erste Einrichtung von Passkey oder TOTP bleibt im Browser.
 
 Bundle-Id, schon im Projekt: `at.kmbcloud.helpdesk`.
 
@@ -22,7 +22,7 @@ Im Ordner `apps/mobile`:
 pnpm start
 ```
 
-Der Start ist `index.ts` in diesem Ordner. `expo/AppEntry.js` sucht `App` relativ zum Paket. Unter pnpm liegt das Paket in `.pnpm`, und dieser relative Weg findet `App.tsx` nicht.
+Der Start ist `index.ts` in diesem Ordner. `expo/AppEntry.js` sucht `App` relativ zum Paket. Unter pnpm liegt das Paket in `.pnpm`, und dieser relative Weg findet `App.tsx` nicht. Die Web-Vorschau braucht `react-dom` in derselben Version wie `react`, hier 19.1.0.
 
 Die API-Adresse ist `https://helpdesk.kmbcloud.at`. Für die lokale API auf demselben Rechner setzt die Hülle `EXPO_PUBLIC_API_ORIGIN=http://127.0.0.1:3000`. Eine `http`-Adresse eines anderen Rechners lehnt der Client ab.
 

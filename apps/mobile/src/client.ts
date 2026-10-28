@@ -1,5 +1,7 @@
 import {
   readPublicError,
+  assignableStaffSchema,
+  availabilitySchema,
   categoryListSchema,
   createTicketSchema,
   createdTicketSchema,
@@ -81,6 +83,15 @@ export function createHelpdeskClient(options: {
     },
     async categories() {
       return readAnswer(await send('/api/v1/categories'), categoryListSchema.parse);
+    },
+    async assignable() {
+      return readAnswer(await send('/api/v1/staff/assignable'), assignableStaffSchema.parse);
+    },
+    async availability(staffId: string) {
+      return readAnswer(
+        await send(`/api/v1/staff/${encodeURIComponent(staffId)}/availability`),
+        availabilitySchema.parse,
+      );
     },
     async faq() {
       return readAnswer(await send('/api/v1/faq'), faqListSchema.parse);

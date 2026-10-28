@@ -184,8 +184,8 @@ Start: die Schritte in `docs/installation-linux.md` auf dem Linux-Rechner. Auf d
 
 Die App liegt in `apps/mobile`. Verbindlich für die Stores ist `docs/mobile-stores.md`. Der erste Satz dort sagt, dass Zertifikate und Store-Richtlinien nachgezogen werden.
 
-- [x] Öffentlich: Ticket mit Quelle `app`, Kategorie, Auswirkung und Datum, Liste ohne Beschreibung, Anleitungen mit Text, Suche
-- [x] IT-Liste und Dashboard erst nach Server-Sitzung und Gerätefreigabe. Biometrie oder Gerätecode. Das Passwort wird nicht gespeichert
+- [x] Öffentlich: Ticket wie die Website, Quelle `app`, ohne die Liste offener Tickets. Menü: Ticket erfassen, Anleitungen, Dashboard. Titelleiste: Suche, Sprache, Hell/Dunkel
+- [x] Anmeldung und IT-Liste sind in der App nicht eingeblendet. Das Dashboard nutzt eine gespeicherte Sitzung. Das Passwort wird nicht gespeichert
 - [x] Dieselbe HTTP-API. Keine zweite Geschäftslogik
 - [x] `eas.json` ohne Token, ohne Team-ID und ohne Schlüssel
 - [x] Start über `index.ts` im App-Ordner. `expo/AppEntry.js` findet `App.tsx` unter pnpm nicht
