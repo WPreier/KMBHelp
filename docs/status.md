@@ -1,6 +1,6 @@
 # Status
 
-Phase 9 ist auf `phase/09-bearbeitung` committet und auf GitHub. Phase 10 liegt lokal auf `phase/10-installation`, noch ohne Commit, und wartet auf Kontrolle. Zu prüfen ist `docs/installation-linux.md`: die Unit-Dateien, nginx, Apache, die PostgreSQL-Rolle und der stündliche Backup-Cron. Der Upgrade-Weg ist `pnpm db:migrate` und danach `systemctl restart` für `kmbhelp-api` und `kmbhelp-worker`. Die Platzhalteradresse `192.0.2.10` ist vor dem Einsatz die interne Adresse des Servers.
+Phase 10 ist auf `phase/10-installation` committet und auf GitHub. Die Linux-Anleitung reicht. Als Nächstes ist Phase 11, die Expo-App. Die Platzhalteradresse `192.0.2.10` ist vor dem Einsatz die interne Adresse des Servers.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -14,7 +14,7 @@ Phase 9 ist auf `phase/09-bearbeitung` committet und auf GitHub. Phase 10 liegt 
 | 7 | Dashboard | erledigt |
 | 8 | MCP | erledigt |
 | 9 | Staff-Oberflächen, Playwright | erledigt |
-| 10 | Installation Linux, nginx, Apache | zur Kontrolle |
+| 10 | Installation Linux, nginx, Apache | erledigt |
 | 11 | Expo, Store-Dokumentation | offen |
 | 12 | Härtung, Betrieb, Notfallblatt | offen |
 
@@ -164,7 +164,7 @@ Die Formularseite `/mitarbeit/vorgaenge` bleibt entfernt. Die Bearbeitung steht 
 
 Start: `pnpm dev`. Die Ticketseite steht auf `http://127.0.0.1:5173/mitarbeit/ticket/{nummer}`. Der Rauchtest ist `pnpm --filter @kmbhelp/web e2e`.
 
-## Phase 10 — zur Kontrolle
+## Phase 10 — Abnahme
 
 Verbindlich ist `docs/installation-linux.md`. Die Beispiele liegen unter `infra/`.
 
