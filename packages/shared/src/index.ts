@@ -161,12 +161,17 @@ export {
   adminAccessSchema,
   adminPasswordSchema,
   adminStaffSchema,
+  categoryTermPrompt,
   loginRequestSchema,
   loginResultSchema,
+  skillTermPrompt,
+  termTextSchema,
   totpConfirmSchema,
   totpSetupSchema,
+  vocabularySchema,
   type AdminStaffList,
   type LoginResult,
+  type Vocabulary,
 } from './auth.js';
 export {
   LANG_COOKIE,

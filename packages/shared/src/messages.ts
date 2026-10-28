@@ -95,6 +95,10 @@ export const messages = {
     adminLead:
       'Auf diesem Rechner ohne Anmeldung. Aus dem Kanzleinetz nur der lokale Admin mit Passkey oder Einmalcode.',
     helpdeskStaff: 'Helpdeskmitarbeiter',
+    itStaff: 'IT-Mitarbeiter',
+    internalAdmin: 'Interner Admin',
+    notSignedIn: 'Nicht angemeldet',
+    deleteTerm: 'Löschen',
     inactiveStaff: 'Inaktive Mitarbeiter',
     readDirectory: 'AD Lesen',
     missingLead:
@@ -161,8 +165,10 @@ export const messages = {
     activityEmpty: 'Keine Einträge.',
     activityDate: 'Das Datum hat die Form dd.MM.yyyy.',
     dashboardTitle: 'Dashboard',
-    dashboardOwn: 'Eigene Zahlen. Offene P1 sind der aktuelle Stand, die übrigen Zahlen folgen dem Zeitraum. Die Uhr ist Europe/Vienna.',
-    dashboardFirm: 'Zahlen der Kanzlei. Offene P1 sind der aktuelle Stand, die übrigen Zahlen folgen dem Zeitraum. Die Uhr ist Europe/Vienna.',
+    dashboardOwn:
+      'Eigene Zahlen. Offene P1 sind der aktuelle Stand, die übrigen Zahlen folgen dem Zeitraum. Die Uhr ist Europe/Vienna.',
+    dashboardFirm:
+      'Zahlen der Kanzlei. Offene P1 sind der aktuelle Stand, die übrigen Zahlen folgen dem Zeitraum. Die Uhr ist Europe/Vienna.',
     dashboardRange: 'Zeitraum',
     dashboardDay: 'Tag',
     dashboardWeek: 'Woche',
@@ -316,6 +322,10 @@ export const messages = {
     adminLead:
       'On this computer without sign-in. From the office network, only the local admin with a passkey or one-time code.',
     helpdeskStaff: 'Helpdesk staff',
+    itStaff: 'IT staff',
+    internalAdmin: 'Internal admin',
+    notSignedIn: 'Not signed in',
+    deleteTerm: 'Delete',
     inactiveStaff: 'Inactive staff',
     readDirectory: 'Read Active Directory',
     missingLead:
@@ -382,8 +392,10 @@ export const messages = {
     activityEmpty: 'No entries.',
     activityDate: 'The date has the form dd.MM.yyyy.',
     dashboardTitle: 'Dashboard',
-    dashboardOwn: 'Your own figures. Open P1 is the current stock. The other figures follow the period. The clock is Europe/Vienna.',
-    dashboardFirm: 'Figures for the firm. Open P1 is the current stock. The other figures follow the period. The clock is Europe/Vienna.',
+    dashboardOwn:
+      'Your own figures. Open P1 is the current stock. The other figures follow the period. The clock is Europe/Vienna.',
+    dashboardFirm:
+      'Figures for the firm. Open P1 is the current stock. The other figures follow the period. The clock is Europe/Vienna.',
     dashboardRange: 'Period',
     dashboardDay: 'Day',
     dashboardWeek: 'Week',
@@ -550,5 +562,29 @@ export const publicErrors = {
   mailNotConfigured: {
     de: 'Der Mailversand ist nicht verbunden. Microsoft 365 fehlt noch.',
     en: 'Mail is not connected. Microsoft 365 is still missing.',
+  },
+  passwordFixed: {
+    de: 'Das Admin-Passwort ist vorgegeben und kann hier nicht geändert werden.',
+    en: 'The admin password is fixed and cannot be changed here.',
+  },
+  duplicateTerm: {
+    de: 'Dieser Eintrag ist schon vorhanden.',
+    en: 'This entry already exists.',
+  },
+  invalidTerm: {
+    de: 'Die Eingabe ist keine sinnvolle Bezeichnung.',
+    en: 'The input is not a usable name.',
+  },
+  termRejected: {
+    de: 'Die Prüfung hat den Text nicht als passend erkannt.',
+    en: 'The check did not accept the text.',
+  },
+  termCheckFailed: {
+    de: 'Die Prüfung hat nicht geantwortet.',
+    en: 'The check did not answer.',
+  },
+  termInUse: {
+    de: 'Der Eintrag wird noch verwendet.',
+    en: 'The entry is still in use.',
   },
 } as const;

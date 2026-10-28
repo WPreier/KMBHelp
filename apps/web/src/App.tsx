@@ -2,7 +2,9 @@ import {
   LANG_COOKIE,
   THEME_COOKIE,
   publicLinkTargets,
+  sessionViewSchema,
   type Lang,
+  type SessionView,
   type ThemeName,
 } from '@kmbhelp/shared';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -12,8 +14,10 @@ import kmbLight from '../../../brand/kmb-logo--light.png';
 import malamaDark from '../../../brand/malama-logo-dark.svg';
 import malamaLight from '../../../brand/malama-logo-light.svg';
 import { LocaleProvider, useLocale } from './locale.js';
+import { getJson } from './api.js';
 import { AdminPage, SignInPage } from './auth-pages.js';
-import { ConfigurationPage, NoticesPage } from './operations-pages.js';
+import { AdminLinks, ConfigurationPage, NoticesPage } from './operations-pages.js';
+import { TermPage } from './vocabulary-pages.js';
 import { ArticlePage, FaqListPage, FaqPage, HomePage, MissingPage, SearchPage } from './pages.js';
 import { ActivityPage } from './activity-page.js';
 import { DashboardPage } from './dashboard-page.js';
@@ -62,6 +66,28 @@ function Shell({
 }) {
   const { lang, copy } = useLocale();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [session, setSession] = useState<SessionView | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getJson('/api/v1/auth/session', sessionViewSchema.parse)
+      .then((loaded) => {
+        if (!cancelled) setSession(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSession({
+            signedIn: false,
+            isLocalAdmin: false,
+            displayName: null,
+            internalAdmin: false,
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
   useEffect(() => {
     const path = location.pathname;
     void fetch('/api/v1/activity', {
@@ -95,6 +121,10 @@ function Shell({
           <SearchForm />
         </div>
         <div className="header-end">
+          <p className="who">{identityLabel(session, copy)}</p>
+          <button type="button" className="header-signin" onClick={() => navigate('/anmelden')}>
+            {copy.signIn}
+          </button>
           <div className="header-tools" role="group" aria-label={copy.language}>
             <button
               type="button"
@@ -157,11 +187,9 @@ function Shell({
         <nav className="content-nav" aria-label={copy.contentNav}>
           <Link to="/">{copy.fileTicket}</Link>
           <Link to="/faq">{copy.guides}</Link>
-          <Link to="/anmelden">{copy.signIn}</Link>
-          <Link to="/verwaltung">{copy.adminTitle}</Link>
           <Link to="/mitarbeit/dashboard">{copy.dashboardTitle}</Link>
-          <Link to="/verwaltung/protokoll">{copy.activityTitle}</Link>
         </nav>
+        {session?.signedIn ? <AdminLinks /> : null}
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/faq" element={<FaqListPage />} />
@@ -170,6 +198,8 @@ function Shell({
           <Route path="/suche" element={<SearchPage />} />
           <Route path="/anmelden" element={<SignInPage />} />
           <Route path="/verwaltung" element={<AdminPage />} />
+          <Route path="/verwaltung/kenntnisse" element={<TermPage kind="skill" />} />
+          <Route path="/verwaltung/kategorien" element={<TermPage kind="category" />} />
           <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
           <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
           <Route path="/verwaltung/protokoll" element={<ActivityPage />} />
@@ -181,6 +211,15 @@ function Shell({
       </main>
     </>
   );
+}
+
+function identityLabel(
+  session: SessionView | null,
+  copy: { internalAdmin: string; notSignedIn: string },
+): string {
+  if (session?.internalAdmin) return copy.internalAdmin;
+  if (session?.signedIn && session.displayName) return session.displayName;
+  return copy.notSignedIn;
 }
 
 function SearchForm() {

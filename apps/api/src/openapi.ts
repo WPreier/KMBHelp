@@ -191,7 +191,7 @@ export const openApiDocument = {
         responses: {
           '200': {
             description:
-              'Reconciles HelpdeskAdmins by email, then lists staff, skills and categories. No password hash and no TOTP secret.',
+              'Lists staff, skills and categories from the database. Directory reconciliation is a separate call. No password hash and no TOTP secret.',
           },
           '403': { description: 'Not the local admin or the address is outside the allowlist.' },
         },

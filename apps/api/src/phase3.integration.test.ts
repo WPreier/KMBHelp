@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
+import { scriptedModel } from '@kmbhelp/ai';
 import { createDatabase, seedCatalog } from '@kmbhelp/db';
 import { applyMigrations, deleteDirectoryFixtures } from '@kmbhelp/db/testing';
 import { buildApp } from './app.js';
@@ -127,7 +128,7 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
     await removeTestPeople(database);
   });
 
-  it('lets the local admin manage mfa, skills and the password from the allowlist', async () => {
+  it('lets the local admin manage mfa and skills from the allowlist', async () => {
     await applyMigrations(database);
     await removeTestPeople(database);
     await seedCatalog(database);
@@ -140,6 +141,9 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
       directory: unconfiguredDirectory(),
       sessionSecret: secret,
       adminAllowlist: '127.0.0.1/32',
+      model: scriptedModel({
+        accept: (text) => text !== 'Quatsch',
+      }),
     });
     const blocked = buildApp({
       database,
@@ -175,8 +179,32 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
       .post('/api/v1/admin/password')
       .set('x-kmbhelp-csrf', token)
       .send({ currentPassword: password, newPassword: nextPassword });
-    expect(changed.status).toBe(200);
+    expect(changed.status).toBe(403);
     expect(JSON.stringify(changed.body)).not.toContain(nextPassword);
+
+    const created = await agent
+      .post('/api/v1/admin/skills')
+      .set('x-kmbhelp-csrf', token)
+      .send({ text: 'Netzwerkdrucker' });
+    expect(created.status).toBe(200);
+    const skillCode = (created.body.skills as Array<{ code: string; labelDe: string }>).find(
+      (item) => item.labelDe === 'Netzwerkdrucker',
+    )?.code;
+    expect(skillCode).toBe('netzwerkdrucker');
+    const duplicate = await agent
+      .post('/api/v1/admin/skills')
+      .set('x-kmbhelp-csrf', token)
+      .send({ text: 'Netzwerkdrucker' });
+    expect(duplicate.status).toBe(400);
+    const rejected = await agent
+      .post('/api/v1/admin/skills')
+      .set('x-kmbhelp-csrf', token)
+      .send({ text: 'Quatsch' });
+    expect(rejected.status).toBe(400);
+    const removed = await agent
+      .delete(`/api/v1/admin/skills/${skillCode}`)
+      .set('x-kmbhelp-csrf', token);
+    expect(removed.status).toBe(200);
 
     const skills = await database.pool.query<{ code: string }>(`select code from skill limit 1`);
     const categories = await database.pool.query<{ code: string }>(

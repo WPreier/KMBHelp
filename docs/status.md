@@ -69,7 +69,7 @@ Die Kopfzeile zeigt die Logos aus `brand/`, hell und dunkel. Weiße Flächen und
 - [x] `login_audit` nur anhängbar, ohne Passwort oder Code
 - [x] `pnpm test` und `pnpm typecheck`
 
-Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Anmeldung auf `http://127.0.0.1:5173/anmelden`. Den lokalen Admin legt `pnpm install:helpdesk` an, wenn `LOCAL_ADMIN_USERNAME` und `LOCAL_ADMIN_PASSWORD` in der Shell stehen. Danach die Werte aus der History entfernen.
+Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Anmeldung auf `http://127.0.0.1:5173/anmelden`. Den lokalen Admin legt `pnpm install:helpdesk` an, wenn `LOCAL_ADMIN_USERNAME` und `LOCAL_ADMIN_PASSWORD` in der Shell stehen. Danach die Werte aus der History entfernen. Die Website ändert dieses Passwort nicht. Der Klartext liegt in keiner Datei. Der Argon2id-Hash steht in der Tabelle `staff`, Spalte `password_hash`.
 
 Die Gruppe ist `HelpdeskAdmins`. Die Verwaltung gilt für `192.168.36.0/24` und `192.168.191.0/24`. Jede Verbindung aus `127.0.0.0/8` oder `::1` öffnet die Verwaltungsseiten ohne Anmeldung, auch in Produktion. Eine weitergeleitete Adresse zählt nicht. Dienstkonto, Passwort und das MADC1-Zertifikat liegen in `%LOCALAPPDATA%\kmbhelp\secrets.json`, nicht im Git und nicht im Projektordner. Einstellungen ohne Geheimnis stehen in `.env` im Projektordner. Ein auf der Konfigurationsseite gespeicherter Wert ohne Geheimnis liegt in `app_setting` unter `config.NAME` und gilt beim nächsten Start vor `.env`.
 
@@ -87,7 +87,7 @@ Der Start prüft nur `MADC1.kmbcloud.at`. Ist der Domänencontroller nicht errei
 - [x] `GET /api/health` zeigt den Worker. Die Seite bleibt erreichbar, wenn er steht
 - [x] `pnpm test` und `pnpm typecheck`
 
-Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:worker`. Ohne `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID` und `GRAPH_CLIENT_SECRET` bleibt der Worker bei `not_configured`. Die Antwortadresse ist `PUBLIC_ORIGIN`. Der Abruf folgt `WORKER_SCHEDULE`. P1 beginnt nach `CALENDAR_DELAY_P1` Minuten (0), P2 nach 60, P3 nach 240. Die Bereitschaft ist `ONCALL_EMAIL` und bleibt leer, bis eine Adresse gespeichert ist. Kategorien stehen in der Tabelle `category` und kommen aus `packages/db/src/catalog.ts` über `pnpm db:seed`. Eine Seite zum Anlegen von Kategorien gibt es nicht.
+Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:worker`. Ohne `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID` und `GRAPH_CLIENT_SECRET` bleibt der Worker bei `not_configured`. Die Antwortadresse ist `PUBLIC_ORIGIN`. Der Abruf folgt `WORKER_SCHEDULE`. P1 beginnt nach `CALENDAR_DELAY_P1` Minuten (0), P2 nach 60, P3 nach 240. Die Bereitschaft ist `ONCALL_EMAIL` und bleibt leer, bis eine Adresse gespeichert ist. Kategorien stehen in der Tabelle `category` und kommen aus `packages/db/src/catalog.ts` über `pnpm db:seed`. Weitere Einträge legt die Seite `/verwaltung/kategorien` an. Kenntnisse liegen auf `/verwaltung/kenntnisse`.
 
 ## Phase 5 — Abnahme
 

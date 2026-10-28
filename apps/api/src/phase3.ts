@@ -9,6 +9,7 @@ import {
   type AuthenticationResponseJSON,
   type RegistrationResponseJSON,
 } from '@simplewebauthn/server';
+import { unconfiguredModel, type ModelProvider } from '@kmbhelp/ai';
 import {
   category,
   loginAudit,
@@ -23,15 +24,18 @@ import {
 } from '@kmbhelp/db';
 import {
   adminAccessSchema,
-  adminPasswordSchema,
   adminStaffSchema,
+  categoryTermPrompt,
   deactivateStaffSchema,
   loginRequestSchema,
   loginResultSchema,
   publicErrors,
   sessionViewSchema,
+  skillTermPrompt,
+  termTextSchema,
   totpConfirmSchema,
   totpSetupSchema,
+  vocabularySchema,
 } from '@kmbhelp/shared';
 import {
   assertCsrf,
@@ -51,7 +55,7 @@ import {
   rateLimited,
 } from './http.js';
 import { ipAllowed } from './network.js';
-import { hashLocalPassword, verifyLocalPassword } from './passwords.js';
+import { verifyLocalPassword } from './passwords.js';
 import { encodeBase32, openSecret, randomTotpSecret, sealSecret, totpMatches } from './totp.js';
 
 const pendingSeconds = 15 * 60;
@@ -65,6 +69,7 @@ export type Phase3Options = {
   rpId: string;
   origin: string;
   now?: (() => Date) | undefined;
+  model?: ModelProvider | undefined;
 };
 
 export function registerPhase3(app: FastifyInstance, options: Phase3Options): void {
@@ -76,15 +81,36 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     return options.database;
   }
 
+  const model = options.model ?? unconfiguredModel;
+
   app.get('/api/v1/auth/session', async (request) => {
     if (localhostAdmin(request)) {
-      return sessionViewSchema.parse({ signedIn: true, isLocalAdmin: true });
+      return sessionViewSchema.parse({
+        signedIn: true,
+        isLocalAdmin: true,
+        displayName: null,
+        internalAdmin: true,
+      });
     }
-    if (!options.database) return sessionViewSchema.parse({ signedIn: false, isLocalAdmin: false });
+    const anonymous = {
+      signedIn: false,
+      isLocalAdmin: false,
+      displayName: null,
+      internalAdmin: false,
+    };
+    if (!options.database) return sessionViewSchema.parse(anonymous);
     const current = await staffFromSession(options.database, request, now());
-    if (!current || current.mfaPending)
-      return sessionViewSchema.parse({ signedIn: false, isLocalAdmin: false });
-    return sessionViewSchema.parse({ signedIn: true, isLocalAdmin: current.isLocalAdmin });
+    if (!current || current.mfaPending) return sessionViewSchema.parse(anonymous);
+    const names = await options.database.db
+      .select({ displayName: staff.displayName })
+      .from(staff)
+      .where(eq(staff.id, current.staffId));
+    return sessionViewSchema.parse({
+      signedIn: true,
+      isLocalAdmin: current.isLocalAdmin,
+      displayName: names[0]?.displayName ?? current.email,
+      internalAdmin: false,
+    });
   });
 
   app.post('/api/v1/auth/login', async (request, reply) => {
@@ -371,6 +397,15 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     return { ok: true };
   });
 
+  async function databaseStaffView() {
+    return adminStaffSchema.parse({
+      directory: 'ok',
+      added: [],
+      missing: [],
+      ...(await adminSnapshot(db())),
+    });
+  }
+
   async function staffView() {
     const database = db();
     const sync = await reconcileHelpdesk(database, options.directory);
@@ -378,18 +413,18 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
   }
 
   app.get('/api/v1/admin/staff', async (request) => {
-    await requireLocalAdmin(db(), request, options.adminAllowlist, now());
-    return staffView();
+    await requireDesk(db(), request, options.adminAllowlist, now());
+    return databaseStaffView();
   });
 
   app.post('/api/v1/admin/directory/read', async (request) => {
-    const current = await requireLocalAdmin(db(), request, options.adminAllowlist, now());
+    const current = await requireDesk(db(), request, options.adminAllowlist, now());
     assertCsrf(current, request);
     return staffView();
   });
 
   app.post('/api/v1/admin/directory/deactivate', async (request) => {
-    const current = await requireLocalAdmin(db(), request, options.adminAllowlist, now());
+    const current = await requireDesk(db(), request, options.adminAllowlist, now());
     assertCsrf(current, request);
     const parsed = deactivateStaffSchema.safeParse(request.body);
     if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
@@ -404,24 +439,36 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     return staffView();
   });
 
-  app.post('/api/v1/admin/password', async (request) => {
-    const parsed = adminPasswordSchema.safeParse(request.body);
-    if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
-    const database = db();
-    const current = await requireLocalAdmin(database, request, options.adminAllowlist, now());
+  app.post('/api/v1/admin/password', async () => {
+    throw new PublicError(403, 'password_fixed', publicErrors.passwordFixed);
+  });
+
+  app.post('/api/v1/admin/skills', async (request) => {
+    const current = await requireDesk(db(), request, options.adminAllowlist, now());
     assertCsrf(current, request);
-    const rows = await database.db
-      .select({ passwordHash: staff.passwordHash })
-      .from(staff)
-      .where(eq(staff.id, current.staffId));
-    const hash = rows[0]?.passwordHash;
-    if (!hash || !(await verifyLocalPassword(hash, parsed.data.currentPassword))) throw denied();
-    await database.db
-      .update(staff)
-      .set({ passwordHash: await hashLocalPassword(parsed.data.newPassword) })
-      .where(eq(staff.id, current.staffId));
-    await writeAudit(database, request, current.staffId, current.email, 'admin', 'ok');
-    return { ok: true };
+    await createVocabulary(db(), request, current, 'skill', model);
+    return vocabularyView(db());
+  });
+
+  app.delete('/api/v1/admin/skills/:code', async (request) => {
+    const current = await requireDesk(db(), request, options.adminAllowlist, now());
+    assertCsrf(current, request);
+    await deleteVocabulary(db(), request, current, 'skill');
+    return vocabularyView(db());
+  });
+
+  app.post('/api/v1/admin/categories', async (request) => {
+    const current = await requireDesk(db(), request, options.adminAllowlist, now());
+    assertCsrf(current, request);
+    await createVocabulary(db(), request, current, 'category', model);
+    return vocabularyView(db());
+  });
+
+  app.delete('/api/v1/admin/categories/:code', async (request) => {
+    const current = await requireDesk(db(), request, options.adminAllowlist, now());
+    assertCsrf(current, request);
+    await deleteVocabulary(db(), request, current, 'category');
+    return vocabularyView(db());
   });
 
   app.post('/api/v1/admin/staff/:id/mfa/reset', async (request) => {
@@ -649,6 +696,24 @@ async function pending(
   return current;
 }
 
+async function requireDesk(
+  database: Database,
+  request: FastifyRequest,
+  allowlist: string,
+  at: Date,
+): Promise<StaffSession> {
+  const local = localhostAdmin(request);
+  if (local) return local;
+  if (!ipAllowed(clientAddress(request), allowlist)) {
+    throw new PublicError(403, 'network_denied', publicErrors.networkDenied);
+  }
+  const current = await staffFromSession(database, request, at);
+  if (!current || current.mfaPending) {
+    throw new PublicError(401, 'unauthorized', publicErrors.unauthorized);
+  }
+  return current;
+}
+
 async function requireLocalAdmin(
   database: Database,
   request: FastifyRequest,
@@ -794,6 +859,143 @@ async function adminSnapshot(database: Database) {
         .map((row) => row.categoryCode),
     })),
   };
+}
+
+async function vocabularyView(database: Database) {
+  const snap = await adminSnapshot(database);
+  return vocabularySchema.parse({ skills: snap.skills, categories: snap.categories });
+}
+
+function termCode(text: string): string {
+  const folded = text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
+  return folded
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-+|-+$/gu, '')
+    .slice(0, 80);
+}
+
+function sensibleTerm(text: string): boolean {
+  return text.length > 0 && text.length <= 80 && /\p{L}/u.test(text) && !/[\r\n]/u.test(text);
+}
+
+function sameTerm(left: string, right: string): boolean {
+  return left.trim().toLowerCase() === right.trim().toLowerCase();
+}
+
+function isForeignKey(error: unknown): boolean {
+  const current = error as { code?: string; cause?: { code?: string } };
+  return current.code === '23503' || current.cause?.code === '23503';
+}
+
+function routeCode(request: FastifyRequest): string {
+  const params = request.params as { code?: string };
+  const code = params.code?.trim() ?? '';
+  if (!/^[a-z0-9-]{1,80}$/u.test(code)) {
+    throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+  }
+  return code;
+}
+
+async function createVocabulary(
+  database: Database,
+  request: FastifyRequest,
+  current: StaffSession,
+  kind: 'skill' | 'category',
+  model: ModelProvider,
+): Promise<void> {
+  const parsed = termTextSchema.safeParse(request.body);
+  const text = parsed.success ? parsed.data.text : '';
+  const code = termCode(text);
+  if (!parsed.success || !sensibleTerm(text) || code === '') {
+    throw new PublicError(400, 'invalid_term', publicErrors.invalidTerm);
+  }
+  if (kind === 'skill') {
+    const rows = await database.db.select().from(skill);
+    if (
+      rows.some(
+        (row) =>
+          sameTerm(row.code, code) || sameTerm(row.labelDe, text) || sameTerm(row.labelEn, text),
+      )
+    ) {
+      throw new PublicError(400, 'duplicate_term', publicErrors.duplicateTerm);
+    }
+  } else {
+    const rows = await database.db.select().from(category);
+    if (
+      rows.some(
+        (row) =>
+          sameTerm(row.code, code) || sameTerm(row.labelDe, text) || sameTerm(row.labelEn, text),
+      )
+    ) {
+      throw new PublicError(400, 'duplicate_term', publicErrors.duplicateTerm);
+    }
+  }
+  const prompt = kind === 'skill' ? skillTermPrompt : categoryTermPrompt;
+  const accepted = await model.acceptTerm(`${prompt}${text}`, text);
+  if (accepted === null) {
+    throw new PublicError(503, 'term_check_failed', publicErrors.termCheckFailed);
+  }
+  if (!accepted) throw new PublicError(400, 'term_rejected', publicErrors.termRejected);
+  if (kind === 'skill') {
+    await database.db.insert(skill).values({ code, labelDe: text, labelEn: text });
+  } else {
+    const fallback = await database.db
+      .select({ code: skill.code })
+      .from(skill)
+      .orderBy(skill.code)
+      .limit(1);
+    const defaultSkillCode = fallback[0]?.code;
+    if (!defaultSkillCode) throw new PublicError(400, 'invalid_term', publicErrors.invalidTerm);
+    await database.db.insert(category).values({
+      code,
+      groupCode: 'manual',
+      labelDe: text,
+      labelEn: text,
+      defaultSkillCode,
+    });
+  }
+  await writeAudit(
+    database,
+    request,
+    current.csrfToken === 'localhost' ? null : current.staffId,
+    current.email,
+    'admin',
+    'ok',
+  );
+}
+
+async function deleteVocabulary(
+  database: Database,
+  request: FastifyRequest,
+  current: StaffSession,
+  kind: 'skill' | 'category',
+): Promise<void> {
+  const code = routeCode(request);
+  try {
+    const removed =
+      kind === 'skill'
+        ? await database.db
+            .delete(skill)
+            .where(eq(skill.code, code))
+            .returning({ code: skill.code })
+        : await database.db
+            .delete(category)
+            .where(eq(category.code, code))
+            .returning({ code: category.code });
+    if (removed.length === 0) throw new PublicError(404, 'not_found', publicErrors.notFound);
+  } catch (error) {
+    if (error instanceof PublicError) throw error;
+    if (isForeignKey(error)) throw new PublicError(409, 'term_in_use', publicErrors.termInUse);
+    throw error;
+  }
+  await writeAudit(
+    database,
+    request,
+    current.csrfToken === 'localhost' ? null : current.staffId,
+    current.email,
+    'admin',
+    'ok',
+  );
 }
 
 async function writeAudit(

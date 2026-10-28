@@ -113,6 +113,9 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     options.adminAllowlist ?? process.env.ADMIN_IP_ALLOWLIST ?? '',
     options.adminAllowlist === undefined && process.env.NODE_ENV !== 'production',
   );
+  const model =
+    options.model ??
+    (process.env.NODE_ENV === 'test' ? unconfiguredModel : modelProviderFromEnv(process.env));
   registerPhase2(app, {
     database,
     testAuthEnabled: options.testAuthEnabled ?? false,
@@ -120,9 +123,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     explainer: options.explainer,
     ticketCreateLimit: options.ticketCreateLimit,
     searchLimit: options.searchLimit,
-    model:
-      options.model ??
-      (process.env.NODE_ENV === 'test' ? unconfiguredModel : modelProviderFromEnv(process.env)),
+    model,
   });
   registerPhase3(app, {
     database,
@@ -132,6 +133,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     rpId: options.webauthnRpId ?? webauthn.rpId,
     origin: options.webauthnOrigin ?? webauthn.origin,
     now: options.now,
+    model,
   });
   registerOperations(app, {
     database,

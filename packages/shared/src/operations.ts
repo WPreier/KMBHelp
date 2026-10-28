@@ -115,6 +115,8 @@ export const syslogTestSchema = z.object({
 export const sessionViewSchema = z.object({
   signedIn: z.boolean(),
   isLocalAdmin: z.boolean(),
+  displayName: z.string().nullable(),
+  internalAdmin: z.boolean(),
 });
 
 export type NoticeList = z.infer<typeof noticeListSchema>;

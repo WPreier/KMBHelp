@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { modelProviderFromEnv, httpModelProvider, parseSatisfaction, unconfiguredModel } from './provider.js';
+import {
+  modelProviderFromEnv,
+  httpModelProvider,
+  parseSatisfaction,
+  unconfiguredModel,
+} from './provider.js';
 
 describe('model provider', () => {
   it('stays unconfigured until endpoint, EU region, key and AVV are all set', async () => {
@@ -65,5 +70,27 @@ describe('model provider', () => {
     expect(parseSatisfaction('zufrieden')).toBe('satisfied');
     expect(parseSatisfaction('vielleicht')).toBeNull();
     expect(await unconfiguredModel.satisfaction('zufrieden')).toBeNull();
+    expect(await unconfiguredModel.acceptTerm('Kann das sein? ', 'Lohn')).toBeNull();
+  });
+
+  it('reads ja or nein for a term', async () => {
+    const provider = httpModelProvider({
+      endpoint: 'https://model.example.eu/v1',
+      apiKey: 'secret-key',
+      fetchImpl: async (_url, init) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { prompt?: string; task?: string };
+        expect(body.task).toBe('accept_term');
+        return new Response(
+          JSON.stringify({ answer: body.prompt?.includes('Lohn') ? 'ja' : 'nein' }),
+        );
+      },
+    });
+    expect(
+      await provider.acceptTerm(
+        'Kann dieser Text als Kenntnis einer Person kategorisiert werden? Lohn',
+        'Lohn',
+      ),
+    ).toBe(true);
+    expect(await provider.acceptTerm('Prüfung ', '???')).toBe(false);
   });
 });

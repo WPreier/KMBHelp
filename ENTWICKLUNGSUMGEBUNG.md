@@ -109,7 +109,7 @@ Grok außerhalb von Cursor (grok.com) nur für Fragen ohne Codeausschnitte aus d
 | Graph Client-Secret | dieselbe Datei | |
 | AD-Dienstkonto | dieselbe Datei | kein Domänenadmin |
 | Session-Schlüssel | dieselbe Datei, lange Zufallswerte | |
-| Lokales Admin-Passwort | nur Argon2id-Hash in der Datenbank | nicht im Klartext aufheben |
+| Lokales Admin-Passwort | nur Argon2id-Hash in der Datenbank, Tabelle `staff`, Spalte `password_hash`. Die Website kann es nicht ändern. `LOCAL_ADMIN_PASSWORD` gilt nur für den Augenblick von `pnpm install:helpdesk` | nicht im Klartext aufheben, nicht in `secrets.json` |
 | Expo-Token | Rechner der Person, die Stores baut, oder EAS-Secret | nicht im Linux-Helpdesk nötig |
 | GitHub | persönlicher Zugang oder SSH-Schlüssel | |
 

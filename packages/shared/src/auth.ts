@@ -63,5 +63,20 @@ export const deactivateStaffSchema = z.object({
   ids: z.array(z.string().uuid()).min(1).max(200),
 });
 
+export const termTextSchema = z.object({
+  text: z.string().trim().min(1).max(80),
+});
+
+export const vocabularySchema = z.object({
+  skills: adminStaffSchema.shape.skills,
+  categories: adminStaffSchema.shape.categories,
+});
+
+export const skillTermPrompt = 'Kann dieser Text als Kenntnis einer Person kategorisiert werden? ';
+
+export const categoryTermPrompt = 'Kann dieser Text als Ticketkategorie kategorisiert werden? ';
+
+export type Vocabulary = z.infer<typeof vocabularySchema>;
+
 export type LoginResult = z.infer<typeof loginResultSchema>;
 export type AdminStaffList = z.infer<typeof adminStaffSchema>;

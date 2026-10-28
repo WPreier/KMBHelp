@@ -9,7 +9,6 @@ import {
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import { useEffect, useState, type FormEvent } from 'react';
 import { getJson, postJson, RequestFailed } from './api.js';
-import { AdminLinks } from './operations-pages.js';
 import { useLocale } from './locale.js';
 
 type CopyText = { de: string; en: string };
@@ -206,47 +205,38 @@ export function AdminPage() {
   useEffect(() => {
     let cancelled = false;
     getJson('/api/v1/admin/staff', adminStaffSchema.parse)
-      .then((loaded) => {
-        if (!cancelled) setData(loaded);
+      .then(async (loaded) => {
+        if (cancelled) return;
+        setData(loaded);
+        document.body.classList.add('wait');
+        try {
+          const synced = await postJson('/api/v1/admin/directory/read', {}, adminStaffSchema.parse);
+          if (!cancelled) setData(synced);
+        } catch (caught) {
+          if (!cancelled) setError(bilingual(caught));
+        } finally {
+          document.body.classList.remove('wait');
+        }
       })
       .catch((caught: unknown) => {
-        if (!cancelled) {
-          setError(bilingual(caught));
-        }
+        if (!cancelled) setError(bilingual(caught));
       });
     return () => {
       cancelled = true;
+      document.body.classList.remove('wait');
     };
   }, []);
-
-  async function changePassword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    setError(null);
-    try {
-      await postJson(
-        '/api/v1/admin/password',
-        {
-          currentPassword: String(form.get('current') ?? ''),
-          newPassword: String(form.get('next') ?? ''),
-        },
-        (value) => value,
-      );
-      setNotice(copy.signedIn);
-      event.currentTarget.reset();
-    } catch (caught) {
-      setError(bilingual(caught));
-    }
-  }
 
   async function readDirectory() {
     setBusy(true);
     setError(null);
+    document.body.classList.add('wait');
     try {
       setData(await postJson('/api/v1/admin/directory/read', {}, adminStaffSchema.parse));
     } catch (caught) {
       setError(bilingual(caught));
     } finally {
+      document.body.classList.remove('wait');
       setBusy(false);
     }
   }
@@ -301,13 +291,10 @@ export function AdminPage() {
 
   return (
     <section>
-      <AdminLinks />
-      <h2>{copy.adminTitle}</h2>
-      <p>{copy.adminLead}</p>
       {error ? <p role="alert">{error[lang]}</p> : null}
       {notice ? <p role="status">{notice}</p> : null}
-      <h3>{copy.helpdeskStaff}</h3>
-      <div className="form-actions">
+      <div className="title-row">
+        <h2>{copy.itStaff}</h2>
         <button type="button" disabled={busy} onClick={() => void readDirectory()}>
           {copy.readDirectory}
         </button>
@@ -334,19 +321,6 @@ export function AdminPage() {
           </button>
         </div>
       ) : null}
-      <form className="form" onSubmit={(event) => void changePassword(event)}>
-        <label>
-          {copy.currentPassword}
-          <input name="current" type="password" autoComplete="current-password" required />
-        </label>
-        <label>
-          {copy.newPassword}
-          <input name="next" type="password" autoComplete="new-password" minLength={12} required />
-        </label>
-        <div className="form-actions">
-          <button type="submit">{copy.changePassword}</button>
-        </div>
-      </form>
       {data?.staff
         .filter((person) => !person.isLocalAdmin && person.active)
         .map((person) => (

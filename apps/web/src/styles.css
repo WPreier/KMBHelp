@@ -70,6 +70,7 @@ button {
 
 header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
@@ -209,7 +210,62 @@ header .search {
 }
 
 header .search input {
-  width: 11rem;
+  width: 16.5rem;
+}
+
+.who {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.header-signin {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--green);
+  color: var(--on-green);
+  cursor: pointer;
+}
+
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.title-row h2 {
+  margin: 0;
+}
+
+.term-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.term-row input {
+  flex: 1;
+  width: auto;
+}
+
+.term-error {
+  color: #9d1c1c;
+}
+
+:root[data-theme='dark'] .term-error {
+  color: #ffb4b4;
+}
+
+body.wait,
+body.wait * {
+  cursor: wait !important;
 }
 
 header .search button {

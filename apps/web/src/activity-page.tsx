@@ -2,7 +2,6 @@ import { activityListSchema, displayDateToIso, readCookie, type ActivityList } f
 import { useState, type FormEvent } from 'react';
 import { getJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
-import { AdminLinks } from './operations-pages.js';
 
 export function ActivityPage() {
   const { lang, copy } = useLocale();
@@ -74,7 +73,6 @@ export function ActivityPage() {
 
   return (
     <section>
-      <AdminLinks />
       <h2>{copy.activityTitle}</h2>
       <p>{copy.activityLead}</p>
       <form className="form" onSubmit={(event) => void load(event)}>

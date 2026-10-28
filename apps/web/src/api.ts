@@ -16,6 +16,17 @@ export async function getJson<T>(url: string, parse: (value: unknown) => T): Pro
   );
 }
 
+export async function deleteJson<T>(url: string, parse: (value: unknown) => T): Promise<T> {
+  return readResponse(
+    await fetch(url, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { ...csrfHeader() },
+    }),
+    parse,
+  );
+}
+
 export async function postJson<T>(
   url: string,
   payload: unknown,

@@ -25,6 +25,7 @@ export type ModelProvider = {
   explain(query: string, hits: readonly ExplainHit[]): Promise<{ de: string; en: string } | null>;
   review(prompt: string, text: string): Promise<MailReview | null>;
   satisfaction(text: string): Promise<Satisfaction | null>;
+  acceptTerm(prompt: string, text: string): Promise<boolean | null>;
 };
 
 export const unconfiguredModel: ModelProvider = {
@@ -40,6 +41,9 @@ export const unconfiguredModel: ModelProvider = {
     return null;
   },
   async satisfaction() {
+    return null;
+  },
+  async acceptTerm() {
     return null;
   },
 };
@@ -127,6 +131,20 @@ export function httpModelProvider(options: {
       const answer = typeof body?.answer === 'string' ? body.answer : '';
       return parseSatisfaction(answer);
     },
+    async acceptTerm(prompt, text) {
+      const body = await post(
+        fetchImpl,
+        options,
+        { task: 'accept_term', prompt, text: maskPersonalData(text) },
+        30_000,
+      );
+      if (!body) return null;
+      if (typeof body.accepted === 'boolean') return body.accepted;
+      const answer = typeof body.answer === 'string' ? body.answer.trim().toLowerCase() : '';
+      if (answer.startsWith('ja') || answer === 'yes' || answer === 'true') return true;
+      if (answer.startsWith('nein') || answer === 'no' || answer === 'false') return false;
+      return null;
+    },
     async review(prompt, text) {
       const body = await post(fetchImpl, options, {
         task: 'review_mail',
@@ -136,7 +154,8 @@ export function httpModelProvider(options: {
       });
       const answer = typeof body?.answer === 'string' ? body.answer : '';
       if (!answer.trim()) return null;
-      const model = typeof body?.model === 'string' && body.model.trim() ? body.model.trim() : providerName;
+      const model =
+        typeof body?.model === 'string' && body.model.trim() ? body.model.trim() : providerName;
       return { answer: answer.slice(0, 2000), model: model.slice(0, 80) };
     },
   };
@@ -147,6 +166,7 @@ export function scriptedModel(input: {
   sentence?: { de: string; en: string } | null;
   answer?: string | null;
   satisfaction?: Satisfaction | null;
+  accept?: boolean | ((text: string) => boolean | null) | null;
   onClassify?: (text: string) => void;
   onExplain?: (query: string) => void;
   onReview?: (text: string) => void;
@@ -170,6 +190,10 @@ export function scriptedModel(input: {
     async satisfaction() {
       return input.satisfaction ?? null;
     },
+    async acceptTerm(_prompt, text) {
+      if (typeof input.accept === 'function') return input.accept(text);
+      return input.accept ?? null;
+    },
   };
 }
 
@@ -177,6 +201,7 @@ async function post(
   fetchImpl: typeof fetch,
   options: { endpoint: string; apiKey: string },
   payload: Record<string, unknown>,
+  timeoutMs = 15_000,
 ): Promise<Record<string, unknown> | null> {
   try {
     const response = await fetchImpl(options.endpoint, {
@@ -187,7 +212,7 @@ async function post(
         accept: 'application/json',
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!response.ok) return null;
     const parsed: unknown = await response.json();

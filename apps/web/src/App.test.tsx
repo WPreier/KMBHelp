@@ -119,6 +119,9 @@ describe('placeholder page', () => {
     expect(screen.getByText('7')).toBeTruthy();
     expect(screen.getByText('26.10.2026')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reset' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sign in' }).closest('header')).toBeTruthy();
+    expect(screen.getByText('Not signed in')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Log' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Deutsch' }).closest('header')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Light' }).closest('header')).toBeTruthy();
     expect(screen.getAllByRole('option', { name: 'Very important' }).length).toBeGreaterThan(0);

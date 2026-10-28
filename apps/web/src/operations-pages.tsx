@@ -17,6 +17,8 @@ export function AdminLinks() {
   return (
     <nav className="content-nav" aria-label={copy.adminTitle}>
       <Link to="/verwaltung">{copy.adminTitle}</Link>
+      <Link to="/verwaltung/kenntnisse">{copy.skills}</Link>
+      <Link to="/verwaltung/kategorien">{copy.categories}</Link>
       <Link to="/verwaltung/meldungen">{copy.noticesTitle}</Link>
       <Link to="/verwaltung/konfiguration">{copy.configurationTitle}</Link>
       <Link to="/verwaltung/protokoll">{copy.activityTitle}</Link>
@@ -82,7 +84,6 @@ export function NoticesPage() {
 
   return (
     <section>
-      <AdminLinks />
       <h2>{copy.noticesTitle}</h2>
       <p>{copy.noticesLead}</p>
       {notice ? <p role="status">{notice}</p> : null}
@@ -309,7 +310,6 @@ export function ConfigurationPage() {
 
   return (
     <section>
-      <AdminLinks />
       <h2>{copy.configurationTitle}</h2>
       <p>{copy.configurationLead}</p>
       <p>{copy.configurationSource}</p>
