@@ -45,6 +45,9 @@ const shownKeys = [
   'AI_REGION',
   'AI_AVV_REFERENCE',
   'AI_AUTO_REPLY_CATEGORIES',
+  'OLLAMA_URL',
+  'OLLAMA_MODEL',
+  'MAIL_ERROR_TO',
 ];
 
 export type Check = ConfigurationReport['checks'][number];
@@ -447,14 +450,14 @@ export async function inspectConfiguration(
       ? check(
           'ai',
           'ok',
-          'Ein KI-Endpunkt ist gesetzt. Eine Helpdesk-Mail wird nur bei bestätigtem Support ein Ticket.',
-          'A model endpoint is set. A helpdesk mail becomes a ticket only after confirmed support.',
+          'Ein externer KI-Endpunkt ist gesetzt. Die Mailprüfung spricht davon unabhängig OLLAMA_URL.',
+          'An external model endpoint is set. Mail review calls OLLAMA_URL independently of it.',
         )
       : check(
           'ai.not_configured',
           'informational',
-          'Der KI-Anbieter ist nicht konfiguriert. Helpdesk-Mails bleiben ungelesen.',
-          'The model provider is not configured. Helpdesk mail stays unread.',
+          'Kein externer KI-Endpunkt. Die Mailprüfung spricht OLLAMA_URL. Die Suche bleibt beim Satz aus Phase 2.',
+          'No external model endpoint. Mail review calls OLLAMA_URL. Search keeps the phase 2 sentence.',
         ),
   );
 

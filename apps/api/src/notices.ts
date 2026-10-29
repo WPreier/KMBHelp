@@ -99,9 +99,9 @@ export const noticeCatalog: readonly NoticeDefinition[] = [
     code: 'ai.not_configured',
     category: 'informational',
     textDe:
-      'Der KI-Anbieter ist nicht konfiguriert. Helpdesk-Mails bleiben ungelesen und werden kein Ticket.',
+      'Kein externer KI-Endpunkt. Die Mailprüfung spricht den lokalen Ollama-Server. Die Suche bleibt beim Satz aus Phase 2.',
     textEn:
-      'The model provider is not configured. Helpdesk mail stays unread and does not become a ticket.',
+      'No external model endpoint. Mail review calls the local Ollama server. Search keeps the phase 2 sentence.',
   },
 ];
 

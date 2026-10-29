@@ -58,7 +58,7 @@ Alle sind ausgelöst. Die Kategorie kann der lokale Admin ändern.
 | `syslog.unreachable` | Warning | Das UDP-Datagramm an den Syslog-Host wurde nicht übergeben |
 | `webauthn.mismatch` | Warning | Relying-Party und Origin passen nicht |
 | `local_admin.missing` | Warning | Es gibt nicht genau einen lokalen Admin |
-| `ai.not_configured` | Informational | Kein KI-Endpunkt. Helpdesk-Mails bleiben ungelesen und werden kein Ticket |
+| `ai.not_configured` | Informational | Kein externer KI-Endpunkt. Die Mailprüfung spricht Ollama. Die Suche bleibt beim Satz aus Phase 2 |
 
 ## Weitere Prüfungen auf der Konfigurationsseite
 
@@ -82,10 +82,13 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `WORKER_SCHEDULE` | `00:00-08:00=30,08:00-12:00=10,12:00-12:30=0,12:30-17:00=10,17:00-24:00=30` | Abruf bei Microsoft 365. `0` ist eine Pause. Die Uhr ist `SYSLOG_UTC_OFFSET`. |
 | `ACCESS_LOG_RETENTION_DAYS` | `90` | Danach löscht der Review-Lauf die IP-Zeilen in `access_log`. `activity_log` bleibt. |
 | `AI_PROVIDER` | `grok` | Nur der Name. Erlaubt sind grok, gemini, deepseek, other. Die Adresse ist `AI_ENDPOINT`. |
-| `INTERNAL_MAIL_DOMAINS` | `kmb-steuerberatung.at,ght.at,koller-rohrschach.at` | Absenderdomänen, die ein Ticket auslösen dürfen. Leer verwendet diese drei. |
-| `AI_MAIL_PROMPT` | eingebauter JA/NEIN-Auftrag | Mehrzeiliger Auftrag. JA setzt `is_support`. Leer verwendet den eingebauten Text. |
+| `INTERNAL_MAIL_DOMAINS` | `kmb-steuerberatung.at,ght.at,koller-rohrschach.at` | Frühere Absenderliste. Die Mailprüfung sperrt damit niemanden mehr. |
+| `OLLAMA_URL` | `http://192.168.191.131:11434` | Lokaler Ollama-Server. Eine Abfrage wartet höchstens 5 Minuten. |
+| `OLLAMA_MODEL` | `qwen2.5:7b` | Modellname für die Mailprüfung. |
+| `MAIL_ERROR_TO` | `helpdesk@ppc.at` | Empfänger der Fehlermail, wenn eine Abfrage zu lange dauert. Die Mail wird verschickt. |
+| `AI_MAIL_PROMPT` | eingebauter JA/NEIN-Auftrag | Früherer Auftrag. Die Mailprüfung nutzt ihn nicht mehr. |
 | `ACTIVITY_LOG_FILE` | `%LOCALAPPDATA%\kmbhelp\activity.log` | Zweite Kopie des Zugriffsprotokolls, außerhalb des Projektordners. |
-| `AI_ENDPOINT` | leer | https-Adresse. Ohne EU-Region, Schlüssel und AVV kein Aufruf. |
+| `AI_ENDPOINT` | leer | https-Adresse für Suche und Kenntnisprüfung. Die Mailprüfung nutzt `OLLAMA_URL`. Ohne EU-Region, Schlüssel und AVV kein Aufruf. |
 | `AI_REGION` | leer | Muss als EU-Verarbeitung erkennbar sein. Eine US-Region sperrt den Aufruf. |
 | `AI_API_KEY` | leer | Schlüssel. Nur in `secrets.json`, nie in Git. |
 | `AI_AVV_REFERENCE` | leer | Verweis auf den Auftragsverarbeitungsvertrag. |

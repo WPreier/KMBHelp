@@ -150,7 +150,6 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     database,
     testAuthEnabled: options.testAuthEnabled ?? false,
     now: options.now,
-    model: options.model,
   });
   registerDashboard(app, {
     database,

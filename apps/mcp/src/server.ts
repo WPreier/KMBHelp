@@ -1,28 +1,6 @@
 import { listToolNames, resolveToolCall, toolDefinitions } from './tools.js';
 
-export type ReviewMailInput = {
-  fromEmail: string;
-  subject: string;
-  body: string;
-};
-
 export { listToolNames, toolDefinitions };
-
-export function reviewMailTool(): {
-  name: 'review_mail';
-  description: string;
-} {
-  const tool = toolDefinitions.find((entry) => entry.name === 'review_mail');
-  if (!tool) throw new Error('review_mail missing');
-  return { name: 'review_mail', description: tool.description };
-}
-
-export async function callReviewMail(
-  input: ReviewMailInput,
-  options: { origin: string; fetchImpl?: typeof fetch },
-): Promise<unknown> {
-  return callTool('review_mail', input, { ...options, token: '' }).then((result) => result.json);
-}
 
 export async function callTool(
   name: string,

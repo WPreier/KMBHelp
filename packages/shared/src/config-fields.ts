@@ -1,8 +1,4 @@
-import {
-  defaultAiProvider,
-  defaultInternalMailDomains,
-  defaultMailPrompt,
-} from './mail-prompt.js';
+import { defaultAiProvider, defaultInternalMailDomains, defaultMailPrompt } from './mail-prompt.js';
 
 export type ConfigField = {
   key: string;
@@ -31,6 +27,9 @@ const shownWhenEmpty: Record<string, string> = {
   AI_PROVIDER: defaultAiProvider,
   INTERNAL_MAIL_DOMAINS: defaultInternalMailDomains,
   AI_MAIL_PROMPT: defaultMailPrompt,
+  OLLAMA_URL: 'http://192.168.191.131:11434',
+  OLLAMA_MODEL: 'qwen2.5:7b',
+  MAIL_ERROR_TO: 'helpdesk@ppc.at',
 };
 
 export const configFields: readonly ConfigField[] = [
@@ -306,25 +305,47 @@ export const configFields: readonly ConfigField[] = [
     key: 'INTERNAL_MAIL_DOMAINS',
     secret: false,
     textDe:
-      'Domänen interner Absender, eine pro Zeile oder durch Komma getrennt. Nur diese Absender können ein Support-Ticket auslösen. Derzeit kmb-steuerberatung.at, ght.at und koller-rohrschach.at. Ein leeres Feld verwendet diese drei.',
+      'Frühere Liste interner Absender. Die lokale Mailprüfung fragt jeden Absender. Das Feld bleibt für die Anzeige, es sperrt keine Mail mehr.',
     textEn:
-      'Domains of internal senders, one per line or separated by commas. Only these senders can open a support ticket. They are kmb-steuerberatung.at, ght.at and koller-rohrschach.at. An empty field uses those three.',
+      'The earlier list of internal senders. The local mail check asks about every sender. The field stays visible and no longer blocks a mail.',
+  },
+  {
+    key: 'OLLAMA_URL',
+    secret: false,
+    textDe:
+      'Adresse des lokalen Ollama-Servers für die Mailprüfung. Auslieferung http://192.168.191.131:11434. Eine Abfrage dauert höchstens 5 Minuten.',
+    textEn:
+      'Address of the local Ollama server for mail review. The delivered value is http://192.168.191.131:11434. One query waits at most 5 minutes.',
+  },
+  {
+    key: 'OLLAMA_MODEL',
+    secret: false,
+    textDe: 'Name des lokalen Modells. Auslieferung qwen2.5:7b.',
+    textEn: 'Name of the local model. The delivered value is qwen2.5:7b.',
+  },
+  {
+    key: 'MAIL_ERROR_TO',
+    secret: false,
+    textDe:
+      'Empfänger der Fehlermail, wenn eine KI-Abfrage länger als 5 Minuten dauert. Auslieferung helpdesk@ppc.at. Die Mail wird verschickt, nicht als Entwurf abgelegt.',
+    textEn:
+      'Recipient of the error mail when a model query takes longer than 5 minutes. The delivered value is helpdesk@ppc.at. The mail is sent, not stored as a draft.',
   },
   {
     key: 'AI_MAIL_PROMPT',
     secret: false,
     textDe:
-      'Der Auftrag an den KI-Anbieter. Die Antwort beginnt mit JA oder NEIN und einer Begründung in einem Satz. JA heißt: die Mail ist ein Support-Anliegen und kann ein Ticket werden. NEIN heißt: Newsletter, Werbung, automatische Nachricht oder Spam. Ein leeres Feld verwendet den eingebauten Auftrag.',
+      'Früherer Auftrag für die externe JA/NEIN-Prüfung. Die Mailprüfung nutzt ihn nicht mehr. Der Auftrag an das lokale Modell steht im Worker.',
     textEn:
-      'The instruction for the model provider. The answer starts with JA or NEIN and one sentence of reasoning. JA means the mail is a support request and may become a ticket. NEIN means newsletter, advertising, an automatic notice or spam. An empty field uses the built-in instruction.',
+      'Earlier instruction for the external JA/NEIN review. Mail review no longer uses it. The instruction for the local model lives in the worker.',
   },
   {
     key: 'AI_ENDPOINT',
     secret: false,
     textDe:
-      'Die https-Adresse eines Anbieters mit eigenem Schlüssel. Für Microsoft 365 Copilot leer lassen. Copilot nutzt die Graph-Adresse und die Anmeldung von helpdesk@kmbcloud.at. Ohne erreichbare KI bleibt eine Helpdesk-Mail ungelesen.',
+      'Die https-Adresse eines Anbieters mit eigenem Schlüssel für Suche und Kenntnisse. Die Mailprüfung nutzt diese Adresse nicht. Sie spricht OLLAMA_URL.',
     textEn:
-      'The https address of a provider that issues its own key. Leave this empty for Microsoft 365 Copilot. Copilot uses the Graph address and the sign-in of helpdesk@kmbcloud.at. Without a reachable model a helpdesk mail stays unread.',
+      'The https address of a provider that issues its own key, used for search and skills. Mail review does not use this address. It calls OLLAMA_URL.',
   },
   {
     key: 'AI_REGION',

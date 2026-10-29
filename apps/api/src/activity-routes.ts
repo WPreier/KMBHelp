@@ -1,20 +1,23 @@
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { staff, type Database } from '@kmbhelp/db';
-import {
-  activityListSchema,
-  activityViewSchema,
-  mailReviewRequestSchema,
-  mailReviewResponseSchema,
-  publicErrors,
-} from '@kmbhelp/shared';
+import { activityListSchema, activityViewSchema, publicErrors } from '@kmbhelp/shared';
 import { readActivity, writeActivity } from './activity-log.js';
-import { assertCsrf, localhostAdmin, requireStaff, serviceTokenMatches, staffFromSession } from './auth.js';
-import { clientAddress, createRateLimiter, databaseDown, PublicError, rateLimited } from './http.js';
-import { loadReviewSettings, reviewInboundMail } from './mail-review.js';
-import { noteExternal } from './syslog.js';
+import {
+  assertCsrf,
+  localhostAdmin,
+  requireStaff,
+  serviceTokenMatches,
+  staffFromSession,
+} from './auth.js';
+import {
+  clientAddress,
+  createRateLimiter,
+  databaseDown,
+  PublicError,
+  rateLimited,
+} from './http.js';
 import { renderTextPdf } from './text-pdf.js';
-import { modelProviderFromEnv, unconfiguredModel, type ModelProvider } from '@kmbhelp/ai';
 
 const day = /^\d{4}-\d{2}-\d{2}$/u;
 
@@ -48,17 +51,18 @@ function queryText(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
 }
 
-export function registerActivity(app: FastifyInstance, options: {
-  database: Database | undefined;
-  testAuthEnabled: boolean;
-  now?: (() => Date) | undefined;
-  model?: ModelProvider | undefined;
-  env?: NodeJS.ProcessEnv | undefined;
-}): void {
+export function registerActivity(
+  app: FastifyInstance,
+  options: {
+    database: Database | undefined;
+    testAuthEnabled: boolean;
+    now?: (() => Date) | undefined;
+    env?: NodeJS.ProcessEnv | undefined;
+  },
+): void {
   const now = options.now ?? (() => new Date());
   const env = options.env ?? process.env;
   const viewLimiter = createRateLimiter(60, 60_000);
-  const reviewLimiter = createRateLimiter(30, 60_000);
 
   function db(): Database {
     if (!options.database) throw databaseDown();
@@ -114,45 +118,6 @@ export function registerActivity(app: FastifyInstance, options: {
       ip: clientAddress(request),
     });
     return reply.code(204).send();
-  });
-
-  app.post('/api/v1/mail/review', async (request, reply) => {
-    if (!reviewLimiter.allow(clientAddress(request))) throw rateLimited();
-    const reader = await requireReader(request);
-    const parsed = mailReviewRequestSchema.safeParse(request.body);
-    if (!parsed.success) throw new PublicError(422, 'invalid_mail', publicErrors.invalidInput);
-    const database = db();
-    const settings = await loadReviewSettings(database, env);
-    const people = await database.db
-      .select({ email: staff.email })
-      .from(staff)
-      .where(eq(staff.active, true));
-    const provider =
-      options.model ??
-      (env.NODE_ENV === 'test' ? unconfiguredModel : modelProviderFromEnv(env));
-    const verdict = await reviewInboundMail(parsed.data, {
-      provider,
-      domains: settings.domains,
-      prompt: settings.prompt,
-      helpdeskMailbox: settings.helpdeskMailbox,
-      staffEmails: people.map((person) => person.email),
-      providerName: settings.providerName,
-      syslog: (category, message) => noteExternal(env, category, message),
-    });
-    await writeActivity(database, {
-      actor: reader,
-      kind: 'mail',
-      target: parsed.data.fromEmail.slice(0, 200),
-      detail: verdict.held
-        ? 'decision=held'
-        : verdict.excluded
-          ? `decision=excluded-${verdict.reason}`
-          : verdict.is_support
-            ? 'decision=support'
-            : 'decision=not-support',
-      ip: clientAddress(request),
-    });
-    return reply.send(mailReviewResponseSchema.parse(verdict));
   });
 
   app.get('/api/v1/staff/activity', async (request, reply) => {
@@ -211,9 +176,10 @@ function sendExport(
       .header('content-disposition', 'attachment; filename="kmbhelp-protokoll.csv"')
       .send(`\uFEFF${body}\n`);
   }
-  const text = ['at\tactor\tkind\ttarget\tdetail\tip', ...cells.map((cell) => cell.join('\t'))].join(
-    '\n',
-  );
+  const text = [
+    'at\tactor\tkind\ttarget\tdetail\tip',
+    ...cells.map((cell) => cell.join('\t')),
+  ].join('\n');
   return reply
     .header('content-type', 'text/plain; charset=utf-8')
     .header('content-disposition', 'attachment; filename="kmbhelp-protokoll.txt"')

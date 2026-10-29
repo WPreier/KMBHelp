@@ -4,6 +4,7 @@ import {
   category,
   mailLesson,
   faqArticle,
+  skill,
   staff,
   staffCategory,
   staffSkill,
@@ -75,6 +76,9 @@ export type MailStore = {
     satisfaction: 'satisfied' | 'neutral' | 'dissatisfied',
     reply: string,
   ): Promise<void>;
+  ensureCategory(label: string): Promise<MailCategory | null>;
+  latestOpenFrom(email: string): Promise<{ id: string; number: number } | null>;
+  appendReply(ticketId: string, text: string): Promise<void>;
 };
 
 export function drizzleMailStore(database: Database): MailStore {
@@ -275,6 +279,67 @@ export function drizzleMailStore(database: Database): MailStore {
       if (!row) return null;
       return { ...row, requesterEmail: row.requesterEmail ?? '' };
     },
+    async ensureCategory(label) {
+      const text = label.trim().slice(0, 80);
+      if (!/\p{L}/u.test(text)) return null;
+      const known = await this.categories();
+      const folded = text.toLowerCase();
+      const code = termCode(text);
+      const found = known.find(
+        (item) =>
+          item.labelDe.toLowerCase() === folded ||
+          item.labelEn.toLowerCase() === folded ||
+          item.code === code,
+      );
+      if (found) return found;
+      if (!code) return null;
+      const skills = await database.db
+        .select({ code: skill.code })
+        .from(skill)
+        .orderBy(asc(skill.code))
+        .limit(1);
+      const skillCode = skills[0]?.code;
+      if (!skillCode) return null;
+      await database.db
+        .insert(category)
+        .values({
+          code,
+          groupCode: 'manual',
+          labelDe: text,
+          labelEn: text,
+          defaultSkillCode: skillCode,
+        })
+        .onConflictDoNothing();
+      const again = await this.categories();
+      return again.find((item) => item.code === code) ?? null;
+    },
+    async latestOpenFrom(email) {
+      const rows = await database.db
+        .select({ id: ticket.id, number: ticket.number })
+        .from(ticket)
+        .where(
+          and(
+            sql`lower(${ticket.requesterEmail}) = ${email.trim().toLowerCase()}`,
+            sql`${ticket.status} not in ('closed', 'expired')`,
+          ),
+        )
+        .orderBy(desc(ticket.createdAt))
+        .limit(1);
+      return rows[0] ?? null;
+    },
+    async appendReply(ticketId, text) {
+      const rows = await database.db
+        .select({ body: ticket.body })
+        .from(ticket)
+        .where(eq(ticket.id, ticketId))
+        .limit(1);
+      const current = rows[0]?.body ?? '';
+      await database.db
+        .update(ticket)
+        .set({ body: `${current}\n\n---\n${text}`.slice(0, 20_000), updatedAt: new Date() })
+        .where(eq(ticket.id, ticketId));
+      await this.addEvent(ticketId, 'mail_reply', { bytes: text.length });
+    },
     async setSatisfaction(ticketId, satisfaction, reply) {
       await database.db
         .update(ticket)
@@ -287,6 +352,14 @@ export function drizzleMailStore(database: Database): MailStore {
       });
     },
   };
+}
+
+function termCode(text: string): string {
+  const folded = text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
+  return folded
+    .replace(/[^a-z0-9]+/gu, '-')
+    .replace(/^-+|-+$/gu, '')
+    .slice(0, 80);
 }
 
 export async function readWorkerState(

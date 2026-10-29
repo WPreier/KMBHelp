@@ -1,30 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { callReviewMail, callTool, listToolNames, reviewMailTool } from './server.js';
+import { callTool, listToolNames } from './server.js';
 import { handleRpc } from './rpc.js';
 
 describe('mcp tools', () => {
-  it('exposes the mail review and leaves the prompt on the server', async () => {
-    expect(listToolNames()).toContain('review_mail');
+  it('does not expose a mail review tool or a sql console', () => {
+    expect(listToolNames()).not.toContain('review_mail');
     expect(listToolNames().some((name) => name.toLowerCase().includes('sql'))).toBe(false);
-    expect(reviewMailTool().name).toBe('review_mail');
-    let sent = '';
-    const result = await callReviewMail(
-      { fromEmail: 'anna@ght.at', subject: 'Drucker', body: 'Er klemmt.' },
-      {
-        origin: 'http://127.0.0.1:3000',
-        fetchImpl: (async (_url, init) => {
-          sent = String(init?.body ?? '');
-          return new Response(JSON.stringify({ is_support: true }), { status: 200 });
-        }) as typeof fetch,
-      },
-    );
-    expect(sent).not.toContain('Analysiere');
-    expect(JSON.parse(sent)).toEqual({
-      fromEmail: 'anna@ght.at',
-      subject: 'Drucker',
-      body: 'Er klemmt.',
-    });
-    expect(result).toEqual({ is_support: true });
   });
 
   it('sends the service token only on staff tools and keeps it out of the body', async () => {

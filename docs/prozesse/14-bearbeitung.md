@@ -28,18 +28,18 @@ Ein Knopf legt an den Auftraggeber einen Entwurf mit dem Satz ab, dass der Mitar
 
 Eine Rückfrage wird im Ticket gespeichert und zusätzlich als Entwurf an den Benutzer abgelegt.
 
-Ohne Microsoft-365-Freigabe wird keine Mail erfunden. Die Aktion antwortet, dass der Entwurf nicht angelegt werden kann. Keine ausgehende Mail verlässt das Postfach.
+Ohne Microsoft-365-Freigabe wird keine Mail erfunden. Die Aktion antwortet, dass der Entwurf nicht angelegt werden kann. Antworten an Melder bleiben Entwürfe. Die Fehlermail nach einer Ollama-Abfrage über 5 Minuten geht an `MAIL_ERROR_TO` und verlässt das Postfach.
 
 ## Postfach
 
-Die Seite zeigt die Mails im Postfach `helpdesk@kmbcloud.at`, die noch kein Ticket sind. Der Worker legt nur dann eines an, wenn die KI die Mail als Support bestätigt. Ist die KI nicht erreichbar, bleibt die Mail ungelesen. Jede noch ungelesene Mail kann von Hand in ein Ticket umgewandelt werden.
+Die Seite zeigt die Mails im Postfach `helpdesk@kmbcloud.at`, die noch kein Ticket sind. Der Worker legt eines an, wenn Ollama die Mail als Support einstuft, oder wenn eine Abfrage länger als 5 Minuten dauert. Ist der Server nicht erreichbar, bleibt die Mail ungelesen. Jede noch ungelesene Mail kann von Hand in ein Ticket umgewandelt werden.
 
 Wird ein Mail als Ticket angenommen, speichert die Anwendung den Grund. Diesen Grund soll die spätere Erkennung lernen.
 
 Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelöscht und der Grund gespeichert. Die Erkennung soll daraus lernen, dass so ein Mail kein Ticket werden darf. Andere Tickets bleiben. `ticket_event` bleibt für alle übrigen Vorgänge nur anhängbar. Diese Löschung ist die einzige Ausnahme und nur für die Fehlinterpretation.
 
-## Grok
+## Ollama
 
-Helpdesk-Mails gehen zur Prüfung an den konfigurierten Anbieter. Der Name steht in `AI_PROVIDER` und ist nur eine Anzeige. Die Adresse steht in `AI_ENDPOINT`. Fehlen Endpunkt, EU-Region, Schlüssel oder AVV, gibt es keinen Aufruf und aus der Mail wird kein Ticket. Microsoft 365 Copilot wird über diesen Namen nicht eingeschaltet. Der Prüfstand steht in `docs/schnittstellen.md`. Die Ausschlüsse für Domäne, Helpdesk und Mitarbeiter gelten davor.
+Helpdesk-Mails gehen an den lokalen Ollama-Server `OLLAMA_URL`, Modell `OLLAMA_MODEL`. Auslieferung ist `http://192.168.191.131:11434` und `qwen2.5:7b`. `AI_ENDPOINT` wird dafür nicht gefragt. Microsoft 365 Copilot wird dafür nicht eingeschaltet. Der Prüfstand vom 28.10.2026 steht in `docs/schnittstellen.md`. Jeder Absender wird geprüft. SUPPORT wird ein Ticket, die Kategorie wird bei Bedarf angelegt, und eine eindeutige Wichtigkeit setzt P1, P2 oder P3. Fehlt sie, fragt der Worker einmal nach. ANTWORT und ABSCHLUSS ändern ein bestehendes Ticket. FREMD und SPAM werden gelesen markiert. Eine Abfrage wartet höchstens 5 Minuten.
 
 Meldet der Agent, dass ein Mail ein Ticket werden soll, entstehen Kategorie, Priorität, Benutzer und Mitarbeiter. Der Mitarbeiter muss aktiv sein und laut seinem Microsoft-365-Kalender verfügbar. Für ihn liegt eine Mail mit der Ticketnummer, allen Ticketangaben und dem Originalmail als Anhang als Entwurf im Ordner Entwürfe. Absender ist `GRAPH_MAILBOX`.

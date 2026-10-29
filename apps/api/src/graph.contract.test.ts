@@ -86,6 +86,7 @@ describe('graph contract payloads', () => {
       if (url.endsWith('/mailFolders/drafts/messages')) {
         return json({ id: 'draft-1', isDraft: true }, 201);
       }
+      if (url.endsWith('/sendMail')) return new Response(null, { status: 202 });
       if (url.endsWith('/getSchedule')) return json(recordedSchedule);
       if (url.endsWith('/events')) return json({ id: 'event-1' });
       return new Response('missing', { status: 404 });
@@ -101,6 +102,11 @@ describe('graph contract payloads', () => {
         body: 'Der Drucker klemmt.',
         fromEmail: 'sender@example.com',
         fromName: 'Sender',
+        to: '',
+        cc: '',
+        sentAt: '',
+        inReplyTo: '',
+        references: '',
       },
     ]);
     expect(parseInboundMessages(recordedList)[0]?.fromEmail).toBe('sender@example.com');
@@ -114,6 +120,14 @@ describe('graph contract payloads', () => {
     expect(drafted?.method).toBe('POST');
     expect(JSON.parse(drafted?.body ?? '{}')).toEqual(recordedDraft);
     expect(calls.some((call) => call.url.endsWith('/sendMail'))).toBe(false);
+    await mailerFromEnv(env, fetchImpl).deliver?.({
+      to: 'helpdesk@ppc.at',
+      subject: 'KMBHelp: Die KI-Prüfung hat zu lange gedauert',
+      text: 'Limit\n',
+    });
+    expect(calls.some((call) => call.url.endsWith('/sendMail') && call.method === 'POST')).toBe(
+      true,
+    );
 
     const at = new Date('2026-10-27T08:15:00.000Z');
     const windows = await calendarFromEnv(env, fetchImpl).availability('ada@example.com', at);

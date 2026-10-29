@@ -1,4 +1,3 @@
-import { scriptedModel } from '@kmbhelp/ai';
 import { describe, expect, it } from 'vitest';
 import type { CalendarReader, CalendarWriter, Mailer } from './graph.js';
 import { ingestMail } from './mail-cycle.js';
@@ -27,9 +26,7 @@ const people = [
   { id: 'bea', email: 'bea@example.com', displayName: 'Bea', skills: ['payroll', 'workplace'] },
 ];
 
-function memoryStore(
-  faqs: { slug: string; bodyDe: string }[] = [],
-): MailStore & {
+function memoryStore(faqs: { slug: string; bodyDe: string }[] = []): MailStore & {
   tickets: StoredMailTicket[];
   events: { kind: string; payload: Record<string, unknown> }[];
   closed: string[];
@@ -112,6 +109,55 @@ function memoryStore(
         requesterEmail: row.requesterEmail,
       };
     },
+    async ensureCategory(label) {
+      const text = label.trim().slice(0, 80);
+      const folded = text.toLowerCase();
+      const found = categories.find(
+        (item) =>
+          item.labelDe.toLowerCase() === folded ||
+          item.labelEn.toLowerCase() === folded ||
+          item.code === folded,
+      );
+      if (found) return found;
+      const code = text
+        .normalize('NFKD')
+        .replace(/\p{M}/gu, '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/gu, '-')
+        .replace(/^-+|-+$/gu, '')
+        .slice(0, 80);
+      if (!code) return null;
+      const row: MailCategory = {
+        code,
+        groupCode: 'manual',
+        labelDe: text,
+        labelEn: text,
+        defaultSkillCode: 'workplace',
+      };
+      categories.push(row);
+      return row;
+    },
+    async latestOpenFrom(email) {
+      const row = [...tickets]
+        .reverse()
+        .find(
+          (ticket) =>
+            ticket.requesterEmail.toLowerCase() === email.toLowerCase() &&
+            !closed.includes(ticket.id),
+        );
+      return row ? { id: row.id, number: row.number } : null;
+    },
+    async appendReply(ticketId, text) {
+      const row = tickets.find((ticket) => ticket.id === ticketId);
+      if (!row) return;
+      row.body = `${row.body}\n\n---\n${text}`;
+      events.push({
+        id: `event-${events.length + 1}`,
+        ticketId,
+        kind: 'mail_reply',
+        payload: { bytes: text.length },
+      });
+    },
     setSatisfaction: async (ticketId, satisfaction, reply) => {
       events.push({
         id: `event-${events.length + 1}`,
@@ -159,16 +205,6 @@ function doubles(): {
   };
 }
 
-const supportDecision = {
-  category: 'elda',
-  priority: 'p3' as const,
-  skill: 'payroll',
-  confidence: 0.9,
-  auto_reply_allowed: false,
-  faq_slug: null,
-  is_support: true,
-};
-
 const mail = {
   graphId: 'graph-1',
   internetMessageId: '<once@example.com>',
@@ -194,8 +230,14 @@ describe('ingestMail', () => {
       delays: { p1: 0, p2: 60, p3: 240 },
       oncallEmail: '',
       estimatedMinutes: null,
-      domains: ['example.com'],
-      model: scriptedModel({ decision: supportDecision, answer: 'JA\nEine Support-Anfrage.' }),
+      askMail: async () =>
+        ({
+          kind: 'support',
+          category: 'ELDA / SV-Meldung',
+          priority: null,
+          model: 'qwen2.5:7b',
+        }) as const,
+      mailErrorTo: 'helpdesk@ppc.at',
     };
     expect(await ingestMail(mail, deps)).toBe('created');
     expect(await ingestMail(mail, deps)).toBe('duplicate');
@@ -255,13 +297,12 @@ describe('ingestMail', () => {
       delays: { p1: 0, p2: 60, p3: 240 },
       oncallEmail: '',
       estimatedMinutes: null,
-      domains: ['example.com'],
     };
     expect(await ingestMail(mail, deps)).toBe('retry');
     expect(
       await ingestMail(
         { ...mail, internetMessageId: '<silent@example.com>' },
-        { ...deps, model: scriptedModel({ decision: null, answer: null }) },
+        { ...deps, askMail: async () => 'unreachable' },
       ),
     ).toBe('retry');
     expect(store.tickets).toHaveLength(0);
@@ -284,18 +325,20 @@ describe('ingestMail', () => {
       delays: { p1: 0, p2: 60, p3: 240 },
       oncallEmail: '',
       estimatedMinutes: null,
-      domains: ['example.com'],
-      model: scriptedModel({
-        decision: { ...supportDecision, is_support: false },
-        answer: 'NEIN\nDas ist ein Newsletter.',
-      }),
+      askMail: async () =>
+        ({
+          kind: 'spam',
+          category: null,
+          priority: null,
+          model: 'qwen2.5:7b',
+        }) as const,
     });
     expect(result).toBe('declined');
     expect(store.tickets).toHaveLength(0);
     expect(ports.mailer.sent).toHaveLength(0);
   });
 
-  it('closes from a published FAQ only when the model gate allows it', async () => {
+  it('files a named category, asks every sender, and keeps the mail body out of the decision', async () => {
     const store = memoryStore([{ slug: 'printer', bodyDe: 'Papier nachlegen und neu starten.' }]);
     const ports = doubles();
     const base = {
@@ -311,24 +354,18 @@ describe('ingestMail', () => {
       oncallEmail: '',
       estimatedMinutes: null,
       autoReplyCategories: ['printer'],
-      domains: ['example.com'],
     };
     const blocked = await ingestMail(
       { ...mail, internetMessageId: '<svnr@example.com>', body: 'SVNR 1234 010180' },
       {
         ...base,
-        model: scriptedModel({
-          decision: {
-            category: 'printer',
-            priority: 'p3',
-            skill: 'workplace',
-            confidence: 0.95,
-            auto_reply_allowed: true,
-            faq_slug: 'printer',
-            is_support: true,
-          },
-          answer: 'JA\nEine Support-Anfrage.',
-        }),
+        askMail: async () =>
+          ({
+            kind: 'support',
+            category: 'Drucker',
+            priority: 'p1',
+            model: 'qwen2.5:7b',
+          }) as const,
       },
     );
     expect(blocked).toBe('created');
@@ -336,7 +373,7 @@ describe('ingestMail', () => {
     expect(ports.mailer.sent[0]?.text).not.toContain('1234');
 
     ports.mailer.sent.length = 0;
-    const closed = await ingestMail(
+    const opened = await ingestMail(
       {
         ...mail,
         internetMessageId: '<faq@example.com>',
@@ -345,39 +382,144 @@ describe('ingestMail', () => {
       },
       {
         ...base,
-        model: scriptedModel({
-          decision: {
-            category: 'printer',
-            priority: 'p3',
-            skill: 'workplace',
-            confidence: 0.95,
-            auto_reply_allowed: true,
-            faq_slug: 'printer',
-            is_support: true,
-          },
-          answer: 'JA\nEine Support-Anfrage.',
-        }),
+        askMail: async () =>
+          ({
+            kind: 'support',
+            category: 'Netzwerkdrucker',
+            priority: null,
+            model: 'qwen2.5:7b',
+          }) as const,
       },
     );
-    expect(closed).toBe('created');
-    expect(store.closed).toEqual(['ticket-2']);
-    expect(ports.mailer.sent[0]?.text).toContain('Papier nachlegen');
+    expect(opened).toBe('created');
+    expect(store.closed).toHaveLength(0);
+    expect(categories.some((item) => item.labelDe === 'Netzwerkdrucker')).toBe(true);
     expect(ports.mailer.sent[0]?.text).not.toContain('Es kommt kein Papier');
     expect(store.events.some((event) => event.kind === 'model_decision')).toBe(true);
+    let asked = 0;
     const helpdesk = await ingestMail(
       { ...mail, fromEmail: 'helpdesk@example.com', internetMessageId: '<desk@example.com>' },
       {
         ...base,
-        model: scriptedModel({
-          answer: 'JA\nEine Support-Anfrage.',
-          onReview: () => {
-            throw new Error('helpdesk must not reach the model');
-          },
-        }),
+        askMail: async () => {
+          asked += 1;
+          return {
+            kind: 'foreign',
+            category: null,
+            priority: null,
+            model: 'qwen2.5:7b',
+          } as const;
+        },
       },
     );
+    expect(asked).toBe(1);
     expect(helpdesk).toBe('declined');
     const recorded = store.events.find((event) => event.kind === 'model_decision');
     expect(JSON.stringify(recorded?.payload)).not.toContain('Papier');
+  });
+
+  it('opens a low-priority default ticket and sends the timeout notice', async () => {
+    const store = memoryStore();
+    const ports = doubles();
+    const delivered: string[] = [];
+    const result = await ingestMail(
+      { ...mail, internetMessageId: '<slow@example.com>' },
+      {
+        store,
+        mailer: {
+          ...ports.mailer,
+          async deliver(message) {
+            delivered.push(message.to);
+          },
+        },
+        calendar: ports.calendar,
+        writer: ports.writer,
+        now: new Date('2026-10-27T08:10:00.000Z'),
+        origin: 'https://helpdesk.kmbcloud.at',
+        fallbackCategory: 'printer',
+        duration: 30,
+        delays: { p1: 0, p2: 60, p3: 240 },
+        oncallEmail: '',
+        estimatedMinutes: null,
+        mailErrorTo: 'helpdesk@ppc.at',
+        askMail: async () => 'timeout',
+      },
+    );
+    expect(result).toBe('created');
+    expect(store.tickets[0]?.categoryLabel).toBe('Drucker');
+    expect(store.events.some((event) => event.payload.reason === 'model_timeout')).toBe(true);
+    expect(delivered).toEqual(['helpdesk@ppc.at']);
+    expect(ports.mailer.sent.some((message) => message.to === 'helpdesk@ppc.at')).toBe(false);
+  });
+
+  it('appends a reply and closes the latest open ticket from the same sender', async () => {
+    const store = memoryStore();
+    const ports = doubles();
+    const base = {
+      store,
+      mailer: ports.mailer,
+      calendar: ports.calendar,
+      writer: ports.writer,
+      now: new Date('2026-10-27T08:10:00.000Z'),
+      origin: 'https://helpdesk.kmbcloud.at',
+      fallbackCategory: 'printer',
+      duration: 30,
+      delays: { p1: 0, p2: 60, p3: 240 } as const,
+      oncallEmail: '',
+      estimatedMinutes: null,
+      askMail: async () =>
+        ({
+          kind: 'support',
+          category: 'Drucker',
+          priority: 'p2',
+          model: 'qwen2.5:7b',
+        }) as const,
+    };
+    expect(await ingestMail(mail, base)).toBe('created');
+    const reply = await ingestMail(
+      {
+        ...mail,
+        internetMessageId: '<reply@example.com>',
+        subject: 'AW: Ticket 1',
+        inReplyTo: '<once@example.com>',
+      },
+      {
+        ...base,
+        askMail: async () =>
+          ({
+            kind: 'reply',
+            category: null,
+            priority: null,
+            model: 'qwen2.5:7b',
+          }) as const,
+      },
+    );
+    expect(reply).toBe('declined');
+    expect(store.tickets[0]?.body).toContain('AW: Ticket 1');
+    const closed = await ingestMail(
+      { ...mail, fromEmail: 'other@example.com', internetMessageId: '<other@example.com>' },
+      base,
+    );
+    expect(closed).toBe('created');
+    const finish = await ingestMail(
+      {
+        ...mail,
+        fromEmail: 'other@example.com',
+        internetMessageId: '<done@example.com>',
+        subject: 'Erledigt',
+      },
+      {
+        ...base,
+        askMail: async () =>
+          ({
+            kind: 'close',
+            category: null,
+            priority: null,
+            model: 'qwen2.5:7b',
+          }) as const,
+      },
+    );
+    expect(finish).toBe('declined');
+    expect(store.closed).toEqual(['ticket-2']);
   });
 });

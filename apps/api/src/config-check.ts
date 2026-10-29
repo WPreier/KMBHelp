@@ -383,7 +383,9 @@ export async function checkConfigField(
       ? line(
           key,
           'ok',
-          name ? `Der Anbieter heißt ${name}. Die Adresse bleibt AI_ENDPOINT.` : 'Ohne Namen gilt grok. Die Adresse bleibt AI_ENDPOINT.',
+          name
+            ? `Der Anbieter heißt ${name}. Die Adresse bleibt AI_ENDPOINT.`
+            : 'Ohne Namen gilt grok. Die Adresse bleibt AI_ENDPOINT.',
           name
             ? `The provider is named ${name}. The address stays AI_ENDPOINT.`
             : 'Without a name, grok applies. The address stays AI_ENDPOINT.',
@@ -436,13 +438,44 @@ export async function checkConfigField(
           'The instruction should contain JA and NEIN.',
         );
   }
+  if (key === 'OLLAMA_URL') {
+    const url = value.trim() || 'http://192.168.191.131:11434';
+    return /^https?:\/\/[^/\s]+/u.test(url) && !url.includes('@')
+      ? line(key, 'ok', `Die Mailprüfung spricht ${url}.`, `Mail review calls ${url}.`)
+      : line(
+          key,
+          'warning',
+          'Die Adresse muss http oder https sein und darf kein Passwort enthalten.',
+          'The address must be http or https and must not contain a password.',
+        );
+  }
+  if (key === 'OLLAMA_MODEL') {
+    const model = value.trim() || 'qwen2.5:7b';
+    return line(key, 'ok', `Das Modell heißt ${model}.`, `The model is named ${model}.`);
+  }
+  if (key === 'MAIL_ERROR_TO') {
+    const address = value.trim() || 'helpdesk@ppc.at';
+    return /^[^@\s]+@[^@\s]+$/u.test(address)
+      ? line(
+          key,
+          'ok',
+          `Eine zu lange Prüfung schreibt an ${address}.`,
+          `A query that takes too long writes to ${address}.`,
+        )
+      : line(
+          key,
+          'warning',
+          'Die Fehleradresse muss eine E-Mail-Adresse sein.',
+          'The error address must be an email address.',
+        );
+  }
   if (key === 'AI_ENDPOINT') {
     if (!value) {
       return line(
         key,
         'informational',
-        'Kein Modell. Helpdesk-Mails bleiben ungelesen. Die Suche bleibt beim Satz aus Phase 2.',
-        'No model. Helpdesk mail stays unread. Search keeps the phase 2 sentence.',
+        'Kein externer Anbieter. Die Mailprüfung spricht OLLAMA_URL. Die Suche bleibt beim Satz aus Phase 2.',
+        'No external provider. Mail review calls OLLAMA_URL. Search keeps the phase 2 sentence.',
       );
     }
     return endpointAllowsProcessing(value)

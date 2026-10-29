@@ -3,11 +3,10 @@ import {
   autoReplyGate,
   inputHash,
   modelProviderFromEnv,
-  stricterPriority,
   type ModelProvider,
 } from '@kmbhelp/ai';
-import { appSetting, staff, type Database } from '@kmbhelp/db';
-import { eq, inArray } from 'drizzle-orm';
+import { appSetting, type Database } from '@kmbhelp/db';
+import { inArray } from 'drizzle-orm';
 import {
   calendarDate,
   defaultCalendarDelayP1,
@@ -42,7 +41,14 @@ import {
   staffTicketPath,
 } from './mail-rules.js';
 import { writeActivity } from './activity-log.js';
-import { domainsFromSetting, reviewInboundMail } from './mail-review.js';
+import {
+  askOllama,
+  defaultMailErrorTo,
+  defaultOllamaModel,
+  defaultOllamaUrl,
+  type LocalMailResult,
+  type MailAsk,
+} from './ollama-mail.js';
 import { noteExternal } from './syslog.js';
 import { shouldPollGraph } from './worker-schedule.js';
 import {
@@ -70,11 +76,8 @@ type IngestDeps = {
   estimatedMinutes: number | null;
   model?: ModelProvider | undefined;
   autoReplyCategories?: readonly string[] | undefined;
-  domains?: readonly string[] | undefined;
-  mailPrompt?: string | undefined;
-  helpdeskMailbox?: string | undefined;
-  staffEmails?: readonly string[] | undefined;
-  providerName?: string | undefined;
+  askMail?: ((mail: InboundMail) => Promise<MailAsk>) | undefined;
+  mailErrorTo?: string | undefined;
   record?:
     | ((entry: {
         actor: string;
@@ -84,9 +87,7 @@ type IngestDeps = {
         ip: string;
       }) => Promise<void>)
     | undefined;
-  syslog?:
-    | ((category: 'informational' | 'warning', message: string) => Promise<void>)
-    | undefined;
+  syslog?: ((category: 'informational' | 'warning', message: string) => Promise<void>) | undefined;
 };
 
 export { readWorkerState };
@@ -113,11 +114,14 @@ export async function mailIngestDeps(
     estimatedMinutes: null,
     model: modelProviderFromEnv(env, fetchImpl),
     autoReplyCategories: autoReplyAllowlist(settings.autoReplyCategories),
-    domains: settings.domains,
-    mailPrompt: settings.mailPrompt,
-    helpdeskMailbox: env.GRAPH_MAILBOX ?? '',
-    staffEmails: await reviewStaffEmails(database),
-    providerName: settings.providerName,
+    askMail: (mail) =>
+      askOllama({
+        baseUrl: settings.ollamaUrl,
+        model: settings.ollamaModel,
+        mail,
+        fetchImpl,
+      }),
+    mailErrorTo: settings.mailErrorTo,
     syslog: (category, message) => noteExternal(env, category, message),
     record: (entry) => writeActivity(database, entry, env),
   };
@@ -161,7 +165,7 @@ export async function runMailCycle(options: {
     try {
       const result = await ingestMail(mail, deps);
       if (result === 'created') created += 1;
-      // Unreachable model: leave the mail unread. An explicit "not support" is marked read.
+      // Unreachable model: leave the mail unread. A decision, including a timeout ticket, is marked read.
       if (result !== 'retry') {
         await mailbox.markRead(mail.graphId);
         await noteExternal(options.env, 'informational', 'external graph mark-read');
@@ -188,25 +192,6 @@ export async function ingestMail(
 ): Promise<'created' | 'duplicate' | 'skip' | 'declined' | 'blocked' | 'retry'> {
   if (!addressPattern.test(mail.fromEmail) || mail.internetMessageId.trim() === '') return 'skip';
   if ((await deps.store.lesson(mail.internetMessageId)) === 'rejected') return 'blocked';
-  const replyTo = replyTicketNumber(mail.subject);
-  if (replyTo && !manual) {
-    const prior = await deps.store.ticketByNumber(replyTo);
-    if (
-      prior &&
-      prior.status === 'closed' &&
-      prior.requesterEmail.toLowerCase() === mail.fromEmail.toLowerCase()
-    ) {
-      if (!deps.model?.configured) return 'retry';
-      const satisfaction = await deps.model.satisfaction(`${mail.subject}\n${mail.body}`);
-      await deps.syslog?.(
-        satisfaction ? 'informational' : 'warning',
-        `external ${deps.providerName || deps.model.name} satisfaction ${satisfaction ? 'ok' : 'failed'}`,
-      );
-      if (!satisfaction) return 'retry';
-      await deps.store.setSatisfaction(prior.id, satisfaction, mail.body);
-      return 'declined';
-    }
-  }
   const existing = await deps.store.byMessageId(mail.internetMessageId);
   if (existing) {
     await ensureCalendar(existing, deps, null);
@@ -216,62 +201,25 @@ export async function ingestMail(
   }
   const categories = await deps.store.categories();
   const text = `${mail.subject}\n${mail.body}`;
-  const staffEmails = deps.staffEmails ?? (await deps.store.activeStaffEmails());
-  const verdict = manual
-    ? {
-        is_support: true,
-        excluded: false,
-        held: false,
-        reason: manual.reason,
-        model: 'manual',
-      }
-    : await reviewInboundMail(
-    { fromEmail: mail.fromEmail, subject: mail.subject, body: mail.body },
-    {
-      provider: deps.model,
-      domains: deps.domains ?? domainsFromSetting(undefined),
-      prompt: deps.mailPrompt,
-      helpdeskMailbox: deps.helpdeskMailbox ?? '',
-      staffEmails,
-      providerName: deps.providerName,
-      syslog: deps.syslog,
-      lessons: await deps.store.recentLessons(),
-    },
-  );
-  await deps.record?.({
-    actor: 'worker',
-    kind: 'mail',
-    target: mail.internetMessageId.slice(0, 200),
-    detail: verdict.held
-      ? 'decision=held'
-      : verdict.excluded
-        ? `decision=excluded-${verdict.reason}`
-        : verdict.is_support
-          ? 'decision=support'
-          : `decision=${verdict.reason === 'unparsed' ? 'unparsed' : 'not-support'}`,
-    ip: 'local',
-  });
-  if (verdict.held) return 'retry';
-  if (!verdict.is_support) return 'declined';
-  let modelResult: Awaited<ReturnType<ModelProvider['classify']>> = null;
-  if (deps.model?.configured) {
-    try {
-      modelResult = await deps.model.classify(text);
-    } catch {
-      modelResult = null;
-    }
-    await deps.syslog?.(
-      modelResult ? 'informational' : 'warning',
-      `external ${deps.providerName || deps.model.name} classify ${modelResult ? 'ok' : 'failed'}`,
-    );
+  const asked = manual ? null : await askLocal(mail, deps);
+  if (asked === 'retry' || asked === 'declined') return asked;
+  const timeout = asked === 'timeout';
+  const support = asked && asked !== 'timeout' ? asked : null;
+  let chosen = categories.find((category) => category.code === deps.fallbackCategory) ?? null;
+  let modelName = 'manual';
+  let verdictReason = manual?.reason ?? 'support';
+  if (timeout) {
+    modelName = 'ollama';
+    verdictReason = 'timeout';
+  } else if (support) {
+    modelName = support.model;
+    verdictReason = 'support';
+    const named = support.category ? await deps.store.ensureCategory(support.category) : null;
+    chosen = named ?? chosen;
+  } else {
+    const ruled = classifyMail(text, categories, deps.fallbackCategory);
+    chosen = categories.find((category) => category.code === ruled) ?? chosen;
   }
-  const ruled = classifyMail(text, categories, deps.fallbackCategory);
-  const modelCategory = modelResult?.decision.category;
-  const categoryCode =
-    modelCategory && categories.some((category) => category.code === modelCategory)
-      ? modelCategory
-      : ruled;
-  const chosen = categories.find((category) => category.code === categoryCode);
   if (!chosen) return 'retry';
   const impact = impactForGroup(chosen.groupCode);
   const ruledPriority = resolvePriority({
@@ -280,12 +228,13 @@ export async function ingestMail(
     today: calendarDate(deps.now),
     clientPriority: null,
   });
-  const priority = modelResult
-    ? stricterPriority(ruledPriority.priority, modelResult.decision.priority)
-    : ruledPriority.priority;
-  const priorityReason =
-    modelResult && priority !== ruledPriority.priority ? 'model' : ruledPriority.reason;
-  const skillCode = modelResult?.decision.skill || chosen.defaultSkillCode;
+  const priority = timeout ? 'p3' : (support?.priority ?? ruledPriority.priority);
+  const priorityReason = timeout
+    ? 'model_timeout'
+    : support?.priority
+      ? 'model'
+      : ruledPriority.reason;
+  const skillCode = chosen.defaultSkillCode;
   const subject = mail.subject.trim() || 'Ohne Betreff';
   const body = mail.body.trim() || subject;
   const created = await deps.store.insertTicket({
@@ -321,17 +270,18 @@ export async function ingestMail(
     priority,
     reason: priorityReason,
   });
-  const auto = await maybeAutoReply(created, mail, text, modelResult, deps);
+  const auto = await maybeAutoReply(created, mail, text, null, deps);
   await deps.store.addEvent(created.id, 'model_decision', {
-    model: modelResult?.model ?? verdict.model,
+    model: modelName,
     inputHash: inputHash(text),
     output: {
-      ...(modelResult?.decision ?? {}),
       is_support: true,
-      reason: verdict.reason,
+      reason: verdictReason,
+      priority,
     },
     autoReplied: auto,
   });
+  if (timeout) await notifyModelTimeout(mail, deps);
   if (auto) return 'created';
   const people = await deps.store.candidates(skillCode, chosen.code);
   const busy = new Map<string, { start: string; end: string }[] | null>();
@@ -360,6 +310,101 @@ export async function ingestMail(
   await notifyAssignee(stored, mail, deps);
   await notifyOnCall(stored, deps, priority);
   return 'created';
+}
+
+async function askLocal(
+  mail: InboundMail,
+  deps: IngestDeps,
+): Promise<LocalMailResult | 'timeout' | 'retry' | 'declined'> {
+  if (!deps.askMail) return 'retry';
+  const asked = await deps.askMail(mail);
+  const detail =
+    asked === 'timeout'
+      ? 'decision=timeout'
+      : asked === 'unreachable'
+        ? 'decision=held'
+        : asked === 'unclear'
+          ? 'decision=unparsed'
+          : asked.kind === 'support'
+            ? 'decision=support'
+            : asked.kind === 'reply'
+              ? 'decision=reply'
+              : asked.kind === 'close'
+                ? 'decision=close'
+                : 'decision=not-support';
+  await deps.record?.({
+    actor: 'worker',
+    kind: 'mail',
+    target: mail.internetMessageId.slice(0, 200),
+    detail,
+    ip: 'local',
+  });
+  await deps.syslog?.(
+    asked === 'timeout' || asked === 'unreachable' ? 'warning' : 'informational',
+    `local ollama ${detail}`,
+  );
+  if (asked === 'unreachable') return 'retry';
+  if (asked === 'timeout') return 'timeout';
+  if (asked === 'unclear' || asked.kind === 'spam' || asked.kind === 'foreign') return 'declined';
+  if (asked.kind === 'reply') {
+    await attachReply(mail, deps);
+    return 'declined';
+  }
+  if (asked.kind === 'close') {
+    await closeFromSender(mail, deps);
+    return 'declined';
+  }
+  return asked;
+}
+
+async function attachReply(mail: InboundMail, deps: IngestDeps): Promise<void> {
+  const numbered = replyTicketNumber(mail.subject);
+  const byNumber = numbered ? await deps.store.ticketByNumber(numbered) : null;
+  const referenced = byNumber ? null : await referencedTicket(mail, deps);
+  const target = byNumber ?? referenced;
+  if (!target) return;
+  const note = `${mail.fromName} <${mail.fromEmail}>\n${mail.subject}\n${mail.body}`.slice(0, 8000);
+  await deps.store.appendReply(target.id, note);
+}
+
+async function referencedTicket(
+  mail: InboundMail,
+  deps: IngestDeps,
+): Promise<{ id: string; number: number } | null> {
+  const ids = `${mail.inReplyTo ?? ''} ${mail.references ?? ''}`
+    .split(/\s+/u)
+    .map((item) => item.trim())
+    .filter((item) => item !== '');
+  for (const id of ids) {
+    const row = await deps.store.byMessageId(id);
+    if (row) return { id: row.id, number: row.number };
+  }
+  return null;
+}
+
+async function closeFromSender(mail: InboundMail, deps: IngestDeps): Promise<void> {
+  const target = await deps.store.latestOpenFrom(mail.fromEmail);
+  if (!target) return;
+  await deps.store.closeTicket(target.id);
+  await deps.store.addEvent(target.id, 'closed', { source: 'mail' });
+}
+
+async function notifyModelTimeout(mail: InboundMail, deps: IngestDeps): Promise<void> {
+  const to = deps.mailErrorTo ?? defaultMailErrorTo;
+  if (!addressPattern.test(to) || !deps.mailer.deliver) {
+    await deps.syslog?.('warning', 'local ollama timeout notice skipped');
+    return;
+  }
+  try {
+    await deps.mailer.deliver({
+      to,
+      subject: 'KMBHelp: Die KI-Prüfung hat zu lange gedauert',
+      text: `Eine Mail an das Helpdesk hat das Limit von 5 Minuten überschritten.\nSie wurde als Ticket mit niedriger Wichtigkeit und der Standardkategorie angelegt.\nMessage-ID: ${mail.internetMessageId.slice(0, 200)}\n`,
+    });
+    await deps.syslog?.('informational', 'local ollama timeout notice sent');
+  } catch {
+    await deps.syslog?.('warning', 'local ollama timeout notice failed');
+  }
 }
 
 async function maybeAutoReply(
@@ -515,9 +560,9 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     'CALENDAR_DELAY_P3',
     'ONCALL_EMAIL',
     'AI_AUTO_REPLY_CATEGORIES',
-    'AI_MAIL_PROMPT',
-    'INTERNAL_MAIL_DOMAINS',
-    'AI_PROVIDER',
+    'OLLAMA_URL',
+    'OLLAMA_MODEL',
+    'MAIL_ERROR_TO',
   ];
   const stored = new Map<string, string>();
   try {
@@ -547,18 +592,10 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     },
     oncallEmail: value('ONCALL_EMAIL', ''),
     autoReplyCategories: value('AI_AUTO_REPLY_CATEGORIES', ''),
-    mailPrompt: value('AI_MAIL_PROMPT', ''),
-    domains: domainsFromSetting(value('INTERNAL_MAIL_DOMAINS', '')),
-    providerName: value('AI_PROVIDER', 'grok'),
+    ollamaUrl: value('OLLAMA_URL', defaultOllamaUrl),
+    ollamaModel: value('OLLAMA_MODEL', defaultOllamaModel),
+    mailErrorTo: value('MAIL_ERROR_TO', defaultMailErrorTo),
   };
-}
-
-async function reviewStaffEmails(database: Database): Promise<string[]> {
-  const rows = await database.db
-    .select({ email: staff.email })
-    .from(staff)
-    .where(eq(staff.active, true));
-  return rows.map((row) => row.email);
 }
 
 function boundedMinutes(text: string, fallback: number, min: number, max: number): number {

@@ -8,6 +8,7 @@ export type OutboundMail = {
 export type Mailer = {
   readonly configured: boolean;
   send(mail: OutboundMail): Promise<void>;
+  deliver?(mail: OutboundMail): Promise<void>;
 };
 
 export type CalendarWindow = { start: string; end: string };
@@ -24,6 +25,11 @@ export type InboundMail = {
   body: string;
   fromEmail: string;
   fromName: string;
+  to?: string;
+  cc?: string;
+  sentAt?: string;
+  inReplyTo?: string;
+  references?: string;
 };
 
 export type Mailbox = {
@@ -124,6 +130,26 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
         throw new Error('graph draft failed');
       }
     },
+    async deliver(mail) {
+      if (!config) throw new Error('mail not configured');
+      const token = await accessToken(config, fetchImpl);
+      const response = await fetchImpl(
+        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/sendMail`,
+        {
+          method: 'POST',
+          headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+          body: JSON.stringify({
+            message: {
+              subject: mail.subject,
+              body: { contentType: 'Text', content: mail.text },
+              toRecipients: [{ emailAddress: { address: mail.to } }],
+            },
+            saveToSentItems: true,
+          }),
+        },
+      );
+      if (!response.ok) throw new Error('graph send failed');
+    },
   };
 }
 
@@ -200,7 +226,10 @@ export function mailboxFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = f
       const query = [
         '$filter=' + encodeURIComponent('isRead eq false'),
         `$top=${Math.min(Math.max(limit, 1), 25)}`,
-        '$select=' + encodeURIComponent('id,internetMessageId,subject,body,from'),
+        '$select=' +
+          encodeURIComponent(
+            'id,internetMessageId,subject,body,from,toRecipients,ccRecipients,receivedDateTime,internetMessageHeaders',
+          ),
       ].join('&');
       const response = await fetchImpl(
         `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/inbox/messages?${query}`,
@@ -289,9 +318,39 @@ export function parseInboundMessages(body: unknown): InboundMail[] {
       fromEmail:
         address && 'address' in address ? stringValue(address.address).trim().toLowerCase() : '',
       fromName: address && 'name' in address ? stringValue(address.name).slice(0, 200) : '',
+      to: recipientList(item, 'toRecipients'),
+      cc: recipientList(item, 'ccRecipients'),
+      sentAt: stringField(item, 'receivedDateTime').slice(0, 40),
+      inReplyTo: headerValue(item, 'In-Reply-To'),
+      references: headerValue(item, 'References'),
     });
   }
   return mails;
+}
+
+function recipientList(item: object, key: 'toRecipients' | 'ccRecipients'): string {
+  const value = (item as Record<string, unknown>)[key];
+  if (!Array.isArray(value)) return '';
+  const addresses: string[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object' || !('emailAddress' in entry)) continue;
+    const email = entry.emailAddress;
+    if (!email || typeof email !== 'object' || !('address' in email)) continue;
+    const address = stringValue(email.address).trim().toLowerCase();
+    if (address) addresses.push(address);
+  }
+  return addresses.join(', ').slice(0, 500);
+}
+
+function headerValue(item: object, name: string): string {
+  if (!('internetMessageHeaders' in item) || !Array.isArray(item.internetMessageHeaders)) return '';
+  const wanted = name.toLowerCase();
+  for (const header of item.internetMessageHeaders) {
+    if (!header || typeof header !== 'object' || !('name' in header)) continue;
+    if (stringValue(header.name).toLowerCase() !== wanted) continue;
+    return 'value' in header ? stringValue(header.value).slice(0, 500) : '';
+  }
+  return '';
 }
 
 function stringField(value: object, key: string): string {

@@ -1,6 +1,6 @@
 # Status
 
-Phase 11 ist abgenommen. Die App auf `phase/11-app` reicht ohne Store-Konten. Die Apple- und Google-Konten der GmbH kommen später. Phase 12 bleibt offen.
+Phase 11 ist abgenommen. Die App auf `phase/11-app` reicht ohne Store-Konten. Die Apple- und Google-Konten der GmbH kommen später. Phase 12 bleibt offen. Die Mailprüfung spricht seit dem 29.10.2026 den lokalen Ollama-Server `http://192.168.191.131:11434`, Modell `qwen2.5:7b`, und nicht mehr `AI_ENDPOINT`, `POST /api/v1/mail/review` oder MCP.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -82,7 +82,7 @@ Der Start prüft nur `MADC1.kmbcloud.at`. Ist der Domänencontroller nicht errei
 - [x] Dieselbe `internetMessageId` erzeugt ein Ticket und eine Antwort
 - [x] Antwort mit Nummer und Link auf die öffentliche Liste. Kein Geheimlink
 - [x] Kalendereintrag beim ersten freien Mitarbeiter mit der passenden Kenntnis. Betreff `Neues Ticket` plus Mail-Betreff, Körper mit der kompletten Mail und dem Link. Dauer `CALENDAR_DEFAULT_MINUTES` (30), Start nach P1/P2/P3
-- [x] `FALLBACK_CATEGORY` (Auslieferung `printer`) gilt erst, nachdem die KI die Mail als Support bestätigt hat und keine Katalogkategorie nennt. Ohne erreichbare KI entsteht aus der Mail kein Ticket
+- [x] `FALLBACK_CATEGORY` (Auslieferung `printer`) gilt, wenn Ollama keine Kategorie nennt oder eine Abfrage länger als 5 Minuten dauert. Ohne erreichbaren Server entsteht aus der Mail kein Ticket
 - [x] Wiederöffnen informiert alle aktiven Mitarbeiter, sobald Graph konfiguriert ist
 - [x] `GET /api/health` zeigt den Worker. Die Seite bleibt erreichbar, wenn er steht
 - [x] `pnpm test` und `pnpm typecheck`
@@ -106,19 +106,19 @@ Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Die Vorgänge ruft die API
 
 ## Phase 6 — Abnahme
 
-- [x] Anbieter hinter `@kmbhelp/ai`. Ohne https-Endpunkt, EU-Region, Schlüssel und AVV kein Aufruf und das Verhalten von Phase 2
+- [x] Suche und Kenntnisprüfung hinter `@kmbhelp/ai`. Ohne https-Endpunkt, EU-Region, Schlüssel und AVV kein Aufruf und das Verhalten von Phase 2. Die Mailprüfung spricht Ollama
 - [x] SVNR, IBAN, Kreditkartenmuster und Geburtsdatum werden vor dem Modell maskiert
 - [x] Entscheidung als JSON: Kategorie, Priorität, Kenntnis, Konfidenz, `auto_reply_allowed`, `is_support`
-- [x] Helpdesk-Mail wird nur bei `is_support: true` ein Ticket. Ohne erreichbare KI bleibt sie ungelesen und erzeugt nichts
-- [x] Neutrale Prüfung über `POST /api/v1/mail/review` und MCP `review_mail`. Der Auftrag steht mehrzeilig in `AI_MAIL_PROMPT`. JA setzt `is_support`. Der Anbietername `AI_PROVIDER` ist austauschbar, die Adresse bleibt `AI_ENDPOINT`
-- [x] Vor dem Modell: nur `INTERNAL_MAIL_DOMAINS`, nie `helpdesk`, das Postfach oder ein aktiver Mitarbeiter
+- [x] Helpdesk-Mail wird ein Ticket, wenn Ollama SUPPORT antwortet. Ohne erreichbaren Server bleibt sie ungelesen und erzeugt nichts
+- [x] Die externe Prüfung über `POST /api/v1/mail/review` und MCP `review_mail` ist entfernt. Der Worker fragt Ollama unter `OLLAMA_URL`
+- [x] Jeder Absender wird geprüft. `INTERNAL_MAIL_DOMAINS`, das Postfach und die Mitarbeiter sperren keine Mail mehr
 - [x] Syslog für jeden externen Schritt. Zugriffsprotokoll in `activity_log` und `%LOCALAPPDATA%\kmbhelp\activity.log`, sichtbar unter `/verwaltung/protokoll`, filterbar und als Text, CSV oder PDF
 - [x] Automatisch schließen nur bei Allowlist, Konfidenz ab 0,85, ohne personenbezogene Muster und mit veröffentlichter FAQ. Sonst Mensch
 - [x] `model_decision` speichert Modell, Eingabe-Hash und Ausgabe, nicht den Tickettext
 - [x] Staff-Suche mit Begründung und Link. Öffentliche Suche ohne Modell und ohne Klartext im Protokoll
 - [x] `pnpm test` und `pnpm typecheck`
 
-Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:worker`. Die Suche bleibt auf `http://127.0.0.1:5173`. Solange die vier KI-Felder leer sind, gilt der Satz „Treffer wegen Kategorie/Titel“, und eine Helpdesk-Mail bleibt ungelesen. `AI_AUTO_REPLY_CATEGORIES` bleibt leer, bis die Kanzlei Kategorien freigibt.
+Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:worker`. Die Suche bleibt auf `http://127.0.0.1:5173`. Solange die vier KI-Felder leer sind, gilt der Satz „Treffer wegen Kategorie/Titel“. Die Mailprüfung nutzt `OLLAMA_URL` und bleibt davon unabhängig. Ist dieser Server nicht erreichbar, bleibt die Mail ungelesen. `AI_AUTO_REPLY_CATEGORIES` bleibt leer, bis die Kanzlei Kategorien freigibt.
 
 ## Phase 7 — Abnahme
 
@@ -157,7 +157,7 @@ Die Formularseite `/mitarbeit/vorgaenge` bleibt entfernt. Die Bearbeitung steht 
 - [x] Eine Rückfrage wird am Ticket gespeichert und als Entwurf an den Benutzer abgelegt.
 - [x] Die Seite listet Helpdesk-Mails, die noch kein Ticket sind, und kann jede davon von Hand in ein Ticket umwandeln.
 - [x] Wird ein Mail als Ticket angenommen, merkt sich die Anwendung den Grund. Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelöscht und der Grund gespeichert, damit ein Mail künftig kein Ticket erzeugen darf. Das ist keine allgemeine Löschfunktion.
-- [x] Die Prüfung selbst liegt seit Phase 6 auf `POST /api/v1/mail/review` und dem MCP-Werkzeug `review_mail`, nur mit Endpunkt, EU-Region, Schlüssel und AVV. Sonst kein Aufruf. Gespeicherte Gründe gehen in den nächsten Auftrag mit.
+- [x] Die Mailprüfung liegt im Worker und spricht Ollama. `POST /api/v1/mail/review` und das MCP-Werkzeug `review_mail` gibt es nicht mehr
 - [x] Der Agent meldet, ob ein Mail ein Ticket werden soll, dazu Kategorie, Priorität, Benutzer und einen verfügbaren Mitarbeiter. Die Verfügbarkeit kommt aus dem Microsoft-365-Kalender. Der Mitarbeiter erhält eine Mail mit Ticketnummer, allen Angaben und dem Originalmail als Anhang.
 - [x] Playwright-Rauchtest: Ticket anlegen, die Beschreibung steht nicht in der öffentlichen Liste, Sprache und Darstellung wechseln.
 - [x] `pnpm test` und `pnpm typecheck`

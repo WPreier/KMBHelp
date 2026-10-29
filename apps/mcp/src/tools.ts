@@ -23,20 +23,6 @@ const objectSchema = {
 
 export const toolDefinitions: readonly ToolDefinition[] = [
   {
-    name: 'review_mail',
-    description:
-      'Hand a mail to the configured model. The server owns the prompt, the internal domains and the helpdesk exclusion. The answer reports is_support and does not create a ticket.',
-    inputSchema: {
-      ...objectSchema,
-      properties: {
-        fromEmail: { type: 'string' },
-        subject: { type: 'string' },
-        body: { type: 'string' },
-      },
-      required: ['fromEmail', 'subject', 'body'],
-    },
-  },
-  {
     name: 'health',
     description: 'Read GET /api/health. No ticket text.',
     inputSchema: { ...objectSchema, properties: {} },
@@ -318,13 +304,6 @@ export function resolveToolCall(name: string, args: Record<string, unknown>): To
     return body;
   };
   switch (name) {
-    case 'review_mail':
-      return {
-        method: 'POST',
-        auth: false,
-        path: '/api/v1/mail/review',
-        body: { fromEmail: text(args.fromEmail), subject: text(args.subject), body: text(args.body) },
-      };
     case 'health':
       return { method: 'GET', auth: false, path: '/api/health' };
     case 'list_categories':
@@ -332,15 +311,28 @@ export function resolveToolCall(name: string, args: Record<string, unknown>): To
     case 'list_staff_tickets':
       return { method: 'GET', auth: true, path: '/api/v1/staff/tickets' };
     case 'get_ticket':
-      return { method: 'GET', auth: true, path: `/api/v1/staff/tickets/${positiveInteger(args.number)}` };
+      return {
+        method: 'GET',
+        auth: true,
+        path: `/api/v1/staff/tickets/${positiveInteger(args.number)}`,
+      };
     case 'dashboard':
-      return { method: 'GET', auth: true, path: `/api/v1/staff/dashboard?range=${range(args.range)}` };
+      return {
+        method: 'GET',
+        auth: true,
+        path: `/api/v1/staff/dashboard?range=${range(args.range)}`,
+      };
     case 'list_processes':
       return { method: 'GET', auth: true, path: '/api/v1/staff/processes' };
     case 'create_change':
       return { method: 'POST', auth: true, path: '/api/v1/staff/changes', body: args };
     case 'approve_change':
-      return { method: 'POST', auth: true, path: `/api/v1/staff/changes/${positiveInteger(args.number)}/approve`, body: {} };
+      return {
+        method: 'POST',
+        auth: true,
+        path: `/api/v1/staff/changes/${positiveInteger(args.number)}/approve`,
+        body: {},
+      };
     case 'close_change':
       return {
         method: 'POST',
@@ -353,7 +345,12 @@ export function resolveToolCall(name: string, args: Record<string, unknown>): To
     case 'create_supplier':
       return { method: 'POST', auth: true, path: '/api/v1/staff/suppliers', body: args };
     case 'approve_supplier':
-      return { method: 'POST', auth: true, path: `/api/v1/staff/suppliers/${uuid(args.id)}/approve`, body: {} };
+      return {
+        method: 'POST',
+        auth: true,
+        path: `/api/v1/staff/suppliers/${uuid(args.id)}/approve`,
+        body: {},
+      };
     case 'start_remote_support':
       return { method: 'POST', auth: true, path: '/api/v1/staff/remote-support', body: args };
     case 'create_backup_test':
@@ -398,11 +395,6 @@ export function resolveToolCall(name: string, args: Record<string, unknown>): To
   }
 }
 
-function text(value: unknown): string {
-  if (typeof value !== 'string' || value.trim() === '') throw new Error('text');
-  return value;
-}
-
 function positiveInteger(value: unknown): number {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 1_000_000_000) {
     throw new Error('number');
@@ -411,7 +403,10 @@ function positiveInteger(value: unknown): number {
 }
 
 function uuid(value: unknown): string {
-  if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)) {
+  if (
+    typeof value !== 'string' ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)
+  ) {
     throw new Error('id');
   }
   return value;
@@ -419,7 +414,13 @@ function uuid(value: unknown): string {
 
 function range(value: unknown): string {
   const selected = value === undefined ? 'month' : value;
-  if (selected !== 'day' && selected !== 'week' && selected !== 'month' && selected !== 'quarter' && selected !== 'year') {
+  if (
+    selected !== 'day' &&
+    selected !== 'week' &&
+    selected !== 'month' &&
+    selected !== 'quarter' &&
+    selected !== 'year'
+  ) {
     throw new Error('range');
   }
   return selected;

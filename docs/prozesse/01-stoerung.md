@@ -8,7 +8,7 @@ Lohnlauf, UVA, FinanzOnline, ELDA und Scanner dürfen nicht liegen bleiben, nur 
 
 ## Auslöser
 
-Mail, Web, App, Anruf oder Zuruf. Eine Mail an das Helpdesk wird nur ein Ticket, wenn die Prüfung JA sagt und damit `is_support` setzt. Vorher muss die Absenderdomäne in `INTERNAL_MAIL_DOMAINS` stehen. Mails von `helpdesk`, vom Postfach und von aktiven Mitarbeitern werden nie ein Ticket und gehen nicht an die KI. Ist die KI nicht erreichbar, bleibt die Mail ungelesen und es entsteht nichts. Anruf und Zuruf erfasst der Mitarbeiter, der den Anruf hat, unter Quelle `phone` oder `walkin`.
+Mail, Web, App, Anruf oder Zuruf. Eine Mail an das Helpdesk prüft der lokale Ollama-Server. Jeder Absender wird gefragt. SUPPORT wird ein Ticket, ANTWORT hängt sich an ein bestehendes Ticket, ABSCHLUSS schließt das letzte offene Ticket des Absenders, FREMD und SPAM werden nur gelesen markiert. Ist der Server nicht erreichbar, bleibt die Mail ungelesen. Dauert die Abfrage länger als 5 Minuten, entsteht ein Ticket mit niedriger Wichtigkeit und der Standardkategorie, und `helpdesk@ppc.at` erhält eine Fehlermail. Anruf und Zuruf erfasst der Mitarbeiter, der den Anruf hat, unter Quelle `phone` oder `walkin`.
 
 ## Schritte
 
