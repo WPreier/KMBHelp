@@ -11,7 +11,7 @@ import {
   unconfiguredDirectory,
   type MemoryDirectoryAccount,
 } from './directory.js';
-import { createLocalAdmin } from './local-admin.js';
+import { createLocalAdmin, replaceLocalAdmin } from './local-admin.js';
 import { loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { decodeBase32, totpCode } from './totp.js';
 
@@ -266,6 +266,56 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
     expect(session.status).toBe(200);
     expect(session.body.signedIn).toBe(true);
     expect(session.body.displayName).toBe(username);
+    await removeTestPeople(database);
+  });
+
+  it('replaces the local admin and leaves domain accounts in place', async () => {
+    await applyMigrations(database);
+    await removeTestPeople(database);
+    const foreign = await database.pool.query<{ username: string | null }>(
+      `select username from staff
+        where is_local_admin = true
+          and coalesce(username, '') not like 'breakglass-%'
+          and coalesce(username, '') not like 'office-%'`,
+    );
+    expect(foreign.rowCount).toBe(0);
+    const keptEmail = `agent-${randomUUID()}@kmbcloud.at`;
+    await database.pool.query(
+      `insert into staff (email, display_name, role, active) values ($1, 'Agent', 'agent', true)`,
+      [keptEmail],
+    );
+    const first = `office-${randomUUID()}`;
+    const second = `office-${randomUUID()}`;
+    const firstPassword = `local-admin-${randomUUID()}`;
+    const secondPassword = `local-admin-${randomUUID()}`;
+    expect(await replaceLocalAdmin(database, first, firstPassword)).toBe('created');
+    expect(await replaceLocalAdmin(database, second, secondPassword)).toBe('replaced');
+    const admins = await database.pool.query<{ username: string }>(
+      `select username from staff where is_local_admin = true`,
+    );
+    expect(admins.rows.map((row) => row.username)).toEqual([second]);
+    const kept = await database.pool.query(`select id from staff where lower(email) = $1`, [
+      keptEmail,
+    ]);
+    expect(kept.rowCount).toBe(1);
+    const app = buildApp({
+      database,
+      directory: unconfiguredDirectory(),
+      sessionSecret: secret,
+      adminAllowlist: '127.0.0.1/32',
+    });
+    apps.push(app);
+    await app.ready();
+    const denied = await request(app.server)
+      .post('/api/v1/auth/login')
+      .send({ email: first, password: firstPassword });
+    expect(denied.status).toBe(503);
+    const accepted = await request(app.server)
+      .post('/api/v1/auth/login')
+      .send({ email: second, password: secondPassword });
+    expect(accepted.status).toBe(200);
+    expect(accepted.body.step).toBe('staff');
+    expect(JSON.stringify(accepted.body)).not.toContain(secondPassword);
     await removeTestPeople(database);
   });
 

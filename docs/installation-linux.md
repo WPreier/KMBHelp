@@ -175,11 +175,15 @@ Die Unit-Datei setzt `NODE_ENV=production`. Damit liest die API `secrets.json` n
 
 Die Konfigurationsseite speichert in Produktion Werte ohne Geheimnis in `app_setting` und in `.env`. Ein Geheimnis speichert sie dort nicht. Ein neues Geheimnis wird in `/etc/kmbhelp/kmbhelp.env` eingetragen, danach folgt der Neustart.
 
-Den lokalen Admin einmal anlegen und die Werte danach aus der Shell-History entfernen:
+Den lokalen Admin anlegen und die Werte danach aus der Shell-History entfernen:
 
 ```bash
 sudo -u kmbhelp env LOCAL_ADMIN_USERNAME='…' LOCAL_ADMIN_PASSWORD='…' pnpm install:helpdesk
 ```
+
+Gibt es schon einen lokalen Admin, löscht derselbe Befehl dieses Konto und legt es mit dem neuen Benutzernamen und Passwort neu an. Sitzung, Einmalcode und Passkey des alten Kontos enden. Tickets bleiben, eine Zuordnung auf dieses Konto wird geleert. Domänenkonten bleiben. Der Klartext wird nicht gespeichert.
+
+`ADMIN_IP_ALLOWLIST` trennt die Netze mit Komma. Die Zahlen einer Adresse stehen mit Punkten, zum Beispiel `192.168.36.0/24,192.168.191.0/24`.
 
 ## API-Adresse
 

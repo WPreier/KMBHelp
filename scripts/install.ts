@@ -2,7 +2,7 @@ import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { createDatabase } from '@kmbhelp/db';
 import { loadEnvFileIfPresent } from '@kmbhelp/shared/env';
-import { createLocalAdmin } from '../apps/api/src/local-admin.js';
+import { replaceLocalAdmin } from '../apps/api/src/local-admin.js';
 
 loadEnvFileIfPresent(new URL('../.env', import.meta.url));
 
@@ -17,8 +17,12 @@ const password = await readSetting('LOCAL_ADMIN_PASSWORD', 'Lokaler Admin, Passw
 const database = createDatabase(databaseUrl);
 
 try {
-  await createLocalAdmin(database, username, password);
-  process.stdout.write('Lokaler Admin angelegt.\nLocal admin created.\n');
+  const result = await replaceLocalAdmin(database, username, password);
+  process.stdout.write(
+    result === 'replaced'
+      ? 'Lokaler Admin ersetzt.\nLocal admin replaced.\n'
+      : 'Lokaler Admin angelegt.\nLocal admin created.\n',
+  );
 } catch (error) {
   const message = error instanceof Error ? error.message : 'local admin was not created';
   process.stderr.write(`${message}\n`);

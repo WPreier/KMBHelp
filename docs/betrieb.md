@@ -67,7 +67,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 Die Seite `/anmelden` zeigt eine Fehlermeldung direkt unter der Einleitung, in Rot. Ein abgelehntes Passwort, ein fehlendes Konto und ein nicht erreichbares Verzeichnis bleiben nicht ohne Text. Ein Domänenkonto ohne Einmalcode sieht den QR-Code sofort. Der lokale Admin aus `ADMIN_IP_ALLOWLIST` kommt mit Benutzername und Passwort in die Verwaltung. Rechts oben steht dann der Anmeldename.
 
-Ein lokaler Admin entsteht nur durch `pnpm install:helpdesk`. Benutzername und Passwort stehen danach in keiner Datei, nur der Hash in der Tabelle `staff`. Ohne diese Zeile prüft die Anmeldung das eingegebene Konto im Active Directory.
+Ein lokaler Admin entsteht nur durch `pnpm install:helpdesk`. Derselbe Befehl ersetzt ihn, wenn er schon existiert: das alte Konto wird gelöscht und mit dem neuen Benutzernamen und Passwort angelegt. Domänenkonten bleiben. Benutzername und Passwort stehen danach in keiner Datei, nur der Hash in der Tabelle `staff`. Ohne diese Zeile prüft die Anmeldung das eingegebene Konto im Active Directory.
 
 Jede abgelehnte Anmeldung und jeder andere API-Fehler schreibt eine Zeile nach `/var/lib/kmbhelp/activity.log` und in `activity_log`. Darin stehen Status, ein deutscher Satz und die Adresse. Passwort, Datenbank-URL und Zertifikatstext stehen nicht darin.
 
