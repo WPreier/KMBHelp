@@ -95,7 +95,7 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `NOTICE_DIGEST` | leer | Tagesmail mit offenen Warnungen. Leer gilt in Produktion. `on` überall, `off` aus. |
 | `NOTICE_DIGEST_HOUR` | `7` | Stunde in der Uhr `SYSLOG_UTC_OFFSET`. Ein Versuch am Tag. |
 | `AI_MAIL_PROMPT` | eingebauter JA/NEIN-Auftrag | Früherer Auftrag. Die Mailprüfung nutzt ihn nicht mehr. |
-| `ACTIVITY_LOG_FILE` | `%LOCALAPPDATA%\kmbhelp\activity.log` | Zweite Kopie des Zugriffsprotokolls, außerhalb des Projektordners. |
+| `ACTIVITY_LOG_FILE` | `%LOCALAPPDATA%\kmbhelp\activity.log` | Seitenprotokoll. Im selben Verzeichnis liegen `error.log` und `mail.log`. Auf dem Server `/var/lib/kmbhelp/`. |
 | `AI_ENDPOINT` | leer | https-Adresse für Suche und Kenntnisprüfung. Die Mailprüfung nutzt `OLLAMA_URL`. Ohne EU-Region, Schlüssel und AVV kein Aufruf. |
 | `AI_REGION` | leer | Muss als EU-Verarbeitung erkennbar sein. Eine US-Region sperrt den Aufruf. |
 | `AI_API_KEY` | leer | Schlüssel. Nur in `secrets.json`, nie in Git. |

@@ -6,6 +6,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { directoryFromEnv, type Directory } from './directory.js';
 import type { SearchExplainer } from './explain.js';
 import { writeActivity } from './activity-log.js';
+import { logError } from './file-log.js';
 import { clientAddress, loggedRequestUrl, PublicError, safeErrorText } from './http.js';
 import { withDevelopmentLoopback } from './network.js';
 import { openApiDocument } from './openapi.js';
@@ -203,14 +204,20 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
       error instanceof PublicError
         ? `${error.statusCode} ${error.error}: ${error.text.de}`
         : `500 internal_error: ${safeErrorText(error)}`;
+    logError(`${request.method} ${path}: ${detail}`);
     if (database) {
-      await writeActivity(database, {
-        actor: 'api',
-        kind: 'page',
-        target: `${request.method} ${path}`,
-        detail,
-        ip: clientAddress(request),
-      }).catch(() => undefined);
+      void writeActivity(
+        database,
+        {
+          actor: 'api',
+          kind: 'page',
+          target: `${request.method} ${path}`,
+          detail,
+          ip: clientAddress(request),
+        },
+        process.env,
+        false,
+      ).catch(() => undefined);
     }
     if (!(error instanceof PublicError)) {
       request.log.error({ message: safeErrorText(error) }, 'request failed');

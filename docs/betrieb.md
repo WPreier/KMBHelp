@@ -69,7 +69,7 @@ Die Seite `/anmelden` zeigt eine Fehlermeldung direkt unter der Einleitung, in R
 
 Ein lokaler Admin entsteht nur durch `pnpm install:helpdesk`. Derselbe Befehl ersetzt ihn, wenn er schon existiert: das alte Konto wird gelöscht und mit dem neuen Benutzernamen und Passwort angelegt. Domänenkonten bleiben. Benutzername und Passwort stehen danach in keiner Datei, nur der Hash in der Tabelle `staff`. Ohne diese Zeile prüft die Anmeldung das eingegebene Konto im Active Directory.
 
-Jede abgelehnte Anmeldung und jeder andere API-Fehler schreibt eine Zeile nach `/var/lib/kmbhelp/activity.log` und in `activity_log`. Darin stehen Status, ein deutscher Satz und die Adresse. Passwort, Datenbank-URL und Zertifikatstext stehen nicht darin.
+Jede abgelehnte Anmeldung und jeder andere Fehler schreibt eine Zeile nach `/var/lib/kmbhelp/error.log`. Ein Seitenaufruf schreibt nach `/var/lib/kmbhelp/activity.log`, ein Mailvorgang nach `/var/lib/kmbhelp/mail.log`. Dieselben Zeilen der Seiten und Mails stehen in `activity_log`. Die Datei wird nach der Antwort geschrieben, die Anfrage wartet nicht auf die Festplatte. Passwort, Datenbank-URL, Zertifikatstext und Mailtext stehen nicht darin. Die Prüfung „Das Dienstkonto kann nicht suchen.“ steht in `error.log`.
 
 ## Konfiguration
 
@@ -142,7 +142,7 @@ Nach einer echten Erneuerung den Webserver neu laden: `sudo systemctl reload ngi
 journalctl -u kmbhelp-api -u kmbhelp-worker --since today
 ```
 
-Jede Aktion schreibt zusätzlich eine Zeile nach `/var/lib/kmbhelp/activity.log` und in die Tabelle `activity_log`. Die Seite ist `/verwaltung/protokoll`. In der Zeile steht der Meldungstext nicht.
+Jede Aktion schreibt zusätzlich eine Zeile in die Tabelle `activity_log` und, je nach Art, nach `activity.log` oder `mail.log` im selben Verzeichnis. Die Seite ist `/verwaltung/protokoll`. In der Zeile steht der Meldungstext nicht.
 
 Syslog geht an den Server aus der Konfiguration, Auslieferung `192.168.191.215` Port `514` UDP.
 

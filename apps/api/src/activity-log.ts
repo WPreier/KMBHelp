@@ -1,7 +1,6 @@
-import { appendFileSync, mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
 import { and, desc, gte, ilike, lte, or, type SQL } from 'drizzle-orm';
 import { activityLog, type Database } from '@kmbhelp/db';
+import { enqueueFileLog, logFilePath } from './file-log.js';
 
 export type ActivityEntry = {
   actor: string;
@@ -14,10 +13,7 @@ export type ActivityEntry = {
 export type ActivityRow = ActivityEntry & { at: Date };
 
 export function activityLogPath(env: NodeJS.ProcessEnv = process.env): string {
-  const chosen = env.ACTIVITY_LOG_FILE?.trim();
-  if (chosen) return chosen;
-  const root = env.LOCALAPPDATA?.trim() || env.HOME?.trim() || '';
-  return root ? join(root, 'kmbhelp', 'activity.log') : '';
+  return logFilePath('activity', env);
 }
 
 export function activityLine(entry: ActivityRow): string {
@@ -33,17 +29,15 @@ export function activityLine(entry: ActivityRow): string {
 }
 
 export function appendActivityFile(entry: ActivityRow, env: NodeJS.ProcessEnv = process.env): void {
-  if (env.NODE_ENV === 'test' && !env.ACTIVITY_LOG_FILE?.trim()) return;
-  const path = activityLogPath(env);
-  if (!path) return;
-  mkdirSync(dirname(path), { recursive: true });
-  appendFileSync(path, `${activityLine(entry)}\n`, 'utf8');
+  const file = entry.kind === 'mail' ? 'mail' : 'activity';
+  enqueueFileLog(file, activityLine(entry), env);
 }
 
 export async function writeActivity(
   database: Database,
   entry: ActivityEntry,
   env: NodeJS.ProcessEnv = process.env,
+  file = true,
 ): Promise<void> {
   const row: ActivityRow = { ...entry, at: new Date() };
   await database.db.insert(activityLog).values({
@@ -53,11 +47,8 @@ export async function writeActivity(
     detail: entry.detail.slice(0, 300),
     ip: entry.ip.slice(0, 80),
   });
-  try {
-    appendActivityFile(row, env);
-  } catch {
-    // The database row remains. A full disk must not hide the access.
-  }
+  if (!file) return;
+  appendActivityFile(row, env);
 }
 
 export async function readActivity(

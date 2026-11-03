@@ -14,6 +14,7 @@ import {
 } from '@kmbhelp/shared';
 import { assertCsrf, localhostAdmin, staffFromSession, type StaffSession } from './auth.js';
 import { checkConfigField } from './config-check.js';
+import { logError } from './file-log.js';
 import { saveConfigValue } from './config-store.js';
 import { inspectConfiguration, type Check } from './configuration.js';
 import { clientAddress, databaseDown, PublicError } from './http.js';
@@ -180,6 +181,7 @@ export function registerOperations(app: FastifyInstance, options: OperationsOpti
   async function fieldResult(key: string, candidate?: string) {
     const syslog = await readSyslogTarget(options.database, env);
     const check = await checkConfigField(env, key, candidate);
+    if (check.status === 'error') logError(`${key}: ${check.textDe}`, env);
     const entry = describeConfig(env).find((item) => item.key === key);
     if (!entry) throw new PublicError(404, 'not_found', publicErrors.notFound);
     return configFieldResultSchema.parse({ entry, check, syslog });

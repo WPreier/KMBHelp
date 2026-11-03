@@ -17,7 +17,7 @@ Rechnung für die Platte, Stand der Tabellen in diesem Repository:
 - 10 Tickets am Tag × 365 × 10 Jahre = 36.500 Tickets.
 - Je Ticket etwa 20 KB Text (Betreff, Meldung, Erklärung, Ereignisse). 36.500 × 20 KB sind etwa 0,7 GB. Mit Indexen bleibt der Ticketbestand unter 2 GB. Anhänge liegen in Microsoft 365. Die Datenbank hat dafür keine Binärspalte.
 - `access_log` löscht Zeilen nach 90 Tagen (`ACCESS_LOG_RETENTION_DAYS`) und bleibt klein.
-- `activity_log` und die Datei `/var/lib/kmbhelp/activity.log` bleiben. Fünf Mitarbeiter mit 30 Protokollzeilen am Tag und 250 Benutzer mit zwei Besuchen in der Woche bleiben über 10 Jahre zusammen unter 2 GB. Wird die Seite deutlich öfter aufgerufen, wächst nur dieses Protokoll.
+- `activity_log` und die Dateien `/var/lib/kmbhelp/activity.log`, `error.log` und `mail.log` bleiben. Fünf Mitarbeiter mit 30 Protokollzeilen am Tag und 250 Benutzer mit zwei Besuchen in der Woche bleiben über 10 Jahre zusammen unter 2 GB. Wird die Seite deutlich öfter aufgerufen, wächst nur dieses Protokoll.
 - PostgreSQL inklusive WAL und Freiplatz: 8 GB reichen für diesen Ansatz.
 - Betriebssystem, Pakete und `/opt/kmbhelp`: etwa 10 GB.
 - Die Sicherung läuft stündlich und behält 7 Tage: 24 × 7 = 168 Dateien. Bei einer Datenbank von 2 GB ist eine Custom-Kopie oft 0,3 bis 0,6 GB. 168 Kopien sind dann 50 bis 100 GB.

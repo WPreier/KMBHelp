@@ -41,6 +41,8 @@ import {
   staffTicketPath,
 } from './mail-rules.js';
 import { writeActivity } from './activity-log.js';
+import { logError } from './file-log.js';
+import { safeErrorText } from './http.js';
 import { maybeNoticeDigest } from './notice-digest.js';
 import { sendSmtp, smtpSettingsFromEnv, type SmtpSettings } from './smtp.js';
 import {
@@ -158,7 +160,8 @@ export async function runMailCycle(options: {
       to: settings.mailErrorTo,
       smtp: settings.smtp,
     });
-  } catch {
+  } catch (error) {
+    logError(`mail digest: ${safeErrorText(error)}`, options.env);
     await noteExternal(options.env, 'warning', 'notice digest skipped');
   }
   if (!mailbox.configured) {
@@ -189,8 +192,8 @@ export async function runMailCycle(options: {
         await noteExternal(options.env, 'informational', 'external graph mark-read');
         await note(deps, mail.internetMessageId, 'mark-read');
       }
-    } catch {
-      // Leave the message unread so the next minute can finish the reply.
+    } catch (error) {
+      logError(`mail ingest: ${safeErrorText(error)}`, options.env);
     }
   }
   await deliverPendingReopens(store, mailer, deps.origin, async (number) => {
@@ -327,8 +330,8 @@ export async function ingestMail(
     for (const person of people) {
       try {
         busy.set(person.email, await deps.calendar.availability(person.email, deps.now));
-      } catch {
-        // A calendar that cannot be read is not a free window.
+      } catch (error) {
+        logError(`mail calendar-read: ${safeErrorText(error)}`, process.env);
       }
     }
   }
@@ -446,7 +449,8 @@ async function notifyModelTimeout(mail: InboundMail, deps: IngestDeps): Promise<
       await deps.syslog?.('informational', 'local ollama timeout notice sent');
       await note(deps, mail.internetMessageId, 'timeout-sent');
       return;
-    } catch {
+    } catch (error) {
+      logError(`mail timeout-graph: ${safeErrorText(error)}`, process.env);
       await deps.syslog?.('warning', 'local ollama timeout notice graph failed');
     }
   }
@@ -455,7 +459,8 @@ async function notifyModelTimeout(mail: InboundMail, deps: IngestDeps): Promise<
     else await sendSmtp(deps.smtp ?? smtpSettingsFromEnv(process.env), { subject, text });
     await deps.syslog?.('informational', 'local ollama timeout notice smtp');
     await note(deps, mail.internetMessageId, 'timeout-smtp');
-  } catch {
+  } catch (error) {
+    logError(`mail timeout-smtp: ${safeErrorText(error)}`, process.env);
     await deps.syslog?.('warning', 'local ollama timeout notice failed');
     await note(deps, mail.internetMessageId, 'timeout-failed');
   }
@@ -516,7 +521,8 @@ async function ensureCalendar(
     });
     await deps.store.addEvent(stored.id, 'calendar', { id: event.id });
     await note(deps, String(stored.number), 'calendar');
-  } catch {
+  } catch (error) {
+    logError(`mail calendar: ${safeErrorText(error)}`, process.env);
     await deps.store.addEvent(stored.id, 'calendar_failed', {});
     await note(deps, String(stored.number), 'calendar-failed');
   }
@@ -545,8 +551,8 @@ async function notifyAssignee(
     await deps.store.addEvent(stored.id, 'assignee_mail', {});
     await deps.syslog?.('informational', 'external graph assignee-mail');
     await note(deps, String(stored.number), 'assignee-mail');
-  } catch {
-    // The ticket stays. The next pass can send the mail.
+  } catch (error) {
+    logError(`mail assignee: ${safeErrorText(error)}`, process.env);
   }
 }
 
@@ -618,8 +624,8 @@ async function notifyOnCall(
     });
     await deps.store.addEvent(stored.id, 'oncall', {});
     await note(deps, String(stored.number), 'oncall');
-  } catch {
-    // The ticket stays. A later run can send the on-call mail once Graph accepts it.
+  } catch (error) {
+    logError(`mail oncall: ${safeErrorText(error)}`, process.env);
   }
 }
 
@@ -724,8 +730,8 @@ async function sendReopen(
         text: reopenText(input.number, input.origin),
       });
       sent += 1;
-    } catch {
-      // One mailbox can fail without stopping the others.
+    } catch (error) {
+      logError(`mail reopen: ${safeErrorText(error)}`, process.env);
     }
   }
   if (sent === 0) return;

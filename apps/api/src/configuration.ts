@@ -1,6 +1,7 @@
 import { createDatabase } from '@kmbhelp/db';
 import { describeConfig, type ConfigurationReport } from '@kmbhelp/shared';
 import { directoryCertificate, serviceBindWorks, type LdapsConfig } from './directory.js';
+import { logError } from './file-log.js';
 import { ldapsHost, peerFingerprint, tcpOpen, type TcpResult } from './probes.js';
 import { formatSyslog, sendSyslog, syslogTarget } from './syslog.js';
 
@@ -503,5 +504,8 @@ export async function inspectConfiguration(
         ),
   );
 
+  for (const item of checks) {
+    if (item.status === 'error') logError(`${item.code}: ${item.textDe}`, env);
+  }
   return { values: valuesOf(env), checks, syslog, entries: describeConfig(env) };
 }
