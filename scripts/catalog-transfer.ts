@@ -5,8 +5,9 @@ import { loadProjectEnv, loadWorkstationEnv } from '@kmbhelp/shared/env';
 loadProjectEnv(new URL('../.env', import.meta.url));
 loadWorkstationEnv();
 
-const mode = process.argv[2];
-const target = process.argv[3];
+const args = process.argv.slice(2).filter((arg) => arg !== '--');
+const mode = args[0];
+const target = args[1];
 if (mode !== 'export' && mode !== 'import') {
   process.stderr.write(
     'Aufruf: pnpm catalog:export -- datei.json oder pnpm catalog:import -- datei.json\nUsage: pnpm catalog:export -- file.json or pnpm catalog:import -- file.json\n',
