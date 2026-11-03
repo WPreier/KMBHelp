@@ -26,6 +26,8 @@ curl -fsS https://helpdesk.kmbcloud.at/api/health
 
 `worker` steht auf `up`, `down` oder `not_configured`. `smtp` steht auf `up`, wenn Postfix auf `SMTP_SERVER` und `SMTP_PORT` eine Verbindung annimmt, sonst auf `down`. `down` bei Worker oder Postfix macht die Webseite nicht unerreichbar. Die Antwort bleibt 200, solange die Datenbank antwortet. `not_configured` heißt: die Graph-Werte fehlen, der Worker stürzt nicht ab. Das Ergebnis für Postfix wird 30 Sekunden gehalten, damit jede Abfrage nicht neu verbindet.
 
+Das Dashboard unter `/mitarbeit/dashboard` zeigt dieselben Dienste mit einem grünen Häkchen oder einem roten Kreuz: Datenbank, Mail-Worker, Postfix, Verzeichnis, Helpdesk-Mailbox, Ollama und Syslog. Grün heißt, der Dienst antwortet. Rot heißt, er meldet einen Fehler oder ist nicht erreichbar. Beim Verzeichnis zählen ein lesbares, nicht abgelaufenes Zertifikat, eine offene LDAPS-Verbindung und eine Suche mit dem Dienstkonto. Die Mailbox gilt als in Ordnung, wenn die Graph-Anmeldung angenommen wird. Syslog ist grün, sobald ein Ziel gesetzt ist. UDP bestätigt den Empfang nicht. Die Ticketzahlen laden unabhängig von dieser Prüfung.
+
 ## Aktualisieren
 
 Die auf GitHub gesicherte Fassung ist der Branch `phase/11-app`. Ein `git pull` ohne Branch holt `main` und damit eine ältere Fassung.
@@ -75,7 +77,9 @@ Jede abgelehnte Anmeldung und jeder andere Fehler schreibt eine Zeile nach `/var
 
 Die Seite ist `https://helpdesk.kmbcloud.at/verwaltung/konfiguration`. Sie ist aus `192.168.36.0/24` und `192.168.191.0/24` mit Anmeldung erreichbar, und auf dem Server selbst ohne Anmeldung.
 
-Werte ohne Geheimnis speichert die Seite in der Datenbank und in `.env`. Ein Geheimnis, darunter `SMTP_PASSWD`, schreibt die Seite auf dem Produktionsserver nicht. Es steht in `/etc/kmbhelp/kmbhelp.env`. Danach die API und den Worker neu starten.
+Werte ohne Geheimnis speichert die Seite in der Datenbank und in `.env`. Ein Geheimnis, darunter `SMTP_PASSWD` und `LDAPS_CA_PEM`, schreibt die Seite auf dem Produktionsserver nicht. Es steht in `/etc/kmbhelp/kmbhelp.env`. Danach die API und den Worker neu starten.
+
+Das Domänencontroller-Zertifikat liegt als PEM-Datei unter `/etc/kmbhelp/madc1.crt`, mit `BEGIN CERTIFICATE`, `END CERTIFICATE` und echten Zeilenumbrüchen. `LDAPS_CA_FILE` nennt diesen Pfad. `LDAPS_CA_PEM` bleibt leer. `certificate.missing: Das Zertifikat lässt sich nicht lesen.` heißt, dass ein Wert gesetzt ist, die Datei aber fehlt oder der Text keine Zeilenumbrüche mehr hat. Danach `sudo systemctl restart kmbhelp-api`.
 
 `Prüfen und melden` prüft die Werte und ob `SMTP_SERVER` auf `SMTP_PORT` eine Verbindung annimmt. `SMTP testen` schickt eine kurze Mail über den lokalen Postfix an `SMTP_TO`. Das ist keine Störungsmeldung.
 
@@ -142,7 +146,7 @@ Nach einer echten Erneuerung den Webserver neu laden: `sudo systemctl reload ngi
 journalctl -u kmbhelp-api -u kmbhelp-worker --since today
 ```
 
-Jede Aktion schreibt zusätzlich eine Zeile in die Tabelle `activity_log` und, je nach Art, nach `activity.log` oder `mail.log` im selben Verzeichnis. Die Seite ist `/verwaltung/protokoll`. In der Zeile steht der Meldungstext nicht.
+Jede Aktion schreibt zusätzlich eine Zeile in die Tabelle `activity_log` und, je nach Art, nach `activity.log`, `error.log` oder `mail.log` im selben Verzeichnis. Die Seite `/verwaltung/protokoll` zeigt die drei Dateien getrennt, jede mit Titel und Tabelle. Von steht auf sieben Tage vor heute, Bis auf heute, beide nebeneinander, in der Form `dd.MM.yyyy`. Neben jeder Tabelle liegen `Als CSV` und `Als PDF` für genau diese Datei. In der Zeile steht der Meldungstext nicht. Die Tabelle `activity_log` bleibt über `GET /api/v1/staff/activity` erreichbar.
 
 Syslog geht an den Server aus der Konfiguration, Auslieferung `192.168.191.215` Port `514` UDP.
 

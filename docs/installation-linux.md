@@ -169,9 +169,34 @@ sudo -u kmbhelp pnpm db:seed
 
 `pnpm db:migrate` und `pnpm db:seed` lesen zuerst `/opt/kmbhelp/.env` und füllen leere Werte aus `/etc/kmbhelp/kmbhelp.env`. `DATABASE_URL` steht nur in der zweiten Datei. Der Benutzer `kmbhelp` darf sie lesen. Fehlt sie oder ist sie leer, endet der Befehl mit `DATABASE_URL is not set.`
 
+`pnpm db:seed` füllt die mitgelieferten Kenntnisse, Kategorien, Katalogeinträge, FAQ-Stubs, Sperrzeiten und die Syslog-Vorgabe. Vorhandene Zeilen mit demselben Code werden bei Kenntnissen und Kategorien aktualisiert, die übrigen Einträge bleiben. Mitarbeiter, Tickets und Geheimnisse fasst der Befehl nicht an. Eine leere Liste auf dem Server kommt daher, dass dieser Befehl dort noch nicht gelaufen ist:
+
+```bash
+cd /opt/kmbhelp
+sudo -u kmbhelp pnpm db:seed
+```
+
+Kenntnisse und Kategorien, die auf dem Entwicklungsrechner zusätzlich von Hand angelegt wurden, stehen nicht im Repository. Die überträgt man als Datei. Sie enthält nur diese beiden Tabellen.
+
+Auf dem Entwicklungsrechner:
+
+```powershell
+pnpm catalog:export -- "$env:LOCALAPPDATA\kmbhelp\catalog.json"
+```
+
+Die Datei bleibt außerhalb des Repositorys. Auf den Server kopieren, dort übernehmen und danach löschen:
+
+```bash
+cd /opt/kmbhelp
+sudo -u kmbhelp pnpm catalog:import -- /tmp/kmbhelp-catalog.json
+rm /tmp/kmbhelp-catalog.json
+```
+
+Der Import legt fehlende Codes an und aktualisiert Bezeichnungen. Er löscht nichts. Eine Kategorie, deren Kenntnis fehlt, bricht den Vorgang ab, und es bleibt der Stand von vorher.
+
 Der Vite-Build liest die `VITE_`-Werte aus `.env`. Nach einer Änderung dieser Adressen den Build wiederholen.
 
-Die Unit-Datei setzt `NODE_ENV=production`. Damit liest die API `secrets.json` nicht. Jedes Geheimnis steht in `/etc/kmbhelp/kmbhelp.env`. Die Vorlage ist `infra/kmbhelp.env.example`. Die echte Datei gehört `root:kmbhelp`, Modus `0640`. `SESSION_SECRET` ist ein langer Zufallswert, erzeugt mit `openssl rand -base64 48`. Ein leerer Wert beendet die API sofort mit `SESSION_SECRET must be set in production`. Sie lauscht dann nicht, und `/api/` bleibt stumm. `ALLOW_TEST_AUTH` bleibt leer. `LDAPS_CA_FILE` zeigt auf `/etc/kmbhelp/madc1.crt`. Steht dort der Zertifikatstext statt eines Pfads, liest die API den Text. Ein fehlender Pfad beendet die Anmeldung nicht mehr still: die Seite sagt, dass das Verzeichnis nicht erreichbar ist.
+Die Unit-Datei setzt `NODE_ENV=production`. Damit liest die API `secrets.json` nicht. Jedes Geheimnis steht in `/etc/kmbhelp/kmbhelp.env`. Die Vorlage ist `infra/kmbhelp.env.example`. Die echte Datei gehört `root:kmbhelp`, Modus `0640`. `SESSION_SECRET` ist ein langer Zufallswert, erzeugt mit `openssl rand -base64 48`. Ein leerer Wert beendet die API sofort mit `SESSION_SECRET must be set in production`. Sie lauscht dann nicht, und `/api/` bleibt stumm. `ALLOW_TEST_AUTH` bleibt leer. `LDAPS_CA_FILE` zeigt auf `/etc/kmbhelp/madc1.crt`. Die Datei ist PEM, mit `BEGIN CERTIFICATE`, `END CERTIFICATE` und echten Zeilenumbrüchen. `LDAPS_CA_PEM` bleibt leer. Die Konfigurationsseite speichert dieses Geheimnis in Produktion nicht, weil `secrets.json` dort nicht gelesen wird. Ein Zertifikatstext in der Umgebungszeile verliert die Zeilenumbrüche. Steht in `error.log` `certificate.missing: Das Zertifikat lässt sich nicht lesen.`, ist ein Wert gesetzt, aber nicht lesbar: der Pfad fehlt, oder der PEM-Text hat keine Zeilenumbrüche mehr. Ein leeres Feld meldet dagegen, dass kein Zertifikat hinterlegt ist. Nach einer Änderung an der Datei oder an `kmbhelp.env` die API neu starten. Ein fehlender Pfad beendet die Anmeldung nicht mehr still: die Seite sagt, dass das Verzeichnis nicht erreichbar ist.
 
 Die Konfigurationsseite speichert in Produktion Werte ohne Geheimnis in `app_setting` und in `.env`. Ein Geheimnis speichert sie dort nicht. Ein neues Geheimnis wird in `/etc/kmbhelp/kmbhelp.env` eingetragen, danach folgt der Neustart.
 

@@ -1,8 +1,16 @@
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { staff, type Database } from '@kmbhelp/db';
-import { activityListSchema, activityViewSchema, publicErrors } from '@kmbhelp/shared';
+import {
+  activityListSchema,
+  activityViewSchema,
+  logNames,
+  logReportSchema,
+  publicErrors,
+  type LogName,
+} from '@kmbhelp/shared';
 import { readActivity, writeActivity } from './activity-log.js';
+import { readLogFile } from './log-files.js';
 import {
   assertCsrf,
   localhostAdmin,
@@ -146,6 +154,33 @@ export function registerActivity(
       })),
     });
   });
+
+  app.get('/api/v1/staff/logs', async (request, reply) => {
+    await requireReader(request);
+    const query = request.query as Record<string, unknown>;
+    const file = queryText(query.file);
+    if (!file || !(logNames as readonly string[]).includes(file)) {
+      throw new PublicError(422, 'invalid_filter', publicErrors.invalidInput);
+    }
+    const today = viennaToday(now());
+    const window = activityWindow(
+      queryText(query.from) ?? shiftIso(today, -7),
+      queryText(query.to) ?? today,
+      now(),
+    );
+    const format = queryText(query.format);
+    const lines = await readLogFile({
+      file: file as LogName,
+      from: window.from,
+      to: window.to,
+      q: queryText(query.q)?.slice(0, 120) ?? '',
+      limit: format === 'csv' || format === 'pdf' ? 5000 : 500,
+      env,
+    });
+    if (format === 'csv' || format === 'pdf')
+      return sendLogExport(reply, file as LogName, format, lines);
+    return logReportSchema.parse({ file, lines });
+  });
 }
 
 function sendExport(
@@ -188,4 +223,48 @@ function sendExport(
 
 function csvCell(value: string): string {
   return `"${value.replace(/"/gu, '""')}"`;
+}
+
+const logTitle: Record<LogName, string> = {
+  activity: 'Aktivität',
+  error: 'Fehler',
+  mail: 'Mail',
+};
+
+function sendLogExport(
+  reply: FastifyReply,
+  file: LogName,
+  format: 'csv' | 'pdf',
+  rows: { at: string; actor: string; kind: string; target: string; detail: string }[],
+): FastifyReply {
+  const cells = rows.map((row) => [row.at, row.actor, row.kind, row.target, row.detail]);
+  if (format === 'pdf') {
+    const lines = cells.map((cell) => cell.join(' | ').slice(0, 180));
+    return reply
+      .header('content-type', 'application/pdf')
+      .header('content-disposition', `attachment; filename="kmbhelp-${file}.pdf"`)
+      .send(renderTextPdf(logTitle[file], lines));
+  }
+  const header = 'at,actor,kind,target,detail';
+  const body = [header, ...cells.map((cell) => cell.map(csvCell).join(','))].join('\n');
+  return reply
+    .header('content-type', 'text/csv; charset=utf-8')
+    .header('content-disposition', `attachment; filename="kmbhelp-${file}.csv"`)
+    .send(`\uFEFF${body}\n`);
+}
+
+function viennaToday(now: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Vienna',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+
+function shiftIso(iso: string, days: number): string {
+  const [year, month, dayNumber] = iso.split('-').map(Number);
+  const date = new Date(Date.UTC(year ?? 0, (month ?? 1) - 1, dayNumber ?? 1));
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }

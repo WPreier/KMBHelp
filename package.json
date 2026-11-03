@@ -20,6 +20,8 @@
     "format:check": "prettier --check .",
     "db:migrate": "pnpm --filter @kmbhelp/db db:migrate",
     "db:seed": "pnpm --filter @kmbhelp/db db:seed",
+    "catalog:export": "tsx scripts/catalog-transfer.ts export",
+    "catalog:import": "tsx scripts/catalog-transfer.ts import",
     "db:generate": "pnpm --filter @kmbhelp/db db:generate",
     "install:helpdesk": "tsx scripts/install.ts"
   },

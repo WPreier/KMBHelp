@@ -2,16 +2,21 @@ import {
   dashboardRanges,
   dashboardSchema,
   pieSliceKeys,
+  serviceReportSchema,
   type DashboardRange,
   type DashboardReport,
   type PieSliceKey,
+  type ServiceReport,
 } from '@kmbhelp/shared';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
 
-const labels: Record<DashboardRange, 'dashboardDay' | 'dashboardWeek' | 'dashboardMonth' | 'dashboardQuarter' | 'dashboardYear'> = {
+const labels: Record<
+  DashboardRange,
+  'dashboardDay' | 'dashboardWeek' | 'dashboardMonth' | 'dashboardQuarter' | 'dashboardYear'
+> = {
   day: 'dashboardDay',
   week: 'dashboardWeek',
   month: 'dashboardMonth',
@@ -42,6 +47,8 @@ export function DashboardPage() {
   const [range, setRange] = useState<DashboardRange>('month');
   const [data, setData] = useState<DashboardReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [services, setServices] = useState<ServiceReport | null>(null);
+  const [serviceError, setServiceError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +61,9 @@ export function DashboardPage() {
         if (!cancelled) {
           setData(null);
           setError(
-            caught instanceof RequestFailed ? (caught.text?.[lang] ?? copy.loadFailed) : copy.loadFailed,
+            caught instanceof RequestFailed
+              ? (caught.text?.[lang] ?? copy.loadFailed)
+              : copy.loadFailed,
           );
         }
       });
@@ -63,10 +72,41 @@ export function DashboardPage() {
     };
   }, [copy.loadFailed, lang, range]);
 
+  useEffect(() => {
+    let cancelled = false;
+    getJson('/api/v1/staff/services', serviceReportSchema.parse)
+      .then((loaded) => {
+        if (!cancelled) setServices(loaded);
+      })
+      .catch(() => {
+        if (!cancelled) setServiceError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section>
       <h2>{copy.dashboardTitle}</h2>
       <p>{data?.scope === 'own' ? copy.dashboardOwn : copy.dashboardFirm}</p>
+      <h3>{copy.serviceTitle}</h3>
+      <p>{copy.serviceLead}</p>
+      <ul className="service-list">
+        {serviceError ? (
+          <li className="service-row">
+            <Mark ok={false} />
+            <span>{copy.serviceUnavailable}</span>
+          </li>
+        ) : (
+          services?.services.map((service) => (
+            <li key={service.code} className="service-row">
+              <Mark ok={service.status === 'ok'} />
+              <span>{lang === 'de' ? service.textDe : service.textEn}</span>
+            </li>
+          ))
+        )}
+      </ul>
       <div className="form-actions" role="group" aria-label={copy.dashboardRange}>
         {dashboardRanges.map((entry) => (
           <button
@@ -121,7 +161,8 @@ export function DashboardPage() {
                 {copy.dashboardOpenTicket} {row.number}: {row.subject}
               </Link>
               <span>
-                {(lang === 'de' ? row.categoryLabelDe : row.categoryLabelEn)} · {row.priority} · {row.status}
+                {lang === 'de' ? row.categoryLabelDe : row.categoryLabelEn} · {row.priority} ·{' '}
+                {row.status}
               </span>
               <span>
                 {copy.dashboardSupplier}: {row.supplierName}
@@ -178,7 +219,11 @@ function PieChart({ slices, caption }: { slices: DashboardReport['slices']; capt
         <circle cx={cx} cy={cy} r={radius} fill={sliceColor[parts[0].slice.key]} />
       ) : (
         parts.map((part) => (
-          <path key={part.slice.key} d={wedge(cx, cy, radius, part.start, part.end)} fill={sliceColor[part.slice.key]} />
+          <path
+            key={part.slice.key}
+            d={wedge(cx, cy, radius, part.start, part.end)}
+            fill={sliceColor[part.slice.key]}
+          />
         ))
       )}
       {parts.map((part) => {
@@ -206,6 +251,33 @@ function PieChart({ slices, caption }: { slices: DashboardReport['slices']; capt
           </text>
         );
       })}
+    </svg>
+  );
+}
+
+function Mark({ ok }: { ok: boolean }) {
+  return ok ? (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <circle cx="12" cy="12" r="11" fill="#1b7f3a" />
+      <path
+        d="M6.5 12.5 l3.5 3.5 7.5-8"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <circle cx="12" cy="12" r="11" fill="#a32020" />
+      <path
+        d="M8 8 l8 8 M16 8 l-8 8"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

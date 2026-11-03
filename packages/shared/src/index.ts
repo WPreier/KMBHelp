@@ -134,6 +134,22 @@ export {
   type PieSliceKey,
 } from './dashboard.js';
 export {
+  logLineSchema,
+  logNames,
+  logReportSchema,
+  type LogLine,
+  type LogName,
+  type LogReport,
+} from './logs.js';
+export {
+  serviceReportSchema,
+  serviceRowSchema,
+  serviceStatusSchema,
+  type ServiceReport,
+  type ServiceRow,
+  type ServiceStatus,
+} from './services.js';
+export {
   staffTicketViewSchema,
   ticketPatchSchema,
   ticketQuestionSchema,

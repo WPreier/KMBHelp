@@ -1,15 +1,31 @@
 import { and, eq, isNull, lt, ne } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { category, remoteSupportDetail, staff, supplier, ticket, ticketEvent, type Database } from '@kmbhelp/db';
+import {
+  category,
+  remoteSupportDetail,
+  staff,
+  supplier,
+  ticket,
+  ticketEvent,
+  type Database,
+} from '@kmbhelp/db';
 import {
   buildDashboard,
   dashboardRanges,
   dashboardSchema,
+  serviceReportSchema,
   type DashboardRange,
   type StaffRole,
 } from '@kmbhelp/shared';
-import { assertCsrf, localhostAdmin, requireStaff, serviceTokenMatches, staffFromSession } from './auth.js';
+import {
+  assertCsrf,
+  localhostAdmin,
+  requireStaff,
+  serviceTokenMatches,
+  staffFromSession,
+} from './auth.js';
 import { databaseDown } from './http.js';
+import { readServiceStatus } from './service-status.js';
 
 export function registerDashboard(
   app: FastifyInstance,
@@ -119,6 +135,11 @@ export function registerDashboard(
         ),
       }),
     );
+  });
+
+  app.get('/api/v1/staff/services', async (request) => {
+    await reader(request);
+    return serviceReportSchema.parse(await readServiceStatus({ database: options.database, env }));
   });
 }
 
