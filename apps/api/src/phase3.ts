@@ -115,13 +115,15 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     const current = await staffFromSession(options.database, request, now());
     if (!current || current.mfaPending) return sessionViewSchema.parse(anonymous);
     const names = await options.database.db
-      .select({ displayName: staff.displayName })
+      .select({ displayName: staff.displayName, username: staff.username })
       .from(staff)
       .where(eq(staff.id, current.staffId));
+    const row = names[0];
+    const loginName = current.isLocalAdmin ? row?.username : row?.displayName;
     return sessionViewSchema.parse({
       signedIn: true,
       isLocalAdmin: current.isLocalAdmin,
-      displayName: names[0]?.displayName ?? current.email,
+      displayName: loginName || row?.displayName || current.email,
       internalAdmin: false,
     });
   });
@@ -182,7 +184,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
       const opened = await replaceSession(database, local.id, true, now());
       setSessionCookies(reply, request, opened.id, opened.csrf, pendingSeconds);
       await writeAudit(database, request, local.id, email, 'local_password', 'ok');
-      return loginResultSchema.parse({ step: 'enroll' });
+      return loginResultSchema.parse({ step: 'enroll', presentTotp: false });
     }
     let account: DirectoryAccount | null;
     try {
@@ -208,7 +210,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     const opened = await replaceSession(database, saved.id, true, now());
     setSessionCookies(reply, request, opened.id, opened.csrf, pendingSeconds);
     await writeAudit(database, request, saved.id, email, 'ad_password', 'ok');
-    return loginResultSchema.parse({ step: 'enroll' });
+    return loginResultSchema.parse({ step: 'enroll', presentTotp: true });
   });
 
   app.post('/api/v1/auth/totp/setup', async (request) => {

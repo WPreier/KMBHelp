@@ -38,6 +38,7 @@ export async function deleteDirectoryFixtures(database: Database): Promise<void>
   const rows = await database.pool.query<{ id: string; email: string }>(
     `select id, email from staff
       where username like 'breakglass-%'
+         or username like 'office-%'
          or email ~* '^agent-[0-9a-f-]{36}@kmbcloud\\.at$'`,
   );
   await deleteTracked(
@@ -86,6 +87,7 @@ async function deleteTracked(database: Database, residue: TestResidue, sweep: bo
                or email ~* '@example\\.(com|invalid)$'
                or email ~* '^agent-[0-9a-f-]{36}@kmbcloud\\.at$'
                or coalesce(username, '') like 'breakglass-%'
+               or coalesce(username, '') like 'office-%'
                or lower(email) = 'automation@kmbhelp.invalid'
                or display_name ~* '^phase'
                or display_name in ('Dash Agent', 'Dash Lead', 'Dash Other', 'Test Staff', 'Factory Tester')`

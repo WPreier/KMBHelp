@@ -7,7 +7,7 @@ export const loginRequestSchema = z.object({
 });
 
 export const loginResultSchema = z.discriminatedUnion('step', [
-  z.object({ step: z.literal('enroll') }),
+  z.object({ step: z.literal('enroll'), presentTotp: z.boolean() }),
   z.object({
     step: z.literal('mfa'),
     methods: z.array(z.enum(['totp', 'webauthn'])),

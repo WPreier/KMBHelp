@@ -83,6 +83,7 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
     const first = await agent.post('/api/v1/auth/login').send({ email, password });
     expect(first.status).toBe(200);
     expect(first.body.step).toBe('enroll');
+    expect(first.body.presentTotp).toBe(true);
     const stored = await database.pool.query<{ password_hash: string | null }>(
       `select password_hash from staff where lower(email) = $1`,
       [email],
@@ -160,6 +161,7 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
       .set('x-forwarded-for', '203.0.113.8')
       .send({ email: username, password });
     expect(enrolled.body.step).toBe('enroll');
+    expect(enrolled.body.presentTotp).toBe(false);
     const setup = await agent
       .post('/api/v1/auth/totp/setup')
       .set('x-kmbhelp-csrf', csrfFrom(enrolled))
@@ -256,6 +258,14 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
     expect(response.status).toBe(200);
     expect(response.body.step).toBe('staff');
     expect(JSON.stringify(response.body)).not.toContain(password);
+    const raw = response.headers['set-cookie'];
+    const lines = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    const session = await request(app.server)
+      .get('/api/v1/auth/session')
+      .set('cookie', lines.map((line) => line.split(';')[0] ?? '').join('; '));
+    expect(session.status).toBe(200);
+    expect(session.body.signedIn).toBe(true);
+    expect(session.body.displayName).toBe(username);
     await removeTestPeople(database);
   });
 

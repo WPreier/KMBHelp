@@ -70,22 +70,27 @@ function Shell({
   const [session, setSession] = useState<SessionView | null>(null);
   useEffect(() => {
     let cancelled = false;
-    getJson('/api/v1/auth/session', sessionViewSchema.parse)
-      .then((loaded) => {
-        if (!cancelled) setSession(loaded);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setSession({
-            signedIn: false,
-            isLocalAdmin: false,
-            displayName: null,
-            internalAdmin: false,
-          });
-        }
-      });
+    function load() {
+      getJson('/api/v1/auth/session', sessionViewSchema.parse)
+        .then((loaded) => {
+          if (!cancelled) setSession(loaded);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setSession({
+              signedIn: false,
+              isLocalAdmin: false,
+              displayName: null,
+              internalAdmin: false,
+            });
+          }
+        });
+    }
+    load();
+    window.addEventListener('kmbhelp-session', load);
     return () => {
       cancelled = true;
+      window.removeEventListener('kmbhelp-session', load);
     };
   }, [location.pathname]);
   useEffect(() => {

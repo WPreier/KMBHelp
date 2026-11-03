@@ -183,7 +183,7 @@ sudo -u kmbhelp env LOCAL_ADMIN_USERNAME='…' LOCAL_ADMIN_PASSWORD='…' pnpm i
 
 ## API-Adresse
 
-`API_HOST` in `/etc/kmbhelp/kmbhelp.env` ist die interne Adresse dieses Servers, in den Beispielen `192.0.2.10`. Dieselbe Adresse steht in der nginx- oder Apache-Datei und in `ADMIN_IP_ALLOWLIST`, sonst erreicht niemand die Verwaltung über die Website.
+`API_HOST` in `/etc/kmbhelp/kmbhelp.env` ist die interne Adresse dieses Servers, in den Beispielen `192.0.2.10`. Dieselbe Adresse steht in der nginx- oder Apache-Datei und in `ADMIN_IP_ALLOWLIST`, sonst erreicht niemand die Verwaltung über die Website. Der lokale Admin aus dieser Liste kommt mit Benutzername und Passwort in die Verwaltung, rechts oben steht der Anmeldename. Ein Domänenkonto ohne Einmalcode sieht den QR-Code sofort.
 
 Steht `API_HOST` auf `127.0.0.1` und leitet der Proxy auf demselben Rechner dorthin, sieht die API jeden Besucher als localhost. Die Verwaltung öffnet dann ohne Anmeldung. `X-Forwarded-For` ändert das nicht. Der Socket zeigt die Proxy-Adresse, also die interne Adresse des Servers, nicht die Adresse des Browsers.
 

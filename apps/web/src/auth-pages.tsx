@@ -9,6 +9,7 @@ import {
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import QRCode from 'qrcode';
 import { useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getJson, postJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
 
@@ -21,7 +22,9 @@ function bilingual(caught: unknown): CopyText {
 
 export function SignInPage() {
   const { lang, copy } = useLocale();
+  const navigate = useNavigate();
   const [step, setStep] = useState<LoginResult['step'] | 'start'>('start');
+  const [presentTotp, setPresentTotp] = useState(false);
   const [secret, setSecret] = useState<string | null>(null);
   const [otpauth, setOtpauth] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
@@ -44,12 +47,21 @@ export function SignInPage() {
         },
         loginResultSchema.parse,
       );
-      setStep(result.step);
+      finish(result);
+      if (result.step === 'enroll' && result.presentTotp) await onSetup();
     } catch (caught) {
       setError(bilingual(caught));
     } finally {
       setPending(false);
     }
+  }
+
+  function finish(result: LoginResult) {
+    setStep(result.step);
+    if (result.step === 'enroll') setPresentTotp(result.presentTotp);
+    if (result.step !== 'staff') return;
+    window.dispatchEvent(new Event('kmbhelp-session'));
+    if (result.isLocalAdmin) navigate('/verwaltung');
   }
 
   useEffect(() => {
@@ -105,8 +117,8 @@ export function SignInPage() {
     setError(null);
     try {
       const result = await postJson('/api/v1/auth/totp/confirm', { code }, loginResultSchema.parse);
-      setStep(result.step);
       setSecret(null);
+      finish(result);
     } catch (caught) {
       setError(bilingual(caught));
     } finally {
@@ -129,7 +141,7 @@ export function SignInPage() {
         credential,
         loginResultSchema.parse,
       );
-      setStep(result.step);
+      finish(result);
     } catch (caught) {
       setError(bilingual(caught));
     } finally {
@@ -154,7 +166,7 @@ export function SignInPage() {
         credential,
         loginResultSchema.parse,
       );
-      setStep(result.step);
+      finish(result);
     } catch (caught) {
       setError(bilingual(caught));
     } finally {
@@ -175,9 +187,11 @@ export function SignInPage() {
       {step === 'enroll' ? (
         <>
           <p>{copy.enrollLead}</p>
-          <button type="button" onClick={() => void onSetup()} disabled={pending}>
-            {copy.enrollTotp}
-          </button>
+          {!presentTotp || error ? (
+            <button type="button" onClick={() => void onSetup()} disabled={pending}>
+              {copy.enrollTotp}
+            </button>
+          ) : null}
           {qr ? (
             <img className="totp-qr" src={qr} width={320} height={320} alt={copy.scanCode} />
           ) : null}

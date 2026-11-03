@@ -158,6 +158,87 @@ describe('placeholder page', () => {
     );
   });
 
+  it('opens administration and shows the login name for the local admin', async () => {
+    let signed = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/v1/auth/login')) {
+          signed = true;
+          return json({ step: 'staff', isLocalAdmin: true });
+        }
+        if (url.includes('/api/v1/auth/session')) {
+          return json(
+            signed
+              ? {
+                  signedIn: true,
+                  isLocalAdmin: true,
+                  displayName: 'office-admin',
+                  internalAdmin: false,
+                }
+              : {
+                  signedIn: false,
+                  isLocalAdmin: false,
+                  displayName: null,
+                  internalAdmin: false,
+                },
+          );
+        }
+        return json({ articles: [], hits: [], categories: [], tickets: [] });
+      }),
+    );
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.change(screen.getAllByLabelText('Email or username')[0]!, {
+      target: { value: 'office-admin' },
+    });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a-long-password' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[1]!);
+    expect(await screen.findByRole('heading', { name: 'IT staff' })).toBeTruthy();
+    expect(screen.getByText('office-admin')).toBeTruthy();
+    expect(screen.queryByText('Not signed in')).toBeNull();
+  });
+
+  it('shows the one-time code for a domain account without pressing the setup button', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/v1/auth/login')) {
+          return json({ step: 'enroll', presentTotp: true });
+        }
+        if (url.includes('/api/v1/auth/totp/setup')) {
+          return json({
+            secret: 'JBSWY3DPEHPK3PXP',
+            otpauth:
+              'otpauth://totp/KMBHelp:ada@kmbcloud.at?secret=JBSWY3DPEHPK3PXP&issuer=KMBHelp&algorithm=SHA1&digits=6&period=30',
+          });
+        }
+        if (url.includes('/api/v1/auth/session')) {
+          return json({
+            signedIn: false,
+            isLocalAdmin: false,
+            displayName: null,
+            internalAdmin: false,
+          });
+        }
+        return json({ articles: [], hits: [], categories: [], tickets: [] });
+      }),
+    );
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.change(screen.getAllByLabelText('Email or username')[0]!, {
+      target: { value: 'ada@kmbcloud.at' },
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'directory-password' },
+    });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[1]!);
+    expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Set up a one-time code' })).toBeNull();
+  });
+
   it('boots from the browser before the module loads', () => {
     const html = readFileSync(resolve(process.cwd(), 'index.html'), 'utf8');
     expect(html).toContain('kmbhelp_lang');
