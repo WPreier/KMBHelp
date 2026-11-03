@@ -41,6 +41,8 @@ import {
   staffTicketPath,
 } from './mail-rules.js';
 import { writeActivity } from './activity-log.js';
+import { maybeNoticeDigest } from './notice-digest.js';
+import { sendSmtp, smtpSettingsFromEnv, type SmtpSettings } from './smtp.js';
 import {
   askOllama,
   defaultMailErrorTo,
@@ -78,6 +80,8 @@ type IngestDeps = {
   autoReplyCategories?: readonly string[] | undefined;
   askMail?: ((mail: InboundMail) => Promise<MailAsk>) | undefined;
   mailErrorTo?: string | undefined;
+  smtp?: SmtpSettings | undefined;
+  sendErrorSmtp?: ((message: { subject: string; text: string }) => Promise<void>) | undefined;
   record?:
     | ((entry: {
         actor: string;
@@ -122,6 +126,7 @@ export async function mailIngestDeps(
         fetchImpl,
       }),
     mailErrorTo: settings.mailErrorTo,
+    smtp: settings.smtp,
     syslog: (category, message) => noteExternal(env, category, message),
     record: (entry) => writeActivity(database, entry, env),
   };
@@ -143,6 +148,19 @@ export async function runMailCycle(options: {
   const mailer = mailerFromEnv(options.env, fetchImpl);
   const at = now();
   const settings = await readCycleSettings(database, options.env);
+  try {
+    await maybeNoticeDigest({
+      database,
+      env: { ...options.env, NOTICE_DIGEST: settings.digestFlag },
+      now: at,
+      offset: settings.offset,
+      hourText: settings.digestHour,
+      to: settings.mailErrorTo,
+      smtp: settings.smtp,
+    });
+  } catch {
+    await noteExternal(options.env, 'warning', 'notice digest skipped');
+  }
   if (!mailbox.configured) {
     await store.heartbeat('not_configured', at);
     return { event: 'not_configured', created: 0, slot: '' };
@@ -169,12 +187,21 @@ export async function runMailCycle(options: {
       if (result !== 'retry') {
         await mailbox.markRead(mail.graphId);
         await noteExternal(options.env, 'informational', 'external graph mark-read');
+        await note(deps, mail.internetMessageId, 'mark-read');
       }
     } catch {
       // Leave the message unread so the next minute can finish the reply.
     }
   }
-  await deliverPendingReopens(store, mailer, deps.origin);
+  await deliverPendingReopens(store, mailer, deps.origin, async (number) => {
+    await writeActivity(database, {
+      actor: 'worker',
+      kind: 'mail',
+      target: String(number),
+      detail: 'reopen',
+      ip: 'local',
+    });
+  });
   await store.heartbeat('polling', at);
   return { event: 'polled', created, slot: decision.slot };
 }
@@ -190,13 +217,17 @@ export async function ingestMail(
   deps: IngestDeps,
   manual?: { reason: string },
 ): Promise<'created' | 'duplicate' | 'skip' | 'declined' | 'blocked' | 'retry'> {
-  if (!addressPattern.test(mail.fromEmail) || mail.internetMessageId.trim() === '') return 'skip';
+  if (!addressPattern.test(mail.fromEmail) || mail.internetMessageId.trim() === '') {
+    await note(deps, mail.internetMessageId || mail.graphId, 'skip');
+    return 'skip';
+  }
   if ((await deps.store.lesson(mail.internetMessageId)) === 'rejected') return 'blocked';
   const existing = await deps.store.byMessageId(mail.internetMessageId);
   if (existing) {
     await ensureCalendar(existing, deps, null);
     await ensureReply(existing, deps);
     await notifyAssignee(existing, mail, deps);
+    await note(deps, String(existing.number), 'duplicate');
     return 'duplicate';
   }
   const categories = await deps.store.categories();
@@ -220,7 +251,10 @@ export async function ingestMail(
     const ruled = classifyMail(text, categories, deps.fallbackCategory);
     chosen = categories.find((category) => category.code === ruled) ?? chosen;
   }
-  if (!chosen) return 'retry';
+  if (!chosen) {
+    await note(deps, mail.internetMessageId, 'retry');
+    return 'retry';
+  }
   const impact = impactForGroup(chosen.groupCode);
   const ruledPriority = resolvePriority({
     impact,
@@ -263,6 +297,7 @@ export async function ingestMail(
     await ensureCalendar(raced, deps, null);
     await ensureReply(raced, deps);
     await notifyAssignee(raced, mail, deps);
+    await note(deps, String(raced.number), 'duplicate');
     return 'duplicate';
   }
   await deps.store.addEvent(created.id, 'created', {
@@ -270,6 +305,7 @@ export async function ingestMail(
     priority,
     reason: priorityReason,
   });
+  await note(deps, String(created.number), 'created');
   const auto = await maybeAutoReply(created, mail, text, null, deps);
   await deps.store.addEvent(created.id, 'model_decision', {
     model: modelName,
@@ -362,9 +398,16 @@ async function attachReply(mail: InboundMail, deps: IngestDeps): Promise<void> {
   const byNumber = numbered ? await deps.store.ticketByNumber(numbered) : null;
   const referenced = byNumber ? null : await referencedTicket(mail, deps);
   const target = byNumber ?? referenced;
-  if (!target) return;
-  const note = `${mail.fromName} <${mail.fromEmail}>\n${mail.subject}\n${mail.body}`.slice(0, 8000);
-  await deps.store.appendReply(target.id, note);
+  if (!target) {
+    await note(deps, mail.internetMessageId, 'reply-unmatched');
+    return;
+  }
+  const noteText = `${mail.fromName} <${mail.fromEmail}>\n${mail.subject}\n${mail.body}`.slice(
+    0,
+    8000,
+  );
+  await deps.store.appendReply(target.id, noteText);
+  await note(deps, String(target.number), 'reply-attached');
 }
 
 async function referencedTicket(
@@ -384,26 +427,37 @@ async function referencedTicket(
 
 async function closeFromSender(mail: InboundMail, deps: IngestDeps): Promise<void> {
   const target = await deps.store.latestOpenFrom(mail.fromEmail);
-  if (!target) return;
+  if (!target) {
+    await note(deps, mail.internetMessageId, 'close-unmatched');
+    return;
+  }
   await deps.store.closeTicket(target.id);
   await deps.store.addEvent(target.id, 'closed', { source: 'mail' });
+  await note(deps, String(target.number), 'closed');
 }
 
 async function notifyModelTimeout(mail: InboundMail, deps: IngestDeps): Promise<void> {
   const to = deps.mailErrorTo ?? defaultMailErrorTo;
-  if (!addressPattern.test(to) || !deps.mailer.deliver) {
-    await deps.syslog?.('warning', 'local ollama timeout notice skipped');
-    return;
+  const subject = 'KMBHelp: Die KI-Prüfung hat zu lange gedauert';
+  const text = `Eine Mail an das Helpdesk hat das Limit von 5 Minuten überschritten.\nSie wurde als Ticket mit niedriger Wichtigkeit und der Standardkategorie angelegt.\nMessage-ID: ${mail.internetMessageId.slice(0, 200)}\n`;
+  if (addressPattern.test(to) && deps.mailer.deliver) {
+    try {
+      await deps.mailer.deliver({ to, subject, text });
+      await deps.syslog?.('informational', 'local ollama timeout notice sent');
+      await note(deps, mail.internetMessageId, 'timeout-sent');
+      return;
+    } catch {
+      await deps.syslog?.('warning', 'local ollama timeout notice graph failed');
+    }
   }
   try {
-    await deps.mailer.deliver({
-      to,
-      subject: 'KMBHelp: Die KI-Prüfung hat zu lange gedauert',
-      text: `Eine Mail an das Helpdesk hat das Limit von 5 Minuten überschritten.\nSie wurde als Ticket mit niedriger Wichtigkeit und der Standardkategorie angelegt.\nMessage-ID: ${mail.internetMessageId.slice(0, 200)}\n`,
-    });
-    await deps.syslog?.('informational', 'local ollama timeout notice sent');
+    if (deps.sendErrorSmtp) await deps.sendErrorSmtp({ subject, text });
+    else await sendSmtp(deps.smtp ?? smtpSettingsFromEnv(process.env), { subject, text });
+    await deps.syslog?.('informational', 'local ollama timeout notice smtp');
+    await note(deps, mail.internetMessageId, 'timeout-smtp');
   } catch {
     await deps.syslog?.('warning', 'local ollama timeout notice failed');
+    await note(deps, mail.internetMessageId, 'timeout-failed');
   }
 }
 
@@ -428,10 +482,11 @@ async function maybeAutoReply(
   await deps.mailer.send({
     to: mail.fromEmail,
     subject: `Ticket ${stored.number}`,
-    text: `${replyText(stored.number, deps.origin)}\n${faq.bodyDe}\n`,
+    text: `${replyText(stored.number, deps.origin, stored.body)}\n${faq.bodyDe}\n`,
   });
   await deps.store.addEvent(stored.id, 'reply', { auto: true });
   await deps.store.closeTicket(stored.id);
+  await note(deps, String(stored.number), 'auto-reply');
   return true;
 }
 
@@ -460,8 +515,10 @@ async function ensureCalendar(
       end,
     });
     await deps.store.addEvent(stored.id, 'calendar', { id: event.id });
+    await note(deps, String(stored.number), 'calendar');
   } catch {
     await deps.store.addEvent(stored.id, 'calendar_failed', {});
+    await note(deps, String(stored.number), 'calendar-failed');
   }
 }
 
@@ -487,6 +544,7 @@ async function notifyAssignee(
     });
     await deps.store.addEvent(stored.id, 'assignee_mail', {});
     await deps.syslog?.('informational', 'external graph assignee-mail');
+    await note(deps, String(stored.number), 'assignee-mail');
   } catch {
     // The ticket stays. The next pass can send the mail.
   }
@@ -498,9 +556,10 @@ async function ensureReply(stored: StoredMailTicket, deps: IngestDeps): Promise<
   await deps.mailer.send({
     to: stored.requesterEmail,
     subject: `Ticket ${stored.number}`,
-    text: replyText(stored.number, deps.origin),
+    text: replyText(stored.number, deps.origin, stored.body),
   });
   await deps.store.addEvent(stored.id, 'reply', {});
+  await note(deps, String(stored.number), 'reply');
 }
 
 export async function deliverReopen(
@@ -509,23 +568,37 @@ export async function deliverReopen(
   input: { ticketId: string; sourceEventId: string; number: number; origin: string },
 ): Promise<void> {
   if (!mailer.configured) return;
-  await sendReopen(drizzleMailStore(database), mailer, input);
+  await sendReopen(drizzleMailStore(database), mailer, input, async () => {
+    await writeActivity(database, {
+      actor: 'worker',
+      kind: 'mail',
+      target: String(input.number),
+      detail: 'reopen',
+      ip: 'local',
+    });
+  });
 }
 
 async function deliverPendingReopens(
   store: MailStore,
   mailer: Mailer,
   origin: string,
+  onSent?: (number: number) => Promise<void>,
 ): Promise<void> {
   if (!mailer.configured) return;
   const pending = await store.pendingReopens();
   for (const notice of pending) {
-    await sendReopen(store, mailer, {
-      ticketId: notice.ticketId,
-      sourceEventId: notice.eventId,
-      number: notice.number,
-      origin,
-    });
+    await sendReopen(
+      store,
+      mailer,
+      {
+        ticketId: notice.ticketId,
+        sourceEventId: notice.eventId,
+        number: notice.number,
+        origin,
+      },
+      onSent ? () => onSent(notice.number) : undefined,
+    );
   }
 }
 
@@ -544,9 +617,20 @@ async function notifyOnCall(
       text: `Neues Ticket ${stored.number}\n\n${stored.subject}\n${deps.origin}${staffTicketPath}/${stored.number}\n`,
     });
     await deps.store.addEvent(stored.id, 'oncall', {});
+    await note(deps, String(stored.number), 'oncall');
   } catch {
     // The ticket stays. A later run can send the on-call mail once Graph accepts it.
   }
+}
+
+async function note(deps: IngestDeps, target: string, detail: string): Promise<void> {
+  await deps.record?.({
+    actor: 'worker',
+    kind: 'mail',
+    target: target.slice(0, 200),
+    detail: detail.slice(0, 300),
+    ip: 'local',
+  });
 }
 
 async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
@@ -563,6 +647,13 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     'OLLAMA_URL',
     'OLLAMA_MODEL',
     'MAIL_ERROR_TO',
+    'SMTP_SERVER',
+    'SMTP_PORT',
+    'SMTP_USER',
+    'SMTP_LOGIN',
+    'SMTP_TO',
+    'NOTICE_DIGEST',
+    'NOTICE_DIGEST_HOUR',
   ];
   const stored = new Map<string, string>();
   try {
@@ -595,6 +686,17 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     ollamaUrl: value('OLLAMA_URL', defaultOllamaUrl),
     ollamaModel: value('OLLAMA_MODEL', defaultOllamaModel),
     mailErrorTo: value('MAIL_ERROR_TO', defaultMailErrorTo),
+    digestFlag: value('NOTICE_DIGEST', ''),
+    digestHour: value('NOTICE_DIGEST_HOUR', '7'),
+    smtp: smtpSettingsFromEnv({
+      ...env,
+      SMTP_SERVER: value('SMTP_SERVER', '127.0.0.1'),
+      SMTP_PORT: value('SMTP_PORT', '25'),
+      SMTP_USER: value('SMTP_USER', ''),
+      SMTP_LOGIN: value('SMTP_LOGIN', 'none'),
+      SMTP_TO: value('SMTP_TO', defaultMailErrorTo),
+      SMTP_PASSWD: env.SMTP_PASSWD ?? '',
+    }),
   };
 }
 
@@ -609,6 +711,7 @@ async function sendReopen(
   store: MailStore,
   mailer: Mailer,
   input: { ticketId: string; sourceEventId: string; number: number; origin: string },
+  onSent?: () => Promise<void>,
 ): Promise<void> {
   const emails = await store.activeStaffEmails();
   let sent = 0;
@@ -627,4 +730,5 @@ async function sendReopen(
   }
   if (sent === 0) return;
   await store.addEvent(input.ticketId, 'notification_sent', { sourceEventId: input.sourceEventId });
+  await onSent?.();
 }

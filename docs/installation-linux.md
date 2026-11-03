@@ -1,6 +1,6 @@
 # Installation auf Linux
 
-Diese Anleitung gilt für einen frischen Debian-Rechner, der `helpdesk.kmbcloud.at` ausliefert. nginx und Apache sind Alternativen. Docker ist keine Voraussetzung. Die Beispiele verwenden die Platzhalteradresse `192.0.2.10`. Vor dem Start durch die interne Adresse dieses Servers ersetzen. Die Betriebsskizze liegt in `docs/betriebsskizze.drawio`.
+Diese Anleitung gilt für einen frischen Debian-Rechner, der `helpdesk.kmbcloud.at` ausliefert. nginx und Apache sind Alternativen. Docker ist keine Voraussetzung. Die Beispiele verwenden die Platzhalteradresse `192.0.2.10`. Vor dem Start durch die interne Adresse dieses Servers ersetzen. Die Betriebsskizze liegt in `docs/betriebsskizze.drawio`. Der laufende Betrieb steht in `docs/betrieb.md`.
 
 ## Größe
 
@@ -143,8 +143,10 @@ Die Datenbank hört auf `127.0.0.1`. Port 5432 bleibt von anderen Rechnern aus z
 
 ## Anwendung
 
+Die auf GitHub gesicherte Fassung liegt auf dem Branch `phase/11-app`. Ein Klon ohne Branch holt `main` und damit eine ältere Fassung.
+
 ```bash
-sudo -u kmbhelp git clone https://github.com/WPreier/KMBHelp.git /opt/kmbhelp
+sudo -u kmbhelp git clone --branch phase/11-app https://github.com/WPreier/KMBHelp.git /opt/kmbhelp
 cd /opt/kmbhelp
 sudo -u kmbhelp cp .env.example .env
 ```
@@ -178,6 +180,10 @@ Steht `API_HOST` auf `127.0.0.1` und leitet der Proxy auf demselben Rechner dort
 
 Port 3000 nimmt nur Verbindungen dieser internen Adresse an. Nach außen offen sind TCP 443 für die Seite und TCP 80 für die Zertifikatsprüfung. Port 5432 bleibt zu.
 
+## Firewall
+
+Diese Anleitung setzt keine iptables-Regeln. Die Firewall jedes Linux-Hosts richtet die Kanzlei nach den Firmenvorgaben ein. Die Anwendung braucht eingehend TCP 80 und TCP 443. Port 3000 und Port 5432 bleiben von anderen Rechnern aus zu.
+
 ## systemd
 
 ```bash
@@ -187,7 +193,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now kmbhelp-api kmbhelp-worker
 ```
 
-Beide Units lesen `/etc/kmbhelp/kmbhelp.env`. Der Worker hat keinen eigenen Port. `GET /api/health` zeigt, ob er läuft.
+Beide Units lesen `/etc/kmbhelp/kmbhelp.env`. Der Worker hat keinen eigenen Port. `GET /api/health` zeigt, ob er läuft und ob Postfix auf Port 25 antwortet. `smtp` `down` lässt die Seite erreichbar.
 
 ## nginx oder Apache
 
@@ -266,6 +272,31 @@ sudo certbot renew --dry-run
 
 Der Probelauf muss die Datei über Port 80 von außen lesen können. Nach einer echten Erneuerung den Webserver neu laden, damit er das neue Zertifikat nimmt. Ein Deploy-Hook kann das übernehmen, zum Beispiel `/etc/letsencrypt/renewal-hooks/deploy/reload-web.sh` mit `systemctl reload nginx` oder `systemctl reload apache2`.
 
+## Postfix
+
+Die Fehlermail geht zuerst über Microsoft Graph an `MAIL_ERROR_TO`. Gelingt das nicht, nimmt Postfix auf demselben Rechner sie an und stellt sie an `SMTP_TO` zu. Postfix hört nur auf `127.0.0.1` Port 25. Es ist kein offenes Relay. Die Anwendung meldet sich mit `SMTP_LOGIN=none` an, also ohne Benutzer und ohne Passwort.
+
+```bash
+echo 'postfix postfix/mailname string helpdesk.kmbcloud.at' | sudo debconf-set-selections
+echo 'postfix postfix/main_mailer_type select Internet Site' | sudo debconf-set-selections
+sudo apt install --yes postfix
+sudo cp /opt/kmbhelp/infra/postfix/main.cf /etc/postfix/main.cf
+sudo newaliases
+sudo systemctl enable --now postfix
+sudo systemctl restart postfix
+```
+
+Die Datei `infra/postfix/main.cf` ersetzt die vom Paket erzeugte `main.cf`. `inet_interfaces = loopback-only` lässt keine Verbindung von anderen Rechnern zu. Die Zustellung nach außen benutzt den Mailserver des Empfängers. Dafür muss ausgehendes TCP 25 nach den Firmenvorgaben erlaubt sein. Ein Relay der Kanzlei gehört in `relayhost` in derselben Datei. Den Namen erfindet diese Anleitung nicht.
+
+Prüfung ohne die Anwendung:
+
+```bash
+printf 'Subject: KMBHelp Postfix\n\nPruefung.\n' | sendmail -f helpdesk@kmbcloud.at helpdesk@ppc.at
+mailq
+```
+
+`mailq` ist leer, wenn Postfix die Mail angenommen und weitergegeben hat. Eine wartende Zeile heißt, die Zustellung nach außen steht noch aus.
+
 ## Sicherung
 
 `infra/cron/kmbhelp-backup` startet stündlich `scripts/backup-database.mjs` als Benutzer `kmbhelp`. Das Skript liest `DATABASE_URL` aus `/etc/kmbhelp/kmbhelp.env`, schreibt `pg_dump` im Custom-Format nach `/var/backups/kmbhelp/kmbhelp-yyyyMMdd-HH.backup` und löscht Dateien, die älter als sieben Tage sind. Das Passwort erscheint nicht in der Ausgabe.
@@ -279,14 +310,18 @@ Eine Kopie im Git gibt es nicht.
 
 ## Upgrade
 
-Im Verzeichnis `/opt/kmbhelp`, als Benutzer `kmbhelp` für pnpm:
+Die gesicherte Fassung ist der Branch `phase/11-app`. `git pull` ohne Branch holt `main` und damit eine ältere Fassung. Im Verzeichnis `/opt/kmbhelp`, als Benutzer `kmbhelp` für Git und pnpm:
 
 ```bash
-sudo -u kmbhelp git pull
+sudo -u kmbhelp git fetch origin
+sudo -u kmbhelp git checkout phase/11-app
+sudo -u kmbhelp git pull --ff-only origin phase/11-app
 sudo -u kmbhelp pnpm install --frozen-lockfile
 sudo -u kmbhelp pnpm --filter @kmbhelp/web build
 sudo -u kmbhelp pnpm db:migrate && sudo systemctl restart kmbhelp-api kmbhelp-worker
 ```
+
+Der laufende Betrieb steht in `docs/betrieb.md`.
 
 Haben sich nur die Datenbank oder die API geändert, reicht:
 

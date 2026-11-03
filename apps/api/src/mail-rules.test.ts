@@ -67,10 +67,11 @@ describe('mail rules', () => {
     expect(chosen?.slot?.start).toBe('2026-10-27T09:10:00.000Z');
   });
 
-  it('answers with the number and the public list, without a secret link', () => {
-    const text = replyText(12, 'https://helpdesk.kmbcloud.at');
+  it('answers with the ticket link and the original mail, without a secret link', () => {
+    const text = replyText(12, 'https://helpdesk.kmbcloud.at', 'Die Meldung geht nicht raus.');
     expect(text).toContain('Ticket 12');
-    expect(text).toContain('https://helpdesk.kmbcloud.at/?ticket=12');
+    expect(text).toContain('https://helpdesk.kmbcloud.at/mitarbeit/ticket/12');
+    expect(text).toContain('Die Meldung geht nicht raus.');
     expect(text.toLowerCase()).not.toContain('token');
     expect(calendarSubject('Drucker klemmt')).toBe('Neues Ticket Drucker klemmt');
     expect(

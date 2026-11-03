@@ -30,6 +30,11 @@ const shownWhenEmpty: Record<string, string> = {
   OLLAMA_URL: 'http://192.168.191.131:11434',
   OLLAMA_MODEL: 'qwen2.5:7b',
   MAIL_ERROR_TO: 'helpdesk@ppc.at',
+  SMTP_SERVER: '127.0.0.1',
+  SMTP_PORT: '25',
+  SMTP_LOGIN: 'none',
+  SMTP_TO: 'helpdesk@ppc.at',
+  NOTICE_DIGEST_HOUR: '7',
 };
 
 export const configFields: readonly ConfigField[] = [
@@ -327,9 +332,68 @@ export const configFields: readonly ConfigField[] = [
     key: 'MAIL_ERROR_TO',
     secret: false,
     textDe:
-      'Empfänger der Fehlermail, wenn eine KI-Abfrage länger als 5 Minuten dauert. Auslieferung helpdesk@ppc.at. Die Mail wird verschickt, nicht als Entwurf abgelegt.',
+      'Empfänger der Fehlermail über Microsoft Graph, wenn eine KI-Abfrage länger als 5 Minuten dauert. Auslieferung helpdesk@ppc.at. Die Mail wird verschickt, nicht als Entwurf abgelegt. Gelingt das nicht, übernimmt der lokale SMTP-Server.',
     textEn:
-      'Recipient of the error mail when a model query takes longer than 5 minutes. The delivered value is helpdesk@ppc.at. The mail is sent, not stored as a draft.',
+      'Recipient of the error mail through Microsoft Graph when a model query takes longer than 5 minutes. The delivered value is helpdesk@ppc.at. The mail is sent, not stored as a draft. If that fails, the local SMTP server sends it.',
+  },
+  {
+    key: 'SMTP_SERVER',
+    secret: false,
+    textDe:
+      'Adresse des lokalen SMTP-Servers für die Fehlermail, wenn Graph sie nicht verschicken kann. Auslieferung 127.0.0.1. Postfix hört nur dort.',
+    textEn:
+      'Address of the local SMTP server for the error mail when Graph cannot send it. The delivered value is 127.0.0.1. Postfix listens only there.',
+  },
+  {
+    key: 'SMTP_PORT',
+    secret: false,
+    textDe: 'TCP-Port des lokalen SMTP-Servers. Auslieferung 25.',
+    textEn: 'TCP port of the local SMTP server. The delivered value is 25.',
+  },
+  {
+    key: 'SMTP_USER',
+    secret: false,
+    textDe: 'SMTP-Benutzer. Leer, solange SMTP_LOGIN none ist.',
+    textEn: 'SMTP user. Empty while SMTP_LOGIN is none.',
+  },
+  {
+    key: 'SMTP_PASSWD',
+    secret: true,
+    textDe:
+      'SMTP-Passwort. Es wird nicht angezeigt. Bei SMTP_LOGIN none bleibt es leer und liegt nicht im Git.',
+    textEn:
+      'SMTP password. It is not shown. While SMTP_LOGIN is none it stays empty and is not stored in git.',
+  },
+  {
+    key: 'SMTP_LOGIN',
+    secret: false,
+    textDe: 'Anmeldung am SMTP-Server. Auslieferung none. Erlaubt sind none, plain und login.',
+    textEn:
+      'Sign-in to the SMTP server. The delivered value is none. Allowed values are none, plain and login.',
+  },
+  {
+    key: 'SMTP_TO',
+    secret: false,
+    textDe:
+      'Empfänger der Fehlermail über den lokalen SMTP-Server. Auslieferung helpdesk@ppc.at. Das ist der Ersatzweg, wenn Graph die Mail an MAIL_ERROR_TO nicht verschickt.',
+    textEn:
+      'Recipient of the error mail through the local SMTP server. The delivered value is helpdesk@ppc.at. This is the fallback when Graph does not send the mail to MAIL_ERROR_TO.',
+  },
+  {
+    key: 'NOTICE_DIGEST',
+    secret: false,
+    textDe:
+      'Tägliche Mail mit den offenen Warnungen und Fehlern. Leer lässt sie in Produktion laufen und auf dem Arbeitsplatz aus. on schaltet sie überall ein, off überall aus. Der Weg ist derselbe wie bei der Fehlermail: zuerst Graph an MAIL_ERROR_TO, sonst der lokale SMTP-Server an SMTP_TO.',
+    textEn:
+      'Daily mail listing open warnings and errors. Empty runs it in production and keeps a workstation quiet. on enables it everywhere, off disables it everywhere. The path is the same as the error mail: Graph to MAIL_ERROR_TO first, otherwise the local SMTP server to SMTP_TO.',
+  },
+  {
+    key: 'NOTICE_DIGEST_HOUR',
+    secret: false,
+    textDe:
+      'Stunde der täglichen Zusammenfassung in der Uhr SYSLOG_UTC_OFFSET. Auslieferung 7. Erlaubt ist 0 bis 23. Ein Versuch am Tag. Ohne offene Warnung geht keine Mail hinaus.',
+    textEn:
+      'Hour of the daily summary on the SYSLOG_UTC_OFFSET clock. The delivered value is 7. Allowed is 0 to 23. One attempt per day. No mail goes out when nothing is open.',
   },
   {
     key: 'AI_MAIL_PROMPT',

@@ -8,7 +8,7 @@ Ein angemeldeter Mitarbeiter der Gruppe `HelpdeskAdmins` öffnet `/mitarbeit/tic
 
 Er kann eine Erklärung am Ticket speichern.
 
-Er kann das Ticket als erledigt markieren. Das schließt es und legt eine Mail als Entwurf im Ordner Entwürfe von `GRAPH_MAILBOX` ab. Der Betreff nennt das Ticket und seine Nummer. Der Text sagt, dass es gelöst ist, und bittet um eine kurze Antwort, wenn es zur Zufriedenheit gelöst wurde. Die Mail wird nicht verschickt.
+Er kann das Ticket als erledigt markieren. Das schließt es und legt eine Mail als Entwurf im Ordner Entwürfe von `GRAPH_MAILBOX` ab. Der Betreff nennt das Ticket und seine Nummer. Der Text sagt, dass es gelöst ist, und bittet um eine kurze Antwort, wenn es zur Zufriedenheit gelöst wurde. Darunter steht der direkte Link `/mitarbeit/ticket/{nummer}` und der Text der ursprünglichen Meldung. Die Mail wird nicht verschickt. Jede Aktion schreibt eine Zeile ins Protokoll, ohne den Meldungstext.
 
 ## Zufriedenheit
 
@@ -24,11 +24,11 @@ Die Zeichen sind SVG, keine Emoji. Nur die Antwort des Benutzers setzt den Zusta
 
 ## Mails vom Mitarbeiter
 
-Ein Knopf legt an den Auftraggeber einen Entwurf mit dem Satz ab, dass der Mitarbeiter jetzt an diesem Ticket arbeitet.
+Ein Knopf legt an den Auftraggeber einen Entwurf mit dem Satz ab, dass der Mitarbeiter jetzt an diesem Ticket arbeitet. Darunter steht der direkte Link zum Ticket und der Text der ursprünglichen Meldung.
 
-Eine Rückfrage wird im Ticket gespeichert und zusätzlich als Entwurf an den Benutzer abgelegt.
+Eine Rückfrage wird im Ticket gespeichert und zusätzlich als Entwurf an den Benutzer abgelegt. Auch diese Mail nennt den direkten Link und darunter den Text der ursprünglichen Meldung.
 
-Ohne Microsoft-365-Freigabe wird keine Mail erfunden. Die Aktion antwortet, dass der Entwurf nicht angelegt werden kann. Antworten an Melder bleiben Entwürfe. Die Fehlermail nach einer Ollama-Abfrage über 5 Minuten geht an `MAIL_ERROR_TO` und verlässt das Postfach.
+Ohne Microsoft-365-Freigabe wird keine Mail erfunden. Die Aktion antwortet, dass der Entwurf nicht angelegt werden kann. Antworten an Melder bleiben Entwürfe. Die Fehlermail nach einer Ollama-Abfrage über 5 Minuten geht zuerst über Graph an `MAIL_ERROR_TO`. Gelingt das nicht, schickt der lokale Postfix sie an `SMTP_TO`.
 
 ## Postfach
 

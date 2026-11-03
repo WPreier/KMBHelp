@@ -9,6 +9,7 @@ import { loggedRequestUrl, PublicError } from './http.js';
 import { withDevelopmentLoopback } from './network.js';
 import { openApiDocument } from './openapi.js';
 import { readWorkerState } from './mail-cycle.js';
+import { tcpOpen } from './probes.js';
 import { registerPhase2 } from './phase2.js';
 import { registerOperations } from './operations.js';
 import { registerPhase3 } from './phase3.js';
@@ -34,6 +35,7 @@ export type BuildAppOptions = {
   webauthnRpId?: string | undefined;
   webauthnOrigin?: string | undefined;
   worker?: 'up' | 'down' | 'not_configured' | undefined;
+  smtp?: 'up' | 'down' | undefined;
   model?: ModelProvider | undefined;
   mailer?: Mailer | undefined;
   mailbox?: Mailbox | undefined;
@@ -87,8 +89,26 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     if (ownsDatabase) await database?.pool.end();
   });
 
+  let smtpCache: { at: number; value: 'up' | 'down' } | null = null;
+  async function smtpState(): Promise<'up' | 'down'> {
+    if (options.smtp) return options.smtp;
+    if (process.env.NODE_ENV === 'test') return 'down';
+    const nowMs = Date.now();
+    if (smtpCache && nowMs - smtpCache.at < 30_000) return smtpCache.value;
+    const host = process.env.SMTP_SERVER?.trim() || '127.0.0.1';
+    const port = Number(process.env.SMTP_PORT?.trim() || '25');
+    const open =
+      Number.isInteger(port) && port >= 1 && port <= 65535
+        ? (await tcpOpen(host, port, 1500)) === 'open'
+        : false;
+    const value = open ? 'up' : 'down';
+    smtpCache = { at: nowMs, value };
+    return value;
+  }
+
   async function healthPayload() {
     const up = await checkDatabase();
+    const smtp = await smtpState();
     return {
       code: up ? (200 as const) : (503 as const),
       body: healthResponseSchema.parse({
@@ -96,6 +116,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
         service: 'kmbhelp-api',
         database: up ? 'up' : 'down',
         worker: up ? (options.worker ?? (await readWorkerState(database))) : 'down',
+        smtp,
       }),
     };
   }

@@ -19,6 +19,7 @@ import { inspectConfiguration, type Check } from './configuration.js';
 import { clientAddress, databaseDown, PublicError } from './http.js';
 import { ipAllowed } from './network.js';
 import { emitNotice, noticeByCode, noticeCatalog, noticeState } from './notices.js';
+import { sendSmtp, smtpSettingsFromEnv } from './smtp.js';
 import { readSyslogTarget, writeSyslogTarget } from './syslog-settings.js';
 import { formatSyslog, sendSyslog, type NoticeCategory } from './syslog.js';
 
@@ -155,6 +156,21 @@ export function registerOperations(app: FastifyInstance, options: OperationsOpti
         parsed.data.port,
         formatSyslog('informational', 'KMBHelp syslog check', new Date(), parsed.data),
       );
+      return syslogTestSchema.parse({ ok: true });
+    } catch {
+      return syslogTestSchema.parse({ ok: false });
+    }
+  });
+
+  app.post('/api/v1/admin/configuration/smtp/test', async (request) => {
+    const current = await admin(request);
+    assertCsrf(current, request);
+    const settings = smtpSettingsFromEnv(env);
+    try {
+      await sendSmtp(settings, {
+        subject: 'KMBHelp: SMTP-Prüfung',
+        text: 'Das ist die Prüfung des lokalen SMTP-Servers. Es ist keine Störung.\n',
+      });
       return syslogTestSchema.parse({ ok: true });
     } catch {
       return syslogTestSchema.parse({ ok: false });

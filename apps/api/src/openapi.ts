@@ -12,7 +12,7 @@ export const openApiDocument = {
         responses: {
           '200': {
             description:
-              'API and database are reachable. worker is up, down, or not_configured. A stopped worker does not stop the site.',
+              'API and database are reachable. worker is up, down, or not_configured. smtp is up when Postfix accepts TCP on SMTP_SERVER and SMTP_PORT, otherwise down. A stopped worker or a closed SMTP port does not stop the site.',
           },
           '503': { description: 'API is up and the database is not reachable.' },
         },
@@ -143,6 +143,17 @@ export const openApiDocument = {
         responses: {
           '200': {
             description: 'Hands a UDP datagram to the given host. Delivery is not confirmed.',
+          },
+        },
+      },
+    },
+    '/api/v1/admin/configuration/smtp/test': {
+      post: {
+        operationId: 'testSmtp',
+        responses: {
+          '200': {
+            description:
+              'Sends a short test mail through the local SMTP server. The password is not returned.',
           },
         },
       },

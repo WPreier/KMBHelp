@@ -85,7 +85,15 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `INTERNAL_MAIL_DOMAINS` | `kmb-steuerberatung.at,ght.at,koller-rohrschach.at` | Frühere Absenderliste. Die Mailprüfung sperrt damit niemanden mehr. |
 | `OLLAMA_URL` | `http://192.168.191.131:11434` | Lokaler Ollama-Server. Eine Abfrage wartet höchstens 5 Minuten. |
 | `OLLAMA_MODEL` | `qwen2.5:7b` | Modellname für die Mailprüfung. |
-| `MAIL_ERROR_TO` | `helpdesk@ppc.at` | Empfänger der Fehlermail, wenn eine Abfrage zu lange dauert. Die Mail wird verschickt. |
+| `MAIL_ERROR_TO` | `helpdesk@ppc.at` | Empfänger der Fehlermail über Graph, wenn eine Abfrage zu lange dauert. Die Mail wird verschickt. |
+| `SMTP_SERVER` | `127.0.0.1` | Lokaler Postfix. Nur diese Adresse. |
+| `SMTP_PORT` | `25` | TCP. |
+| `SMTP_USER` | leer | Benutzer. Leer, solange `SMTP_LOGIN` `none` ist. |
+| `SMTP_PASSWD` | leer | Passwort. Geheimnis, nicht im Git. Bei `none` leer. |
+| `SMTP_LOGIN` | `none` | `none`, `plain` oder `login`. |
+| `SMTP_TO` | `helpdesk@ppc.at` | Empfänger, wenn Graph die Fehlermail oder die Tagesmail nicht verschickt. |
+| `NOTICE_DIGEST` | leer | Tagesmail mit offenen Warnungen. Leer gilt in Produktion. `on` überall, `off` aus. |
+| `NOTICE_DIGEST_HOUR` | `7` | Stunde in der Uhr `SYSLOG_UTC_OFFSET`. Ein Versuch am Tag. |
 | `AI_MAIL_PROMPT` | eingebauter JA/NEIN-Auftrag | Früherer Auftrag. Die Mailprüfung nutzt ihn nicht mehr. |
 | `ACTIVITY_LOG_FILE` | `%LOCALAPPDATA%\kmbhelp\activity.log` | Zweite Kopie des Zugriffsprotokolls, außerhalb des Projektordners. |
 | `AI_ENDPOINT` | leer | https-Adresse für Suche und Kenntnisprüfung. Die Mailprüfung nutzt `OLLAMA_URL`. Ohne EU-Region, Schlüssel und AVV kein Aufruf. |

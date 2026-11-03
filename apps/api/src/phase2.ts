@@ -243,7 +243,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
       await mailer.send({
         to: row.email,
         subject: `Ticket ${number}`,
-        text: `Benutzer fragt wann das gelöst ist.\n\nText: ${row.subject}\nLink: ${origin}/?ticket=${number}\n`,
+        text: `Benutzer fragt wann das gelöst ist.\n\nText: ${row.subject}\nLink: ${origin}/mitarbeit/ticket/${number}\n`,
       });
       await writeAccessLog(database, request, row.id);
       return { ok: true };

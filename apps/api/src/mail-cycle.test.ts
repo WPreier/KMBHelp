@@ -244,7 +244,8 @@ describe('ingestMail', () => {
     expect(store.tickets).toHaveLength(1);
     expect(store.tickets[0]?.assignedStaffId).toBe('bea');
     expect(ports.mailer.sent).toHaveLength(2);
-    expect(ports.mailer.sent[0]?.text).toContain('https://helpdesk.kmbcloud.at/?ticket=1');
+    expect(ports.mailer.sent[0]?.text).toContain('https://helpdesk.kmbcloud.at/mitarbeit/ticket/1');
+    expect(ports.mailer.sent[0]?.text).toContain('Die Meldung geht nicht raus.');
     expect(ports.mailer.sent[1]?.to).toBe('bea@example.com');
     expect(ports.mailer.sent[1]?.attachments?.[0]?.content).toContain('ELDA');
     expect(ports.mailer.sent[0]?.text.toLowerCase()).not.toContain('token');
@@ -370,7 +371,8 @@ describe('ingestMail', () => {
     );
     expect(blocked).toBe('created');
     expect(store.closed).toHaveLength(0);
-    expect(ports.mailer.sent[0]?.text).not.toContain('1234');
+    expect(ports.mailer.sent[0]?.text).toContain('SVNR 1234 010180');
+    expect(ports.mailer.sent[0]?.text).toContain('/mitarbeit/ticket/');
 
     ports.mailer.sent.length = 0;
     const opened = await ingestMail(
@@ -394,7 +396,7 @@ describe('ingestMail', () => {
     expect(opened).toBe('created');
     expect(store.closed).toHaveLength(0);
     expect(categories.some((item) => item.labelDe === 'Netzwerkdrucker')).toBe(true);
-    expect(ports.mailer.sent[0]?.text).not.toContain('Es kommt kein Papier');
+    expect(ports.mailer.sent[0]?.text).toContain('Es kommt kein Papier');
     expect(store.events.some((event) => event.kind === 'model_decision')).toBe(true);
     let asked = 0;
     const helpdesk = await ingestMail(
@@ -450,6 +452,41 @@ describe('ingestMail', () => {
     expect(store.events.some((event) => event.payload.reason === 'model_timeout')).toBe(true);
     expect(delivered).toEqual(['helpdesk@ppc.at']);
     expect(ports.mailer.sent.some((message) => message.to === 'helpdesk@ppc.at')).toBe(false);
+  });
+
+  it('sends the timeout notice through local SMTP when Graph cannot send', async () => {
+    const store = memoryStore();
+    const ports = doubles();
+    const smtp: string[] = [];
+    const result = await ingestMail(
+      { ...mail, internetMessageId: '<smtp@example.com>' },
+      {
+        store,
+        mailer: {
+          ...ports.mailer,
+          async deliver() {
+            throw new Error('graph');
+          },
+        },
+        calendar: ports.calendar,
+        writer: ports.writer,
+        now: new Date('2026-10-27T08:10:00.000Z'),
+        origin: 'https://helpdesk.kmbcloud.at',
+        fallbackCategory: 'printer',
+        duration: 30,
+        delays: { p1: 0, p2: 60, p3: 240 },
+        oncallEmail: '',
+        estimatedMinutes: null,
+        mailErrorTo: 'helpdesk@ppc.at',
+        sendErrorSmtp: async (message) => {
+          smtp.push(message.subject);
+        },
+        askMail: async () => 'timeout',
+      },
+    );
+    expect(result).toBe('created');
+    expect(smtp).toEqual(['KMBHelp: Die KI-Prüfung hat zu lange gedauert']);
+    expect(store.events.some((event) => event.payload.reason === 'model_timeout')).toBe(true);
   });
 
   it('appends a reply and closes the latest open ticket from the same sender', async () => {

@@ -68,12 +68,16 @@ export function publicOriginFromEnv(env: NodeJS.ProcessEnv): string {
   return 'http://127.0.0.1:5173';
 }
 
-export function replyText(number: number, origin: string): string {
-  return `Ticket ${number}\n\nIhre Meldung ist erfasst. Die Nummer steht in der offenen Liste.\n${origin}/?ticket=${number}\n`;
+export function ticketLink(number: number, origin: string): string {
+  return `${origin}${staffTicketPath}/${number}`;
+}
+
+export function replyText(number: number, origin: string, original: string): string {
+  return `Ticket ${number}\n\nIhre Meldung ist erfasst.\n${ticketLink(number, origin)}\n\nUrsprüngliche Meldung:\n${original.trim()}\n`;
 }
 
 export function reopenText(number: number, origin: string): string {
-  return `Ticket ${number} ist wieder offen.\n\n${origin}/?ticket=${number}\n`;
+  return `Ticket ${number} ist wieder offen.\n\n${ticketLink(number, origin)}\n`;
 }
 
 export function calendarSubject(mailSubject: string): string {

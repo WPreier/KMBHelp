@@ -260,6 +260,25 @@ export function ConfigurationPage() {
     }
   }
 
+  async function testSmtp() {
+    setError(null);
+    setStatusText(null);
+    try {
+      const result = await postJson(
+        '/api/v1/admin/configuration/smtp/test',
+        {},
+        syslogTestSchema.parse,
+      );
+      setStatusText(result.ok ? copy.smtpTestOk : copy.smtpTestFailed);
+    } catch (caught) {
+      setError(
+        caught instanceof RequestFailed
+          ? (caught.text?.[lang] ?? copy.loadFailed)
+          : copy.loadFailed,
+      );
+    }
+  }
+
   async function testSyslog() {
     setError(null);
     setStatusText(null);
@@ -376,6 +395,13 @@ export function ConfigurationPage() {
         </div>
       </form>
       {statusText ? <p role="status">{statusText}</p> : null}
+      <h3>{copy.smtpTitle}</h3>
+      <p>{copy.smtpLead}</p>
+      <div className="form-actions">
+        <button type="button" onClick={() => void testSmtp()}>
+          {copy.testSmtp}
+        </button>
+      </div>
       <button type="button" onClick={() => void load(true)}>
         {copy.checkAgain}
       </button>

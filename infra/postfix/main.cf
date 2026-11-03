@@ -1,0 +1,23 @@
+# Local postfix for KMBHelp error mail. It listens only on 127.0.0.1.
+# The application submits with SMTP_LOGIN=none. This host is not an open relay.
+# Outbound delivery uses the recipient's MX. A firm smarthost belongs in relayhost.
+
+smtpd_banner = $myhostname ESMTP
+biff = no
+append_dot_mydomain = no
+readme_directory = no
+compatibility_level = 3.6
+mailbox_size_limit = 0
+recipient_delimiter = +
+
+inet_interfaces = loopback-only
+inet_protocols = ipv4
+myhostname = helpdesk.kmbcloud.at
+myorigin = $myhostname
+mydestination = localhost
+mynetworks = 127.0.0.0/8
+relayhost =
+
+smtpd_relay_restrictions = permit_mynetworks, reject_unauth_destination
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases

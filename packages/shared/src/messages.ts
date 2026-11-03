@@ -137,7 +137,7 @@ export const messages = {
     configurationSource:
       'Die Daten kommen aus drei Orten. Ein hier gespeicherter Wert ohne Geheimnis liegt in der Datenbank, Tabelle app_setting, Schlüssel config.NAME, und gilt beim nächsten Start vor der Datei .env im Projektordner. Geheimnisse liegen nur in %LOCALAPPDATA%\\kmbhelp\\secrets.json und im laufenden Prozess, nie in Git. Was dort noch leer ist, füllt die Datei .env. Ein leeres Feld mit Vorgabe benutzt diese Vorgabe, bis es gespeichert wird.',
     graphSetup:
-      'Microsoft 365: Im Entra-Verwaltungszentrum eine App-Registrierung anlegen. Die Verzeichnis-ID wird GRAPH_TENANT_ID, die Anwendungs-ID wird GRAPH_CLIENT_ID, ein neues Client-Geheimnis wird GRAPH_CLIENT_SECRET. Unter API-Berechtigungen die Anwendungsberechtigungen Mail.Read, Mail.ReadWrite und Calendars.ReadWrite hinzufügen und den Admin-Consent erteilen. Ausgehende Mails legt die Anwendung als Entwurf im Ordner Entwürfe von helpdesk@kmbcloud.at ab und verschickt sie nicht. GRAPH_MAILBOX bleibt helpdesk@kmbcloud.at.',
+      'Microsoft 365: Im Entra-Verwaltungszentrum eine App-Registrierung anlegen. Die Verzeichnis-ID wird GRAPH_TENANT_ID, die Anwendungs-ID wird GRAPH_CLIENT_ID, ein neues Client-Geheimnis wird GRAPH_CLIENT_SECRET. Unter API-Berechtigungen die Anwendungsberechtigungen Mail.Read, Mail.ReadWrite, Mail.Send und Calendars.ReadWrite hinzufügen und den Admin-Consent erteilen. Antworten an Melder bleiben Entwürfe. Die Fehlermail geht zuerst über Graph an MAIL_ERROR_TO. Dafür ist Mail.Send nötig. Gelingt das nicht, schickt der lokale SMTP-Server sie an SMTP_TO. GRAPH_MAILBOX bleibt helpdesk@kmbcloud.at.',
     syslogServer: 'Syslog-Server',
     syslogPort: 'Port',
     saveSyslog: 'Syslog speichern',
@@ -145,6 +145,12 @@ export const messages = {
     syslogSaved: 'Der Syslog-Server ist gespeichert.',
     syslogTestOk: 'Das Datagramm wurde übergeben. UDP bestätigt den Empfang nicht.',
     syslogTestFailed: 'Das Datagramm wurde nicht übergeben.',
+    smtpTitle: 'Lokaler SMTP',
+    smtpLead:
+      'Die Fehlermail geht zuerst über Graph an MAIL_ERROR_TO. Gelingt das nicht, schickt Postfix auf diesem Rechner sie an SMTP_TO. Der Test verschickt eine kurze Mail über die gespeicherten SMTP-Werte.',
+    testSmtp: 'SMTP testen',
+    smtpTestOk: 'Die Prüfmail wurde an den lokalen SMTP-Server übergeben.',
+    smtpTestFailed: 'Der lokale SMTP-Server hat die Prüfmail nicht angenommen.',
     noticeCategory: 'Kategorie',
     triggered: 'Auslösen',
     ignored: 'Ignorieren',
@@ -364,7 +370,7 @@ export const messages = {
     configurationSource:
       'The data comes from three places. A non-secret value saved here lives in the database, table app_setting, key config.NAME, and wins over the .env file in the project folder on the next start. Secrets live only in %LOCALAPPDATA%\\kmbhelp\\secrets.json and in the running process, never in git. The .env file fills whatever is still empty. An empty field that has a default uses that default until it is saved.',
     graphSetup:
-      'Microsoft 365: create an app registration in the Entra admin center. The directory id becomes GRAPH_TENANT_ID, the application id becomes GRAPH_CLIENT_ID, and a new client secret becomes GRAPH_CLIENT_SECRET. Under API permissions add the application permissions Mail.Read, Mail.ReadWrite and Calendars.ReadWrite and grant admin consent. Outgoing mail is stored as a draft in the Drafts folder of helpdesk@kmbcloud.at and is not sent. GRAPH_MAILBOX stays helpdesk@kmbcloud.at.',
+      'Microsoft 365: create an app registration in the Entra admin center. The directory id becomes GRAPH_TENANT_ID, the application id becomes GRAPH_CLIENT_ID, and a new client secret becomes GRAPH_CLIENT_SECRET. Under API permissions add the application permissions Mail.Read, Mail.ReadWrite, Mail.Send and Calendars.ReadWrite and grant admin consent. Replies to requesters stay drafts. The error mail goes through Graph to MAIL_ERROR_TO first. That needs Mail.Send. If that fails, the local SMTP server sends it to SMTP_TO. GRAPH_MAILBOX stays helpdesk@kmbcloud.at.',
     syslogServer: 'Syslog server',
     syslogPort: 'Port',
     saveSyslog: 'Save syslog',
@@ -372,6 +378,12 @@ export const messages = {
     syslogSaved: 'The syslog server is saved.',
     syslogTestOk: 'The datagram was handed over. UDP does not confirm delivery.',
     syslogTestFailed: 'The datagram was not handed over.',
+    smtpTitle: 'Local SMTP',
+    smtpLead:
+      'The error mail goes through Graph to MAIL_ERROR_TO first. If that fails, Postfix on this computer sends it to SMTP_TO. The test sends a short mail with the saved SMTP values.',
+    testSmtp: 'Test SMTP',
+    smtpTestOk: 'The test mail was handed to the local SMTP server.',
+    smtpTestFailed: 'The local SMTP server did not accept the test mail.',
     noticeCategory: 'Category',
     triggered: 'Raise',
     ignored: 'Ignore',

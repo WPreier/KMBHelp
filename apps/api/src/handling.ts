@@ -1,24 +1,46 @@
 import type { Database } from '@kmbhelp/db';
+import { ticketLink } from './mail-rules.js';
 
-export function solvedMail(number: number): { subject: string; text: string } {
+function requesterMail(
+  number: number,
+  origin: string,
+  lead: string,
+  original: string,
+): { subject: string; text: string } {
   return {
     subject: `Ticket ${number}`,
-    text: 'Das Ticket ist gelöst. Wenn es zur Zufriedenheit gelöst wurde, würde man sich über eine kurze Antwort freuen.\n',
+    text: `${lead.trim()}\n\n${ticketLink(number, origin)}\n\nUrsprüngliche Meldung:\n${original.trim()}\n`,
   };
 }
 
-export function workingMail(number: number): { subject: string; text: string } {
-  return {
-    subject: `Ticket ${number}`,
-    text: 'Ich arbeite jetzt an diesem Ticket.\n',
-  };
+export function solvedMail(
+  number: number,
+  origin: string,
+  original: string,
+): { subject: string; text: string } {
+  return requesterMail(
+    number,
+    origin,
+    'Das Ticket ist gelöst. Wenn es zur Zufriedenheit gelöst wurde, würde man sich über eine kurze Antwort freuen.',
+    original,
+  );
 }
 
-export function questionMail(number: number, text: string): { subject: string; text: string } {
-  return {
-    subject: `Ticket ${number}`,
-    text: `${text.trim()}\n`,
-  };
+export function workingMail(
+  number: number,
+  origin: string,
+  original: string,
+): { subject: string; text: string } {
+  return requesterMail(number, origin, 'Ich arbeite jetzt an diesem Ticket.', original);
+}
+
+export function questionMail(
+  number: number,
+  origin: string,
+  text: string,
+  original: string,
+): { subject: string; text: string } {
+  return requesterMail(number, origin, text, original);
 }
 
 export async function forgetMisreadTicket(database: Database, ticketId: string): Promise<void> {
@@ -26,9 +48,10 @@ export async function forgetMisreadTicket(database: Database, ticketId: string):
   try {
     await client.query('begin');
     await client.query('alter table ticket_event disable trigger ticket_event_append_only');
-    await client.query('update knowledge_article set source_ticket_id = null where source_ticket_id = $1', [
-      ticketId,
-    ]);
+    await client.query(
+      'update knowledge_article set source_ticket_id = null where source_ticket_id = $1',
+      [ticketId],
+    );
     await client.query('delete from access_log where ticket_id = $1', [ticketId]);
     await client.query('delete from ticket_event where ticket_id = $1', [ticketId]);
     await client.query('delete from procurement where ticket_id = $1', [ticketId]);

@@ -453,6 +453,117 @@ export async function checkConfigField(
     const model = value.trim() || 'qwen2.5:7b';
     return line(key, 'ok', `Das Modell heißt ${model}.`, `The model is named ${model}.`);
   }
+  if (key === 'SMTP_SERVER') {
+    const host = value.trim() || '127.0.0.1';
+    return /^[A-Za-z0-9.-]+$/u.test(host) && !host.includes('@')
+      ? line(key, 'ok', `Der lokale SMTP-Server ist ${host}.`, `The local SMTP server is ${host}.`)
+      : line(
+          key,
+          'warning',
+          'Der SMTP-Server muss ein Hostname oder eine IP-Adresse ohne Passwort sein.',
+          'The SMTP server must be a hostname or an IP address without a password.',
+        );
+  }
+  if (key === 'SMTP_PORT') {
+    const port = Number(value.trim() || '25');
+    return Number.isInteger(port) && port >= 1 && port <= 65535
+      ? line(key, 'ok', `Der SMTP-Port ist ${port}.`, `The SMTP port is ${port}.`)
+      : line(
+          key,
+          'warning',
+          'Der SMTP-Port muss zwischen 1 und 65535 liegen.',
+          'The SMTP port must be from 1 to 65535.',
+        );
+  }
+  if (key === 'SMTP_USER') {
+    return line(
+      key,
+      'ok',
+      value.trim() === ''
+        ? 'Kein SMTP-Benutzer. Das passt zu SMTP_LOGIN none.'
+        : 'Ein SMTP-Benutzer ist gesetzt.',
+      value.trim() === '' ? 'No SMTP user. That matches SMTP_LOGIN none.' : 'An SMTP user is set.',
+    );
+  }
+  if (key === 'SMTP_PASSWD') {
+    return line(
+      key,
+      'ok',
+      value === ''
+        ? 'Kein SMTP-Passwort. Das passt zu SMTP_LOGIN none.'
+        : 'Ein SMTP-Passwort ist gesetzt und wird nicht angezeigt.',
+      value === ''
+        ? 'No SMTP password. That matches SMTP_LOGIN none.'
+        : 'An SMTP password is set and is not shown.',
+    );
+  }
+  if (key === 'SMTP_LOGIN') {
+    const login = (value.trim() || 'none').toLowerCase();
+    return login === 'none' || login === 'plain' || login === 'login'
+      ? line(key, 'ok', `Die SMTP-Anmeldung ist ${login}.`, `SMTP sign-in is ${login}.`)
+      : line(
+          key,
+          'warning',
+          'SMTP_LOGIN muss none, plain oder login sein.',
+          'SMTP_LOGIN must be none, plain or login.',
+        );
+  }
+  if (key === 'SMTP_TO') {
+    const address = value.trim() || 'helpdesk@ppc.at';
+    return /^[^@\s]+@[^@\s]+$/u.test(address)
+      ? line(
+          key,
+          'ok',
+          `Der lokale SMTP-Server schreibt an ${address}, wenn Graph die Fehlermail nicht verschickt.`,
+          `The local SMTP server writes to ${address} when Graph does not send the error mail.`,
+        )
+      : line(
+          key,
+          'warning',
+          'SMTP_TO muss eine E-Mail-Adresse sein.',
+          'SMTP_TO must be an email address.',
+        );
+  }
+  if (key === 'NOTICE_DIGEST') {
+    const flag = value.trim().toLowerCase();
+    return flag === '' || flag === 'on' || flag === 'off'
+      ? line(
+          key,
+          'ok',
+          flag === 'off'
+            ? 'Die tägliche Zusammenfassung ist aus.'
+            : flag === 'on'
+              ? 'Die tägliche Zusammenfassung ist überall ein.'
+              : 'Die tägliche Zusammenfassung läuft in Produktion.',
+          flag === 'off'
+            ? 'The daily summary is off.'
+            : flag === 'on'
+              ? 'The daily summary is on everywhere.'
+              : 'The daily summary runs in production.',
+        )
+      : line(
+          key,
+          'warning',
+          'NOTICE_DIGEST muss leer, on oder off sein.',
+          'NOTICE_DIGEST must be empty, on or off.',
+        );
+  }
+  if (key === 'NOTICE_DIGEST_HOUR') {
+    const hour = value.trim() === '' ? 7 : Number(value.trim());
+    return Number.isInteger(hour) && hour >= 0 && hour <= 23
+      ? line(
+          key,
+          'ok',
+          `Die tägliche Zusammenfassung beginnt um ${hour} Uhr.`,
+          `The daily summary starts at ${hour}:00.`,
+        )
+      : line(
+          key,
+          'warning',
+          'Die Stunde muss zwischen 0 und 23 liegen.',
+          'The hour must be from 0 to 23.',
+        );
+  }
   if (key === 'MAIL_ERROR_TO') {
     const address = value.trim() || 'helpdesk@ppc.at';
     return /^[^@\s]+@[^@\s]+$/u.test(address)

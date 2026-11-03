@@ -1,6 +1,6 @@
 # Status
 
-Phase 11 ist abgenommen. Die App auf `phase/11-app` reicht ohne Store-Konten. Die Apple- und Google-Konten der GmbH kommen später. Phase 12 bleibt offen. Die Mailprüfung spricht seit dem 29.10.2026 den lokalen Ollama-Server `http://192.168.191.131:11434`, Modell `qwen2.5:7b`, und nicht mehr `AI_ENDPOINT`, `POST /api/v1/mail/review` oder MCP.
+Phase 11 ist abgenommen. Die App auf `phase/11-app` reicht ohne Store-Konten. Die Apple- und Google-Konten der GmbH kommen später. Phase 12 bleibt offen. Die Mailprüfung spricht seit dem 29.10.2026 den lokalen Ollama-Server `http://192.168.191.131:11434`, Modell `qwen2.5:7b`, und nicht mehr `AI_ENDPOINT`, `POST /api/v1/mail/review` oder MCP. Der laufende Betrieb steht in `docs/betrieb.md`. Eine zu lange KI-Abfrage schreibt zuerst über Graph an `MAIL_ERROR_TO` und sonst über den lokalen Postfix an `SMTP_TO`. Dieselbe Strecke schickt ab `NOTICE_DIGEST_HOUR` einmal am Tag die offenen Warnungen. `GET /api/health` nennt zusätzlich `smtp` als `up` oder `down`.
 
 | Phase | Inhalt | Stand |
 |---|---|---|
@@ -150,11 +150,11 @@ Start: `pnpm db:migrate`, denselben Token in die lokale Geheimdatei und in die C
 Die Formularseite `/mitarbeit/vorgaenge` bleibt entfernt. Die Bearbeitung steht auf `/mitarbeit/ticket/{nummer}`. Verbindlich ist `docs/prozesse/14-bearbeitung.md`.
 
 - [x] Dieselbe Ticketseite bearbeiten: jeder Mitarbeiter darf jedes offene Ticket ändern, außer die Zufriedenheit.
-- [x] Erledigt setzt das Ticket auf geschlossen und legt eine Mail als Entwurf ab, Betreff `Ticket` plus Nummer und der Text: das Ticket ist gelöst, und wenn es zur Zufriedenheit gelöst wurde, würde man sich über eine kurze Antwort freuen.
+- [x] Erledigt setzt das Ticket auf geschlossen und legt eine Mail als Entwurf ab, Betreff `Ticket` plus Nummer. Der Text sagt, dass es gelöst ist, nennt den Link `/mitarbeit/ticket/{nummer}` und darunter die ursprüngliche Meldung.
 - [x] Diese Antwort liest die KI, hängt sie an das Ticket und trägt die Zufriedenheit ein. Drei Zustände, als SVG und nicht als Emoji: zufrieden gelb, neutral grün, unzufrieden orange. Nur der Benutzer ändert das, nie der Mitarbeiter. Ohne Endpunkt, EU-Region, Schlüssel und AVV bleibt die Antwort ungelesen.
 - [x] Der Mitarbeiter kann eine Erklärung am Ticket speichern.
-- [x] Ein Knopf legt an den Auftraggeber einen Entwurf ab: ich arbeite jetzt an diesem Ticket. Absender ist `GRAPH_MAILBOX`. Ohne Microsoft 365 antwortet die Aktion, dass der Entwurf nicht angelegt werden kann.
-- [x] Eine Rückfrage wird am Ticket gespeichert und als Entwurf an den Benutzer abgelegt.
+- [x] Ein Knopf legt an den Auftraggeber einen Entwurf ab: ich arbeite jetzt an diesem Ticket, mit Link und ursprünglicher Meldung. Absender ist `GRAPH_MAILBOX`. Ohne Microsoft 365 antwortet die Aktion, dass der Entwurf nicht angelegt werden kann.
+- [x] Eine Rückfrage wird am Ticket gespeichert und als Entwurf an den Benutzer abgelegt, mit Link und ursprünglicher Meldung. Jede Aktion schreibt eine Protokollzeile ohne Meldungstext.
 - [x] Die Seite listet Helpdesk-Mails, die noch kein Ticket sind, und kann jede davon von Hand in ein Ticket umwandeln.
 - [x] Wird ein Mail als Ticket angenommen, merkt sich die Anwendung den Grund. Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelöscht und der Grund gespeichert, damit ein Mail künftig kein Ticket erzeugen darf. Das ist keine allgemeine Löschfunktion.
 - [x] Die Mailprüfung liegt im Worker und spricht Ollama. `POST /api/v1/mail/review` und das MCP-Werkzeug `review_mail` gibt es nicht mehr

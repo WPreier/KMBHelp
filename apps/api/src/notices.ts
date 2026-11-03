@@ -96,6 +96,13 @@ export const noticeCatalog: readonly NoticeDefinition[] = [
     textEn: 'There is no local admin.',
   },
   {
+    code: 'smtp.unreachable',
+    category: 'warning',
+    textDe:
+      'Der lokale SMTP-Server nimmt keine Verbindung an. Die Fehlermail über Postfix fällt aus.',
+    textEn: 'The local SMTP server does not accept a connection. The Postfix error mail fails.',
+  },
+  {
     code: 'ai.not_configured',
     category: 'informational',
     textDe:

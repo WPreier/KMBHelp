@@ -1,6 +1,15 @@
 import { and, eq } from 'drizzle-orm';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { category, mailLesson, remoteSupportDetail, staff, supplier, ticket, ticketEvent, type Database } from '@kmbhelp/db';
+import {
+  category,
+  mailLesson,
+  remoteSupportDetail,
+  staff,
+  supplier,
+  ticket,
+  ticketEvent,
+  type Database,
+} from '@kmbhelp/db';
 import {
   calendarDate,
   displayDateToIso,
@@ -14,11 +23,19 @@ import {
   ticketSources,
   unreadMailListSchema,
 } from '@kmbhelp/shared';
-import { requireStaff, serviceTokenMatches, staffFromSession, localhostAdmin, assertCsrf } from './auth.js';
+import {
+  requireStaff,
+  serviceTokenMatches,
+  staffFromSession,
+  localhostAdmin,
+  assertCsrf,
+} from './auth.js';
+import { writeActivity } from './activity-log.js';
 import { mailboxFromEnv, mailerFromEnv, type Mailbox, type Mailer } from './graph.js';
 import { forgetMisreadTicket, questionMail, solvedMail, workingMail } from './handling.js';
-import { databaseDown, PublicError } from './http.js';
+import { clientAddress, databaseDown, PublicError } from './http.js';
 import { ingestMail, mailIngestDeps } from './mail-cycle.js';
+import { publicOriginFromEnv } from './mail-rules.js';
 import { noteExternal } from './syslog.js';
 
 export function registerStaffTicket(
@@ -46,6 +63,21 @@ export function registerStaffTicket(
 
   function mailbox(): Mailbox {
     return options.mailbox ?? mailboxFromEnv(env);
+  }
+
+  async function noteAction(
+    request: FastifyRequest,
+    actorId: string | null,
+    target: string,
+    detail: string,
+  ): Promise<void> {
+    await writeActivity(db(), {
+      actor: actorId ?? 'localhost',
+      kind: 'mail',
+      target,
+      detail,
+      ip: clientAddress(request),
+    });
   }
 
   async function reader(request: FastifyRequest): Promise<{ id: string | null }> {
@@ -124,6 +156,7 @@ export function registerStaffTicket(
       actorStaffId: actor.id,
       payload: { explanation: parsed.data.explanation.length > 0 },
     });
+    await noteAction(request, actor.id, String(current.number), 'edited');
     return loadTicket(database, current.number);
   });
 
@@ -132,7 +165,11 @@ export function registerStaffTicket(
     const database = db();
     const current = await loadRow(database, readNumber(request.params));
     if (current.status === 'closed') return loadTicket(database, current.number);
-    await sendToRequester(mailer(), current, solvedMail(current.number));
+    await sendToRequester(
+      mailer(),
+      current,
+      solvedMail(current.number, publicOriginFromEnv(env), current.body),
+    );
     await database.db
       .update(ticket)
       .set({ status: 'closed', closedAt: now(), updatedAt: now() })
@@ -143,6 +180,7 @@ export function registerStaffTicket(
       actorStaffId: actor.id,
       payload: { mailed: Boolean(current.requesterEmail) },
     });
+    await noteAction(request, actor.id, String(current.number), 'done');
     return loadTicket(database, current.number);
   });
 
@@ -150,13 +188,18 @@ export function registerStaffTicket(
     const actor = await reader(request);
     const database = db();
     const current = await loadRow(database, readNumber(request.params));
-    await sendToRequester(mailer(), current, workingMail(current.number));
+    await sendToRequester(
+      mailer(),
+      current,
+      workingMail(current.number, publicOriginFromEnv(env), current.body),
+    );
     await database.db.insert(ticketEvent).values({
       ticketId: current.id,
       kind: 'working',
       actorStaffId: actor.id,
       payload: {},
     });
+    await noteAction(request, actor.id, String(current.number), 'working');
     return { ok: true };
   });
 
@@ -166,18 +209,23 @@ export function registerStaffTicket(
     if (!parsed.success) throw new PublicError(422, 'invalid_input', publicErrors.invalidInput);
     const database = db();
     const current = await loadRow(database, readNumber(request.params));
-    await sendToRequester(mailer(), current, questionMail(current.number, parsed.data.text));
+    await sendToRequester(
+      mailer(),
+      current,
+      questionMail(current.number, publicOriginFromEnv(env), parsed.data.text, current.body),
+    );
     await database.db.insert(ticketEvent).values({
       ticketId: current.id,
       kind: 'question',
       actorStaffId: actor.id,
       payload: { text: parsed.data.text },
     });
+    await noteAction(request, actor.id, String(current.number), 'question');
     return { ok: true };
   });
 
   app.post('/api/v1/staff/tickets/:number/misread', async (request) => {
-    await reader(request);
+    const actor = await reader(request);
     const parsed = ticketReasonSchema.safeParse(request.body);
     if (!parsed.success) throw new PublicError(422, 'invalid_input', publicErrors.invalidInput);
     const database = db();
@@ -197,6 +245,7 @@ export function registerStaffTicket(
         set: { outcome: 'rejected', reason: parsed.data.reason },
       });
     await forgetMisreadTicket(database, current.id);
+    await noteAction(request, actor.id, String(current.number), 'misread');
     return { ok: true };
   });
 
@@ -234,7 +283,7 @@ export function registerStaffTicket(
   });
 
   app.post('/api/v1/staff/mailbox/:graphId/accept', async (request) => {
-    await reader(request);
+    const actor = await reader(request);
     const parsed = ticketReasonSchema.safeParse(request.body);
     if (!parsed.success) throw new PublicError(422, 'invalid_input', publicErrors.invalidInput);
     const box = mailbox();
@@ -248,8 +297,10 @@ export function registerStaffTicket(
     const deps = await mailIngestDeps(database, env, now());
     if (options.mailer) deps.mailer = options.mailer;
     const result = await ingestMail(mail, deps, { reason: parsed.data.reason });
-    if (result === 'blocked') throw new PublicError(422, 'invalid_input', publicErrors.invalidInput);
-    if (result === 'retry') throw new PublicError(503, 'mail_not_connected', publicErrors.mailNotConnected);
+    if (result === 'blocked')
+      throw new PublicError(422, 'invalid_input', publicErrors.invalidInput);
+    if (result === 'retry')
+      throw new PublicError(503, 'mail_not_connected', publicErrors.mailNotConnected);
     if (result === 'created' || result === 'duplicate' || result === 'declined') {
       await box.markRead(mail.graphId);
     }
@@ -258,7 +309,9 @@ export function registerStaffTicket(
       .from(ticket)
       .where(eq(ticket.internetMessageId, mail.internetMessageId))
       .limit(1);
-    return { number: stored[0]?.number ?? null, result };
+    const number = stored[0]?.number ?? null;
+    await noteAction(request, actor.id, number === null ? graphId : String(number), 'accept');
+    return { number, result };
   });
 }
 
@@ -282,6 +335,7 @@ async function loadRow(database: Database, number: number) {
       number: ticket.number,
       status: ticket.status,
       requesterEmail: ticket.requesterEmail,
+      body: ticket.body,
       internetMessageId: ticket.internetMessageId,
     })
     .from(ticket)
@@ -330,17 +384,24 @@ async function loadTicket(database: Database, number: number) {
     .limit(1);
   const row = rows[0];
   if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
-  const priority = row.priority === 'p1' || row.priority === 'p2' || row.priority === 'p3' ? row.priority : null;
+  const priority =
+    row.priority === 'p1' || row.priority === 'p2' || row.priority === 'p3' ? row.priority : null;
   const source = (ticketSources as readonly string[]).includes(row.source) ? row.source : null;
   const impact =
-    row.impact === 'filing' || row.impact === 'payroll' || row.impact === 'workplace' || row.impact === 'cosmetic'
+    row.impact === 'filing' ||
+    row.impact === 'payroll' ||
+    row.impact === 'workplace' ||
+    row.impact === 'cosmetic'
       ? row.impact
       : null;
   const satisfaction =
-    row.satisfaction === 'satisfied' || row.satisfaction === 'neutral' || row.satisfaction === 'dissatisfied'
+    row.satisfaction === 'satisfied' ||
+    row.satisfaction === 'neutral' ||
+    row.satisfaction === 'dissatisfied'
       ? row.satisfaction
       : null;
-  if (!priority || !source || !impact) throw new PublicError(404, 'not_found', publicErrors.notFound);
+  if (!priority || !source || !impact)
+    throw new PublicError(404, 'not_found', publicErrors.notFound);
   return staffTicketViewSchema.parse({
     number: row.number,
     subject: row.subject,
@@ -387,7 +448,10 @@ function readNumber(params: unknown): number {
 
 function readGraphId(params: unknown): string {
   const value =
-    params && typeof params === 'object' && 'graphId' in params && typeof params.graphId === 'string'
+    params &&
+    typeof params === 'object' &&
+    'graphId' in params &&
+    typeof params.graphId === 'string'
       ? params.graphId
       : '';
   if (value.trim() === '') throw new PublicError(404, 'not_found', publicErrors.notFound);

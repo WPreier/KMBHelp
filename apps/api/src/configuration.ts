@@ -13,6 +13,7 @@ const secretKeys = [
   'AI_API_KEY',
   'MCP_SERVICE_TOKEN',
   'LOCAL_ADMIN_PASSWORD',
+  'SMTP_PASSWD',
 ];
 
 const shownKeys = [
@@ -48,6 +49,13 @@ const shownKeys = [
   'OLLAMA_URL',
   'OLLAMA_MODEL',
   'MAIL_ERROR_TO',
+  'SMTP_SERVER',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_LOGIN',
+  'SMTP_TO',
+  'NOTICE_DIGEST',
+  'NOTICE_DIGEST_HOUR',
 ];
 
 export type Check = ConfigurationReport['checks'][number];
@@ -458,6 +466,28 @@ export async function inspectConfiguration(
           'informational',
           'Kein externer KI-Endpunkt. Die Mailprüfung spricht OLLAMA_URL. Die Suche bleibt beim Satz aus Phase 2.',
           'No external model endpoint. Mail review calls OLLAMA_URL. Search keeps the phase 2 sentence.',
+        ),
+  );
+
+  const smtpHost = env.SMTP_SERVER?.trim() || '127.0.0.1';
+  const smtpPort = Number(env.SMTP_PORT?.trim() || '25');
+  const smtpReachable =
+    Number.isInteger(smtpPort) && smtpPort >= 1 && smtpPort <= 65535
+      ? await probes.tcp(smtpHost, smtpPort)
+      : 'closed';
+  checks.push(
+    smtpReachable === 'open'
+      ? check(
+          'smtp',
+          'ok',
+          `Der lokale SMTP-Server ${smtpHost}:${smtpPort} nimmt Verbindungen an.`,
+          `The local SMTP server ${smtpHost}:${smtpPort} accepts connections.`,
+        )
+      : check(
+          'smtp.unreachable',
+          'warning',
+          `Der lokale SMTP-Server ${smtpHost}:${smtpPort} nimmt keine Verbindung an. Die Fehlermail über Postfix fällt aus.`,
+          `The local SMTP server ${smtpHost}:${smtpPort} does not accept a connection. The Postfix error mail fails.`,
         ),
   );
 

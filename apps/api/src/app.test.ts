@@ -27,7 +27,15 @@ describe('GET /api/health', () => {
       service: 'kmbhelp-api',
       database: 'down',
       worker: 'down',
+      smtp: 'down',
     });
+  });
+
+  it('reports the configured SMTP answer', async () => {
+    const app = await start({ checkDatabase: async () => true, smtp: 'up' });
+    const response = await request(app.server).get('/api/health');
+    expect(response.status).toBe(200);
+    expect(response.body.smtp).toBe('up');
   });
 
   it('reports ok when the database check succeeds', async () => {
