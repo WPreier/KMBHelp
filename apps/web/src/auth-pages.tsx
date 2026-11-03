@@ -130,6 +130,11 @@ export function SignInPage() {
     <section>
       <h2>{copy.signIn}</h2>
       <p>{copy.signInLead}</p>
+      {error ? (
+        <p className="form-error" role="alert">
+          {error[lang]}
+        </p>
+      ) : null}
       {step === 'staff' ? <p role="status">{copy.signedIn}</p> : null}
       {step === 'enroll' ? (
         <>
@@ -190,7 +195,6 @@ export function SignInPage() {
           </div>
         </form>
       ) : null}
-      {error ? <p role="alert">{error[lang]}</p> : null}
     </section>
   );
 }

@@ -216,14 +216,15 @@ export function ldapDirectory(config: LdapsConfig): Directory {
   }
 
   async function serviceSearch(email: string) {
-    const bound = client();
+    let bound: Client | undefined;
     try {
+      bound = client();
       await bound.bind(config.bindDn, config.bindPassword);
       return await searchAccount(bound, config, email);
     } catch {
       throw new DirectoryUnavailable();
     } finally {
-      await bound.unbind().catch(() => undefined);
+      await bound?.unbind().catch(() => undefined);
     }
   }
 
@@ -263,14 +264,15 @@ export function ldapDirectory(config: LdapsConfig): Directory {
       return 'member';
     },
     async listHelpdeskAdmins() {
-      const bound = client();
+      let bound: Client | undefined;
       try {
+        bound = client();
         await bound.bind(config.bindDn, config.bindPassword);
         return await searchHelpdeskAdmins(bound, config);
       } catch {
         throw new DirectoryUnavailable();
       } finally {
-        await bound.unbind().catch(() => undefined);
+        await bound?.unbind().catch(() => undefined);
       }
     },
   };
@@ -290,9 +292,15 @@ export async function serviceBindWorks(config: LdapsConfig): Promise<boolean> {
 export function directoryCertificate(
   config: Pick<LdapsConfig, 'caFile' | 'caPem'>,
 ): X509Certificate | null {
-  const pem = config.caPem?.trim() || (config.caFile ? readFileSync(config.caFile, 'utf8') : '');
+  const inline = certificateText(config.caPem) || certificateText(config.caFile);
+  const pem = inline || (config.caFile ? readFileSync(config.caFile, 'utf8') : '');
   if (!pem.trim()) return null;
   return new X509Certificate(pem);
+}
+
+function certificateText(value: string | undefined): string | null {
+  const text = value?.trim() ?? '';
+  return text.includes('BEGIN CERTIFICATE') ? text : null;
 }
 
 function trustedCertificate(config: LdapsConfig): string | undefined {

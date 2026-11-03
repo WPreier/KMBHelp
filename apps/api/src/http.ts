@@ -78,6 +78,20 @@ export function queryHash(value: string): string {
   return createHash('sha256').update(value).digest('hex');
 }
 
+export function safeErrorText(error: unknown): string {
+  const raw = error instanceof Error ? error.message : 'unknown error';
+  const withoutSecret = raw
+    .replace(/-----BEGIN [A-Z0-9 ]+-----[\s\S]*?-----END [A-Z0-9 ]+-----/gu, '[certificate]')
+    .replace(/-----BEGIN [A-Z0-9 ]+-----[\s\S]*/gu, '[certificate]')
+    .replace(/postgres(?:ql)?:\/\/\S+/giu, '[database]')
+    .replace(/password[=:]\S+/giu, 'password=[redacted]');
+  const flat = withoutSecret
+    .replace(/[\r\n]+/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim();
+  return (flat || 'unknown error').slice(0, 180);
+}
+
 export function rateLimited(): PublicError {
   return new PublicError(429, 'rate_limited', publicErrors.rateLimited);
 }

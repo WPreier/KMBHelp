@@ -63,6 +63,14 @@ sudo -u kmbhelp pnpm db:migrate
 sudo systemctl restart kmbhelp-api kmbhelp-worker
 ```
 
+## Anmeldung
+
+Die Seite `/anmelden` zeigt eine Fehlermeldung direkt unter der Einleitung, in Rot. Ein abgelehntes Passwort, ein fehlendes Konto und ein nicht erreichbares Verzeichnis bleiben nicht ohne Text.
+
+Ein lokaler Admin entsteht nur durch `pnpm install:helpdesk`. Benutzername und Passwort stehen danach in keiner Datei, nur der Hash in der Tabelle `staff`. Ohne diese Zeile prüft die Anmeldung das eingegebene Konto im Active Directory.
+
+Jede abgelehnte Anmeldung und jeder andere API-Fehler schreibt eine Zeile nach `/var/lib/kmbhelp/activity.log` und in `activity_log`. Darin stehen Status, ein deutscher Satz und die Adresse. Passwort, Datenbank-URL und Zertifikatstext stehen nicht darin.
+
 ## Konfiguration
 
 Die Seite ist `https://helpdesk.kmbcloud.at/verwaltung/konfiguration`. Sie ist aus `192.168.36.0/24` und `192.168.191.0/24` mit Anmeldung erreichbar, und auf dem Server selbst ohne Anmeldung.

@@ -171,7 +171,7 @@ sudo -u kmbhelp pnpm db:seed
 
 Der Vite-Build liest die `VITE_`-Werte aus `.env`. Nach einer Änderung dieser Adressen den Build wiederholen.
 
-Die Unit-Datei setzt `NODE_ENV=production`. Damit liest die API `secrets.json` nicht. Jedes Geheimnis steht in `/etc/kmbhelp/kmbhelp.env`. Die Vorlage ist `infra/kmbhelp.env.example`. Die echte Datei gehört `root:kmbhelp`, Modus `0640`. `SESSION_SECRET` ist ein langer Zufallswert, erzeugt mit `openssl rand -base64 48`. Ein leerer Wert beendet die API sofort mit `SESSION_SECRET must be set in production`. Sie lauscht dann nicht, und `/api/` bleibt stumm. `ALLOW_TEST_AUTH` bleibt leer. `LDAPS_CA_FILE` zeigt auf `/etc/kmbhelp/madc1.crt`.
+Die Unit-Datei setzt `NODE_ENV=production`. Damit liest die API `secrets.json` nicht. Jedes Geheimnis steht in `/etc/kmbhelp/kmbhelp.env`. Die Vorlage ist `infra/kmbhelp.env.example`. Die echte Datei gehört `root:kmbhelp`, Modus `0640`. `SESSION_SECRET` ist ein langer Zufallswert, erzeugt mit `openssl rand -base64 48`. Ein leerer Wert beendet die API sofort mit `SESSION_SECRET must be set in production`. Sie lauscht dann nicht, und `/api/` bleibt stumm. `ALLOW_TEST_AUTH` bleibt leer. `LDAPS_CA_FILE` zeigt auf `/etc/kmbhelp/madc1.crt`. Steht dort der Zertifikatstext statt eines Pfads, liest die API den Text. Ein fehlender Pfad beendet die Anmeldung nicht mehr still: die Seite sagt, dass das Verzeichnis nicht erreichbar ist.
 
 Die Konfigurationsseite speichert in Produktion Werte ohne Geheimnis in `app_setting` und in `.env`. Ein Geheimnis speichert sie dort nicht. Ein neues Geheimnis wird in `/etc/kmbhelp/kmbhelp.env` eingetragen, danach folgt der Neustart.
 

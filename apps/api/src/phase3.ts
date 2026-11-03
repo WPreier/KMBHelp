@@ -45,6 +45,7 @@ import {
   staffFromSession,
   type StaffSession,
 } from './auth.js';
+import { writeActivity } from './activity-log.js';
 import { DirectoryUnavailable, type Directory, type DirectoryAccount } from './directory.js';
 import { deactivateMissing, reconcileHelpdesk } from './helpdesk-sync.js';
 import {
@@ -998,6 +999,21 @@ async function deleteVocabulary(
   );
 }
 
+const auditDescription: Record<string, string> = {
+  'local_password:denied': 'Anmeldung abgelehnt. Das lokale Passwort stimmt nicht.',
+  'local_password:ok': 'Lokale Anmeldung angenommen. Der zweite Faktor fehlt noch.',
+  'ad_password:denied':
+    'Anmeldung abgelehnt. Das Konto fehlt im Verzeichnis oder das Passwort stimmt nicht.',
+  'ad_password:not_member': 'Anmeldung abgelehnt. Das Konto ist nicht in der Helpdesk-Gruppe.',
+  'ad_password:ok': 'Verzeichnis-Anmeldung angenommen. Der zweite Faktor fehlt noch.',
+  'totp:denied': 'Anmeldung abgelehnt. Der Einmalcode stimmt nicht.',
+  'totp:ok': 'Anmeldung mit Einmalcode abgeschlossen.',
+  'webauthn:denied': 'Anmeldung abgelehnt. Der Passkey wurde nicht bestätigt.',
+  'webauthn:ok': 'Anmeldung mit Passkey abgeschlossen.',
+  'admin:ok': 'Verwaltungsänderung gespeichert.',
+  'admin:mfa_reset': 'Der zweite Faktor eines Mitarbeiters wurde zurückgesetzt.',
+};
+
 async function writeAudit(
   database: Database,
   request: FastifyRequest,
@@ -1013,6 +1029,15 @@ async function writeAudit(
     outcome,
     ip: clientAddress(request),
   });
+  const description =
+    auditDescription[`${method}:${outcome}`] ?? `Anmeldung: ${method} ${outcome}.`;
+  await writeActivity(database, {
+    actor: email.slice(0, 200) || 'anonymous',
+    kind: 'page',
+    target: 'POST /api/v1/auth/login',
+    detail: description,
+    ip: clientAddress(request),
+  }).catch(() => undefined);
 }
 
 function denied(): PublicError {

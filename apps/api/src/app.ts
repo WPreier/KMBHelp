@@ -5,7 +5,8 @@ import { healthResponseSchema, publicErrors } from '@kmbhelp/shared';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { directoryFromEnv, type Directory } from './directory.js';
 import type { SearchExplainer } from './explain.js';
-import { loggedRequestUrl, PublicError } from './http.js';
+import { writeActivity } from './activity-log.js';
+import { clientAddress, loggedRequestUrl, PublicError, safeErrorText } from './http.js';
 import { withDevelopmentLoopback } from './network.js';
 import { openApiDocument } from './openapi.js';
 import { readWorkerState } from './mail-cycle.js';
@@ -194,11 +195,27 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     });
   });
 
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler(async (error, request, reply) => {
+    const path = (request.url ?? '').split('?')[0]?.slice(0, 160) ?? '';
+    const detail =
+      error instanceof PublicError
+        ? `${error.statusCode} ${error.error}: ${error.text.de}`
+        : `500 internal_error: ${safeErrorText(error)}`;
+    if (database) {
+      await writeActivity(database, {
+        actor: 'api',
+        kind: 'page',
+        target: `${request.method} ${path}`,
+        detail,
+        ip: clientAddress(request),
+      }).catch(() => undefined);
+    }
+    if (!(error instanceof PublicError)) {
+      request.log.error({ message: safeErrorText(error) }, 'request failed');
+    }
     if (error instanceof PublicError) {
       return reply.code(error.statusCode).send({ error: error.error, message: error.text });
     }
-    request.log.error({ err: error }, 'request failed');
     return reply.code(500).send({
       error: 'internal_error',
       message: publicErrors.internal,
