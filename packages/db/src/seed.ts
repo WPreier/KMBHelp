@@ -10,7 +10,7 @@ import {
   syslogOffsetSetting,
   syslogPortSetting,
 } from '@kmbhelp/shared';
-import { loadEnvFileIfPresent } from '@kmbhelp/shared/env';
+import { loadProjectEnv } from '@kmbhelp/shared/env';
 import { sql } from 'drizzle-orm';
 import {
   approvedExchangeSettingKey,
@@ -119,7 +119,7 @@ export async function seedCatalog(database: Database): Promise<void> {
 const isDirect = process.argv[1]?.endsWith('seed.ts') || process.argv[1]?.endsWith('seed.js');
 
 if (isDirect) {
-  loadEnvFileIfPresent(new URL('../../../.env', import.meta.url));
+  loadProjectEnv(new URL('../../../.env', import.meta.url));
   const connectionString = process.env.DATABASE_URL?.trim();
   if (!connectionString) {
     process.stderr.write('DATABASE_URL is not set.\n');

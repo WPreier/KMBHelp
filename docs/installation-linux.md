@@ -128,16 +128,23 @@ sudo apt install --yes apache2
 ```bash
 sudo adduser --system --group --home /var/lib/kmbhelp --shell /usr/sbin/nologin kmbhelp
 sudo install -d -o root -g kmbhelp -m 0750 /etc/kmbhelp /etc/kmbhelp/tls
-sudo install -d -o kmbhelp -g kmbhelp -m 0750 /var/lib/kmbhelp /var/backups/kmbhelp /opt/kmbhelp
+sudo install -d -o kmbhelp -g kmbhelp -m 0750 /var/lib/kmbhelp /var/backups/kmbhelp
+sudo install -d -o kmbhelp -g kmbhelp -m 0751 /opt/kmbhelp
 ```
 
-Das Repository liegt unter `/opt/kmbhelp` und gehört `kmbhelp`. Zertifikat und Schlüssel der Kanzlei liegen unter `/etc/kmbhelp/tls/`, das MADC1-Zertifikat unter `/etc/kmbhelp/madc1.crt`. Diese Dateien bleiben außerhalb von Git.
+Das Repository liegt unter `/opt/kmbhelp` und gehört `kmbhelp`. Modus `0751` lässt nginx als `www-data` durch das Verzeichnis gehen, ohne es auflisten zu können. `0750` liefert für die Startseite den nginx-Fehler 500. Zertifikat und Schlüssel der Kanzlei liegen unter `/etc/kmbhelp/tls/`, das MADC1-Zertifikat unter `/etc/kmbhelp/madc1.crt`. Diese Dateien bleiben außerhalb von Git. `/opt/kmbhelp/.env` bleibt Modus `0600`.
 
 ## PostgreSQL
 
 Die Rolle `kmbhelp` ist Eigentümer der Datenbank `kmbhelp`. Sie ist kein Superuser und darf keine weiteren Datenbanken oder Rollen anlegen. Eigentümer ist sie, weil Migrationen Tabellen anlegen und eine Fehlinterpretation den Append-only-Trigger an genau einem Ticket kurz aussetzt. Beides braucht den Eigentümer.
 
-`infra/postgres/kmbhelp-role.sql` enthält das Passwort `replace-me`. Die Datei lokal kopieren, das Passwort ersetzen, als PostgreSQL-Superuser ausführen und die Kopie danach löschen. Dieselbe URL steht nur in `/etc/kmbhelp/kmbhelp.env`.
+`infra/postgres/kmbhelp-role.sql` enthält das Passwort `replace-me`. Die Datei lokal kopieren, das Passwort ersetzen und die Kopie danach löschen. Die Erstanlage von Rolle und Datenbank erfolgt als PostgreSQL-Superuser mit `sudo -u postgres psql`. Der Benutzer `kmbhelp` darf das nicht, weil er kein Superuser ist und keine Rollen anlegen darf.
+
+```bash
+sudo -u postgres psql -f /tmp/kmbhelp-role.sql
+```
+
+`/tmp/kmbhelp-role.sql` ist diese Kopie. Dieselbe URL steht nur in `/etc/kmbhelp/kmbhelp.env`.
 
 Die Datenbank hört auf `127.0.0.1`. Port 5432 bleibt von anderen Rechnern aus zu.
 
@@ -160,9 +167,11 @@ sudo -u kmbhelp pnpm db:migrate
 sudo -u kmbhelp pnpm db:seed
 ```
 
+`pnpm db:migrate` und `pnpm db:seed` lesen zuerst `/opt/kmbhelp/.env` und füllen leere Werte aus `/etc/kmbhelp/kmbhelp.env`. `DATABASE_URL` steht nur in der zweiten Datei. Der Benutzer `kmbhelp` darf sie lesen. Fehlt sie oder ist sie leer, endet der Befehl mit `DATABASE_URL is not set.`
+
 Der Vite-Build liest die `VITE_`-Werte aus `.env`. Nach einer Änderung dieser Adressen den Build wiederholen.
 
-Die Unit-Datei setzt `NODE_ENV=production`. Damit liest die API `secrets.json` nicht. Jedes Geheimnis steht in `/etc/kmbhelp/kmbhelp.env`. Die Vorlage ist `infra/kmbhelp.env.example`. Die echte Datei gehört `root:kmbhelp`, Modus `0640`. `SESSION_SECRET` ist ein langer Zufallswert. `ALLOW_TEST_AUTH` bleibt leer. `LDAPS_CA_FILE` zeigt auf `/etc/kmbhelp/madc1.crt`.
+Die Unit-Datei setzt `NODE_ENV=production`. Damit liest die API `secrets.json` nicht. Jedes Geheimnis steht in `/etc/kmbhelp/kmbhelp.env`. Die Vorlage ist `infra/kmbhelp.env.example`. Die echte Datei gehört `root:kmbhelp`, Modus `0640`. `SESSION_SECRET` ist ein langer Zufallswert, erzeugt mit `openssl rand -base64 48`. Ein leerer Wert beendet die API sofort mit `SESSION_SECRET must be set in production`. Sie lauscht dann nicht, und `/api/` bleibt stumm. `ALLOW_TEST_AUTH` bleibt leer. `LDAPS_CA_FILE` zeigt auf `/etc/kmbhelp/madc1.crt`.
 
 Die Konfigurationsseite speichert in Produktion Werte ohne Geheimnis in `app_setting` und in `.env`. Ein Geheimnis speichert sie dort nicht. Ein neues Geheimnis wird in `/etc/kmbhelp/kmbhelp.env` eingetragen, danach folgt der Neustart.
 
@@ -197,7 +206,13 @@ Beide Units lesen `/etc/kmbhelp/kmbhelp.env`. Der Worker hat keinen eigenen Port
 
 ## nginx oder Apache
 
-Eine der beiden Dateien einsetzen und `192.0.2.10` ersetzen. Die Website kommt aus `/opt/kmbhelp/apps/web/dist`. Pfade unter `/api/` gehen an die API. Alle anderen Pfade liefern `index.html`, damit die React-Routen funktionieren.
+Eine der beiden Dateien einsetzen und `192.0.2.10` durch die interne Adresse dieses Servers ersetzen, hier `192.168.36.55`. Bleibt der Platzhalter stehen, wartet `/api/` bis der Browser aufgibt. Die Website kommt aus `/opt/kmbhelp/apps/web/dist`. Pfade unter `/api/` gehen an die API. Alle anderen Pfade liefern `index.html`, damit die React-Routen funktionieren.
+
+```bash
+grep -n 192.0.2.10 /etc/nginx/sites-enabled/kmbhelp.conf /etc/apache2/sites-enabled/kmbhelp.conf
+```
+
+Der Befehl darf keine Zeile zeigen. Eine fehlende Datei ist in Ordnung, solange der eingesetzte Webserver keine enthält.
 
 Die TLS-Pfade in den Beispielen sind:
 

@@ -42,6 +42,11 @@ export function fillBlankEnvFromJson(fileUrl: URL): void {
   }
 }
 
+export function loadProjectEnv(projectEnv: URL, serverEnv = '/etc/kmbhelp/kmbhelp.env'): void {
+  loadEnvFileIfPresent(projectEnv);
+  fillBlankEnvFromFile(pathToFileURL(serverEnv));
+}
+
 export function loadWorkstationEnv(): void {
   if (process.env.NODE_ENV === 'production') return;
   const root = process.env.LOCALAPPDATA?.trim();

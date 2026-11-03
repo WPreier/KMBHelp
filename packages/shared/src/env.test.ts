@@ -3,7 +3,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fillBlankEnvFromFile, fillBlankEnvFromJson, loadEnvFileIfPresent } from './env.js';
+import {
+  fillBlankEnvFromFile,
+  fillBlankEnvFromJson,
+  loadEnvFileIfPresent,
+  loadProjectEnv,
+} from './env.js';
 
 const secretKeys = [
   'GRAPH_CLIENT_SECRET',
@@ -68,6 +73,22 @@ describe('loadEnvFileIfPresent', () => {
     expect(process.env.KMBHELP_ENV_PROBE).toBe('from-json');
     expect(process.env.KEPT).toBe('already');
     delete process.env.KEPT;
+  });
+
+  it('fills a blank database url from the server file and keeps a project value', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'kmbhelp-env-'));
+    directories.push(directory);
+    const project = join(directory, '.env');
+    const server = join(directory, 'kmbhelp.env');
+    writeFileSync(project, 'PUBLIC_ORIGIN=https://helpdesk.kmbcloud.at\n');
+    writeFileSync(server, 'DATABASE_URL=from-server\nPUBLIC_ORIGIN=from-server\n');
+    delete process.env.DATABASE_URL;
+    delete process.env.PUBLIC_ORIGIN;
+    loadProjectEnv(pathToFileURL(project), server);
+    expect(process.env.DATABASE_URL).toBe('from-server');
+    expect(process.env.PUBLIC_ORIGIN).toBe('https://helpdesk.kmbcloud.at');
+    delete process.env.DATABASE_URL;
+    delete process.env.PUBLIC_ORIGIN;
   });
 
   it('loads a present file', () => {

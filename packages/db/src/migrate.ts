@@ -1,9 +1,9 @@
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { fileURLToPath } from 'node:url';
-import { loadEnvFileIfPresent } from '@kmbhelp/shared/env';
+import { loadProjectEnv } from '@kmbhelp/shared/env';
 import { createDatabase } from './client.js';
 
-loadEnvFileIfPresent(new URL('../../../.env', import.meta.url));
+loadProjectEnv(new URL('../../../.env', import.meta.url));
 
 const connectionString = process.env.DATABASE_URL?.trim();
 if (!connectionString) {

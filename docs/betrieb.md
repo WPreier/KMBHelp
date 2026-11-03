@@ -41,7 +41,19 @@ sudo -u kmbhelp pnpm db:migrate
 sudo systemctl restart kmbhelp-api kmbhelp-worker
 ```
 
-`git status` muss danach sauber sein. Eine lokale Änderung in `/opt/kmbhelp` gehört nicht auf den Server. Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben.
+`git status` muss danach sauber sein. Eine lokale Änderung in `/opt/kmbhelp` gehört nicht auf den Server. Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
+
+## Wenn die Seite 500 antwortet
+
+Die Startseite kommt von nginx aus `/opt/kmbhelp/apps/web/dist`. `/opt/kmbhelp` muss Modus `0751` haben, damit `www-data` das Verzeichnis betreten kann. `0750` ergibt den nginx-Fehler 500, obwohl `index.html` existiert. `.env` bleibt `0600`.
+
+```bash
+chmod 751 /opt/kmbhelp
+```
+
+Ein leeres `SESSION_SECRET` in `/etc/kmbhelp/kmbhelp.env` beendet die API, bevor sie lauscht. `journalctl -u kmbhelp-api` zeigt dann `SESSION_SECRET must be set in production`. Ein neuer Wert entsteht mit `openssl rand -base64 48`. Danach `sudo systemctl restart kmbhelp-api`.
+
+`API_HOST` ist die interne Adresse des Servers, `192.168.36.55`. Dieselbe Adresse steht in `proxy_pass`. `127.0.0.1` öffnet die Verwaltung für jeden Besucher. `192.0.2.10` ist nur der Platzhalter in der Anleitung. Bleibt er in nginx stehen, läuft `/api/` ins Leere.
 
 Haben sich nur die Datenbank oder die API geändert, reichen Migration und Neustart:
 
