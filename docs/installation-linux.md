@@ -206,7 +206,7 @@ Beide Units lesen `/etc/kmbhelp/kmbhelp.env`. Der Worker hat keinen eigenen Port
 
 ## nginx oder Apache
 
-Eine der beiden Dateien einsetzen und `192.0.2.10` durch die interne Adresse dieses Servers ersetzen, hier `192.168.36.55`. Bleibt der Platzhalter stehen, wartet `/api/` bis der Browser aufgibt. Die Website kommt aus `/opt/kmbhelp/apps/web/dist`. Pfade unter `/api/` gehen an die API. Alle anderen Pfade liefern `index.html`, damit die React-Routen funktionieren.
+Eine der beiden Dateien einsetzen und `192.0.2.10` durch die interne Adresse dieses Servers ersetzen, hier `192.168.36.55`. Bleibt der Platzhalter stehen, wartet `/api/` bis der Browser aufgibt. Der Proxy setzt `X-Real-IP` und `X-Forwarded-For` auf die Adresse des Browsers. Daran erkennt die API, ob der lokale Admin aus `ADMIN_IP_ALLOWLIST` kommt und der Einmalcode entfällt. Die Website kommt aus `/opt/kmbhelp/apps/web/dist`. Pfade unter `/api/` gehen an die API. Alle anderen Pfade liefern `index.html`, damit die React-Routen funktionieren.
 
 ```bash
 grep -n 192.0.2.10 /etc/nginx/sites-enabled/kmbhelp.conf /etc/apache2/sites-enabled/kmbhelp.conf
@@ -335,6 +335,8 @@ sudo -u kmbhelp pnpm install --frozen-lockfile
 sudo -u kmbhelp pnpm --filter @kmbhelp/web build
 sudo -u kmbhelp pnpm db:migrate && sudo systemctl restart kmbhelp-api kmbhelp-worker
 ```
+
+`git pull` schreibt `/etc/nginx` nicht um. Fehlen in `/etc/nginx/sites-available/kmbhelp.conf` die beiden Zeilen `proxy_set_header X-Real-IP $remote_addr;` und `proxy_set_header X-Forwarded-For $remote_addr;` direkt unter `proxy_set_header Host $host;`, setzt root sie, prüft mit `sudo nginx -t` und lädt nginx neu. `API_HOST` in `/etc/kmbhelp/kmbhelp.env` bleibt die interne Adresse dieses Servers. Ohne diese beiden Punkte sieht die API hinter nginx jeden Besucher als den Server selbst, und der lokale Admin aus dem Büro bekäme den Einmalcode nicht erlassen.
 
 Der laufende Betrieb steht in `docs/betrieb.md`.
 

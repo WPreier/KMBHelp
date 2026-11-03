@@ -24,6 +24,34 @@ function matches(ip: string, rule: string): boolean {
   return (address & mask) === (network & mask);
 }
 
+export function viewerAddress(
+  peer: string,
+  forwarded: string | undefined,
+  apiHost: string,
+): string {
+  const normalizedPeer = peer.trim().replace(/^::ffff:/u, '');
+  const candidate = firstAddress(forwarded);
+  if (candidate && trustedProxy(normalizedPeer, apiHost.trim())) return candidate;
+  return normalizedPeer || 'unknown';
+}
+
+function trustedProxy(peer: string, apiHost: string): boolean {
+  if (peer === '::1' || ipAllowed(peer, '127.0.0.0/8')) return true;
+  return apiHost !== '' && peer === apiHost;
+}
+
+function firstAddress(forwarded: string | undefined): string | null {
+  const first =
+    forwarded
+      ?.split(',')[0]
+      ?.trim()
+      .replace(/^::ffff:/u, '') ?? '';
+  if (first === '' || first.length > 80) return null;
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/u.test(first)) return ipv4(first) === null ? null : first;
+  if (/^[0-9a-f:]+$/iu.test(first) && first.includes(':')) return first;
+  return null;
+}
+
 export function ipAllowed(ip: string, allowlist: string): boolean {
   const normalized = ip.trim().replace(/^::ffff:/u, '');
   const rules = allowlist

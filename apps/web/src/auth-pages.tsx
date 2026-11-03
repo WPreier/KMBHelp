@@ -7,6 +7,7 @@ import {
   type LoginResult,
 } from '@kmbhelp/shared';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
+import QRCode from 'qrcode';
 import { useEffect, useState, type FormEvent } from 'react';
 import { getJson, postJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
@@ -22,6 +23,9 @@ export function SignInPage() {
   const { lang, copy } = useLocale();
   const [step, setStep] = useState<LoginResult['step'] | 'start'>('start');
   const [secret, setSecret] = useState<string | null>(null);
+  const [otpauth, setOtpauth] = useState<string | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
+  const [preview, setPreview] = useState(false);
   const [error, setError] = useState<CopyText | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -48,12 +52,44 @@ export function SignInPage() {
     }
   }
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('vorschau') !== '1') return;
+    setPreview(true);
+    setStep('enroll');
+    setSecret('JBSWY3DPEHPK3PXP');
+    setOtpauth(
+      'otpauth://totp/KMBHelp:vorschau?secret=JBSWY3DPEHPK3PXP&issuer=KMBHelp&algorithm=SHA1&digits=6&period=30',
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!otpauth) {
+      setQr(null);
+      return;
+    }
+    let cancelled = false;
+    void QRCode.toDataURL(otpauth, {
+      width: 320,
+      margin: 2,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#000000', light: '#ffffff' },
+    }).then((url) => {
+      if (!cancelled) setQr(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [otpauth]);
+
   async function onSetup() {
     setPending(true);
     setError(null);
     try {
       const setup = await postJson('/api/v1/auth/totp/setup', {}, totpSetupSchema.parse);
       setSecret(setup.secret);
+      setOtpauth(setup.otpauth);
       setStep('enroll');
     } catch (caught) {
       setError(bilingual(caught));
@@ -142,7 +178,11 @@ export function SignInPage() {
           <button type="button" onClick={() => void onSetup()} disabled={pending}>
             {copy.enrollTotp}
           </button>
-          {secret ? <p>{secret}</p> : null}
+          {qr ? (
+            <img className="totp-qr" src={qr} width={320} height={320} alt={copy.scanCode} />
+          ) : null}
+          {secret ? <p className="totp-secret">{secret}</p> : null}
+          {preview ? <p className="form-error">{copy.previewCode}</p> : null}
           <form className="form" onSubmit={(event) => void onConfirm(event)}>
             <label>
               {copy.oneTimeCode}

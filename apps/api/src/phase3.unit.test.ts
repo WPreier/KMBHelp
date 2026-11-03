@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { localhostSkipsSignIn } from './auth.js';
 import { ldapFilterEscape } from './directory.js';
-import { ipAllowed, withDevelopmentLoopback } from './network.js';
+import { ipAllowed, viewerAddress, withDevelopmentLoopback } from './network.js';
 import { decodeBase32, encodeBase32, randomTotpSecret, totpCode, totpMatches } from './totp.js';
 
 describe('phase 3 helpers', () => {
@@ -29,6 +29,10 @@ describe('phase 3 helpers', () => {
     const development = withDevelopmentLoopback(office, true);
     expect(ipAllowed('127.0.0.1', development)).toBe(true);
     expect(ipAllowed('192.168.36.20', development)).toBe(true);
+    expect(viewerAddress('192.168.36.55', '192.168.36.20', '192.168.36.55')).toBe('192.168.36.20');
+    expect(viewerAddress('203.0.113.8', '192.168.36.20', '192.168.36.55')).toBe('203.0.113.8');
+    expect(viewerAddress('127.0.0.1', '203.0.113.8', '192.168.36.55')).toBe('203.0.113.8');
+    expect(viewerAddress('192.168.36.55', 'not-an-ip', '192.168.36.55')).toBe('192.168.36.55');
     expect(withDevelopmentLoopback(office, false)).toBe(office);
     expect(withDevelopmentLoopback(`${office},127.0.0.0/8`, true)).toBe(`${office},127.0.0.0/8`);
     expect(localhostSkipsSignIn('127.0.0.1', '', { NODE_ENV: 'development' })).toBe(true);

@@ -152,6 +152,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     directory: options.directory ?? directoryFromEnv(process.env),
     sessionSecret: resolveSessionSecret(options.sessionSecret, process.env),
     adminAllowlist,
+    mfaSkipAllowlist: options.adminAllowlist ?? process.env.ADMIN_IP_ALLOWLIST ?? '',
+    apiHost: process.env.API_HOST?.trim() ?? '',
     rpId: options.webauthnRpId ?? webauthn.rpId,
     origin: options.webauthnOrigin ?? webauthn.origin,
     now: options.now,

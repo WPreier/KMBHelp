@@ -155,7 +155,10 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
     await app.ready();
     await blocked.ready();
     const agent = request.agent(app.server);
-    const enrolled = await agent.post('/api/v1/auth/login').send({ email: username, password });
+    const enrolled = await agent
+      .post('/api/v1/auth/login')
+      .set('x-forwarded-for', '203.0.113.8')
+      .send({ email: username, password });
     expect(enrolled.body.step).toBe('enroll');
     const setup = await agent
       .post('/api/v1/auth/totp/setup')
@@ -230,6 +233,29 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
     );
     expect(after.rows[0]?.mfa_enrolled_at).toBeNull();
 
+    await removeTestPeople(database);
+  });
+
+  it('accepts the local admin from the allowlist without a one-time code', async () => {
+    await applyMigrations(database);
+    await removeTestPeople(database);
+    const username = `office-${randomUUID()}`;
+    const password = `local-admin-${randomUUID()}`;
+    await createLocalAdmin(database, username, password);
+    const app = buildApp({
+      database,
+      directory: unconfiguredDirectory(),
+      sessionSecret: secret,
+      adminAllowlist: '127.0.0.1/32',
+    });
+    apps.push(app);
+    await app.ready();
+    const response = await request(app.server)
+      .post('/api/v1/auth/login')
+      .send({ email: username, password });
+    expect(response.status).toBe(200);
+    expect(response.body.step).toBe('staff');
+    expect(JSON.stringify(response.body)).not.toContain(password);
     await removeTestPeople(database);
   });
 

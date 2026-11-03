@@ -55,7 +55,7 @@ import {
   PublicError,
   rateLimited,
 } from './http.js';
-import { ipAllowed } from './network.js';
+import { ipAllowed, viewerAddress } from './network.js';
 import { verifyLocalPassword } from './passwords.js';
 import { encodeBase32, openSecret, randomTotpSecret, sealSecret, totpMatches } from './totp.js';
 
@@ -69,6 +69,8 @@ export type Phase3Options = {
   adminAllowlist: string;
   rpId: string;
   origin: string;
+  apiHost?: string | undefined;
+  mfaSkipAllowlist?: string | undefined;
   now?: (() => Date) | undefined;
   model?: ModelProvider | undefined;
 };
@@ -80,6 +82,16 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
   function db(): Database {
     if (!options.database) throw databaseDown();
     return options.database;
+  }
+
+  function officeLocalAdmin(request: FastifyRequest): boolean {
+    const peer = request.socket?.remoteAddress ?? request.ip;
+    const forwarded = request.headers['x-real-ip'] ?? request.headers['x-forwarded-for'];
+    const header = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+    return ipAllowed(
+      viewerAddress(peer, typeof header === 'string' ? header : undefined, options.apiHost ?? ''),
+      options.mfaSkipAllowlist ?? '',
+    );
   }
 
   const model = options.model ?? unconfiguredModel;
@@ -124,6 +136,24 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     const code = parsed.data.code?.replace(/\s/gu, '') ?? '';
     const local = await findLocalAdmin(database, email);
     const person = local ?? (await findByEmail(database, email));
+    if (local && officeLocalAdmin(request)) {
+      if (!password || !(await verifyLocalPassword(local.passwordHash ?? '', password))) {
+        await writeAudit(database, request, local.id, email, 'local_password', 'denied');
+        throw denied();
+      }
+      const opened = await replaceSession(database, local.id, false, now());
+      setSessionCookies(reply, request, opened.id, opened.csrf, sessionSeconds);
+      await writeAudit(
+        database,
+        request,
+        local.id,
+        email,
+        'local_password',
+        'ok',
+        'Anmeldung des lokalen Admins aus dem freigegebenen Netz. Einmalcode und Passkey entfallen.',
+      );
+      return loginResultSchema.parse({ step: 'staff', isLocalAdmin: true });
+    }
     if (person?.mfaEnrolledAt) {
       if (!code) {
         return loginResultSchema.parse({
@@ -1021,6 +1051,7 @@ async function writeAudit(
   email: string,
   method: 'ad_password' | 'local_password' | 'totp' | 'webauthn' | 'admin',
   outcome: 'ok' | 'denied' | 'not_member' | 'mfa_reset',
+  detail?: string,
 ): Promise<void> {
   await database.db.insert(loginAudit).values({
     staffId,
@@ -1030,7 +1061,7 @@ async function writeAudit(
     ip: clientAddress(request),
   });
   const description =
-    auditDescription[`${method}:${outcome}`] ?? `Anmeldung: ${method} ${outcome}.`;
+    detail ?? auditDescription[`${method}:${outcome}`] ?? `Anmeldung: ${method} ${outcome}.`;
   await writeActivity(database, {
     actor: email.slice(0, 200) || 'anonymous',
     kind: 'page',

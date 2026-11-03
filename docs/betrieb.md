@@ -65,7 +65,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Anmeldung
 
-Die Seite `/anmelden` zeigt eine Fehlermeldung direkt unter der Einleitung, in Rot. Ein abgelehntes Passwort, ein fehlendes Konto und ein nicht erreichbares Verzeichnis bleiben nicht ohne Text.
+Die Seite `/anmelden` zeigt eine Fehlermeldung direkt unter der Einleitung, in Rot. Ein abgelehntes Passwort, ein fehlendes Konto und ein nicht erreichbares Verzeichnis bleiben nicht ohne Text. `Einmalcode einrichten` zeigt einen QR-Code für die Authenticator-App und darunter den Schlüssel. Der lokale Admin aus `ADMIN_IP_ALLOWLIST` sieht diese Seite nicht: Benutzername und Passwort reichen.
 
 Ein lokaler Admin entsteht nur durch `pnpm install:helpdesk`. Benutzername und Passwort stehen danach in keiner Datei, nur der Hash in der Tabelle `staff`. Ohne diese Zeile prüft die Anmeldung das eingegebene Konto im Active Directory.
 

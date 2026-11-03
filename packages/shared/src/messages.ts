@@ -79,7 +79,7 @@ export const messages = {
     reasonCosmetic: 'Keine Frist, daher P3.',
     signIn: 'Anmeldung',
     signInLead:
-      'Helpdesk-Mitarbeiter melden sich mit dem Kanzleikonto an. Das Passwort wird nur bei der ersten Anmeldung geprüft.',
+      'Helpdesk-Mitarbeiter melden sich mit dem Kanzleikonto an. Das Passwort wird nur bei der ersten Anmeldung geprüft. Der lokale Admin aus dem freigegebenen Netz meldet sich mit Benutzername und Passwort an.',
     identifier: 'E-Mail oder Benutzername',
     password: 'Passwort',
     oneTimeCode: 'Einmalcode',
@@ -87,6 +87,9 @@ export const messages = {
     enrollLead:
       'Richten Sie einen Einmalcode oder einen Passkey ein. Ohne diesen Schritt bleibt der Inhalt gesperrt.',
     enrollTotp: 'Einmalcode einrichten',
+    scanCode: 'Mit der Authenticator-App scannen.',
+    previewCode:
+      'Vorschau auf diesem Rechner. Dieser Code gehört zu keinem Konto und darf nicht gescannt werden.',
     confirmCode: 'Code bestätigen',
     passkey: 'Passkey',
     passkeyRegister: 'Passkey hinterlegen',
@@ -312,7 +315,7 @@ export const messages = {
     reasonCosmetic: 'No deadline, so P3.',
     signIn: 'Sign in',
     signInLead:
-      'Helpdesk staff sign in with the firm account. The password is checked only on the first sign-in.',
+      'Helpdesk staff sign in with the firm account. The password is checked only on the first sign-in. The local admin from the allowed network signs in with username and password.',
     identifier: 'Email or username',
     password: 'Password',
     oneTimeCode: 'One-time code',
@@ -320,6 +323,9 @@ export const messages = {
     enrollLead:
       'Set up a one-time code or a passkey. Ticket contents stay locked until that is done.',
     enrollTotp: 'Set up a one-time code',
+    scanCode: 'Scan this with the authenticator app.',
+    previewCode:
+      'Preview on this computer. This code belongs to no account and must not be scanned.',
     confirmCode: 'Confirm code',
     passkey: 'Passkey',
     passkeyRegister: 'Save passkey',
