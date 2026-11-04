@@ -81,6 +81,27 @@ describe('GET /api/health', () => {
     expect(response.body.message.de).toContain('nicht');
     expect(response.body.message.en).toContain('does not exist');
   });
+
+  it('hides the employee list unless the API secret is presented', async () => {
+    const previous = process.env.MCP_SERVICE_TOKEN;
+    process.env.MCP_SERVICE_TOKEN = 'test-token-not-a-secret-01';
+    try {
+      const app = await start();
+      const hidden = await request(app.server).get('/api/v1/staff/assignable');
+      expect(hidden.status).toBe(401);
+      const calendar = await request(app.server).get(
+        '/api/v1/staff/00000000-0000-0000-0000-000000000000/availability',
+      );
+      expect(calendar.status).toBe(401);
+      const opened = await request(app.server)
+        .get('/api/v1/staff/assignable')
+        .set('authorization', 'Bearer test-token-not-a-secret-01');
+      expect(opened.status).not.toBe(401);
+    } finally {
+      if (previous === undefined) delete process.env.MCP_SERVICE_TOKEN;
+      else process.env.MCP_SERVICE_TOKEN = previous;
+    }
+  });
 });
 
 describe('readPort', () => {

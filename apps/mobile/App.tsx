@@ -209,20 +209,13 @@ type Client = ReturnType<typeof createHelpdeskClient>;
 function FileScreen(props: { lang: Lang; client: Client; colors: Palette }) {
   const text = messages[props.lang];
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [assignees, setAssignees] = useState<Array<{ id: string; displayName: string }>>([]);
   const [categoryCode, setCategoryCode] = useState('');
   const [impact, setImpact] = useState<Impact | ''>('workplace');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [dueOn, setDueOn] = useState('');
   const [requesterName, setRequesterName] = useState('');
-  const [staffId, setStaffId] = useState('');
   const [clientPriority, setClientPriority] = useState<Priority | ''>('');
-  const [availability, setAvailability] = useState<{
-    textDe: string;
-    textEn: string;
-    windows: Array<{ start: string; end: string }>;
-  } | null>(null);
   const [created, setCreated] = useState<CreatedTicket | null>(null);
   const [error, setError] = useState('');
   useEffect(() => {
@@ -230,29 +223,7 @@ function FileScreen(props: { lang: Lang; client: Client; colors: Palette }) {
       setCategories(list.categories);
       setCategoryCode((current) => current || list.categories[0]?.code || '');
     });
-    void props.client
-      .assignable()
-      .then((list) => setAssignees(list.staff.filter((person) => person.active)))
-      .catch(() => setAssignees([]));
   }, [props.client]);
-  useEffect(() => {
-    if (staffId === '') {
-      setAvailability(null);
-      return;
-    }
-    let cancelled = false;
-    void props.client
-      .availability(staffId)
-      .then((next) => {
-        if (!cancelled) setAvailability(next);
-      })
-      .catch(() => {
-        if (!cancelled) setAvailability(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [props.client, staffId]);
   const impactLabel: Record<Impact, string> = {
     filing: text.impactFiling,
     payroll: text.impactPayroll,
@@ -267,7 +238,6 @@ function FileScreen(props: { lang: Lang; client: Client; colors: Palette }) {
     setBody('');
     setDueOn('');
     setRequesterName('');
-    setStaffId('');
     setClientPriority('');
     setError('');
   }
@@ -331,37 +301,6 @@ function FileScreen(props: { lang: Lang; client: Client; colors: Palette }) {
         maxLength={200}
       />
       <Choice
-        label={text.assignee}
-        value={staffId}
-        colors={props.colors}
-        onChange={setStaffId}
-        options={[
-          { value: '', label: text.priorityUnset },
-          ...assignees.map((person) => ({ value: person.id, label: person.displayName })),
-        ]}
-      />
-      <Text style={[styles.label, { color: props.colors.ink }]}>{text.calendarTitle}</Text>
-      <View style={styles.week}>
-        {weekDays(props.lang).map((day) => (
-          <Text key={day.key} style={[styles.weekDay, { color: props.colors.ink }]}>
-            {day.label}
-          </Text>
-        ))}
-      </View>
-      {availability ? (
-        <Text style={[styles.note, { color: props.colors.ink }]}>
-          {props.lang === 'de' ? availability.textDe : availability.textEn}
-        </Text>
-      ) : null}
-      {availability?.windows.map((window) => (
-        <Text
-          key={`${window.start}-${window.end}`}
-          style={[styles.row, { color: props.colors.ink }]}
-        >
-          {window.start} – {window.end}
-        </Text>
-      ))}
-      <Choice
         label={text.reportedPriority}
         value={clientPriority}
         colors={props.colors}
@@ -393,7 +332,7 @@ function FileScreen(props: { lang: Lang; client: Client; colors: Palette }) {
                 body,
                 dueOn,
                 requesterName,
-                assignedStaffId: staffId || undefined,
+                assignedStaffId: undefined,
                 clientPriority: clientPriority || undefined,
               })
               .then((next) => {
@@ -640,20 +579,6 @@ function Field(props: {
       />
     </View>
   );
-}
-
-function weekDays(lang: Lang): Array<{ key: string; label: string }> {
-  const start = new Date();
-  return Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(start);
-    day.setDate(start.getDate() + index);
-    const label = new Intl.DateTimeFormat(lang === 'de' ? 'de-AT' : 'en-GB', {
-      weekday: 'short',
-      day: '2-digit',
-      month: '2-digit',
-    }).format(day);
-    return { key: day.toISOString().slice(0, 10), label };
-  });
 }
 
 function priorityText(priority: string, text: (typeof messages)['de']): string {

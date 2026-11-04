@@ -20,7 +20,7 @@ Verbindlich für die Umsetzung:
 | Kommentare, Anhänge, KI-Begründung | niemals öffentlich | ja, nach Rolle |
 | FAQ | ja, redaktionell freigegeben | ja |
 | Gelöste Tickets als Wissen | nur redigierte Artikel, nie der Roh-Tickettext | Rohtext nur Staff |
-| Dashboard, Admin, Zuordnung, Kalender | nein | ja |
+| Dashboard, Admin, Zuordnung, Kalender | nein. `GET /api/v1/staff/assignable` und `GET /api/v1/staff/:id/availability` antworten ohne Sitzung mit 401. Ein Dienst sendet `Authorization: Bearer` und `MCP_SERVICE_TOKEN`. | ja |
 | API-Schreibzugriffe auf fremde Tickets | nur Status und Priorität der öffentlichen Liste, siehe unten | ja |
 
 Anonim anlegen bleibt möglich. Die IP wird gespeichert. Eine E-Mail für einen Geheimlink wird nicht abgefragt. Den Geheimlink gibt es nicht. Die Nummer steht in der öffentlichen Liste. Beschreibung, Absender und Kommentare bleiben dort unsichtbar. Datumseingaben haben die Form `dd.MM.yyyy`. Die Prioritäten heißen in der Oberfläche „Sehr wichtig“, „bitte heute noch“ und „bei Gelegenheit“.

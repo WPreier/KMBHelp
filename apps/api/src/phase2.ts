@@ -1,6 +1,6 @@
 import { maskPersonalData, type ModelProvider } from '@kmbhelp/ai';
 import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
   category,
@@ -40,6 +40,7 @@ import {
   type StaffTicket,
 } from '@kmbhelp/shared';
 import {
+  localhostAdmin,
   optionalStaff,
   readRequestCookie,
   requireStaff,
@@ -87,6 +88,14 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     return options.database;
   }
 
+  async function requireStaffReader(request: FastifyRequest): Promise<void> {
+    if (serviceTokenMatches(request) || localhostAdmin(request)) return;
+    if (!readRequestCookie(request, SESSION_COOKIE) && !options.testAuthEnabled) {
+      throw new PublicError(401, 'unauthorized', publicErrors.unauthorized);
+    }
+    await requireStaff(db(), request, options.testAuthEnabled, now());
+  }
+
   app.post('/api/v1/tickets', async (request) => {
     const parsed = createTicketSchema.safeParse(request.body);
     if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
@@ -106,8 +115,12 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         .from(category)
         .where(eq(category.code, input.categoryCode));
       if (!known[0]) throw new PublicError(400, 'unknown_category', publicErrors.unknownCategory);
+      const mayNameStaff =
+        serviceTokenMatches(request) ||
+        localhostAdmin(request) ||
+        (await optionalStaff(database, request, options.testAuthEnabled, now())) !== null;
       let assignedStaffId: string | null = null;
-      if (input.assignedStaffId) {
+      if (mayNameStaff && input.assignedStaffId) {
         const people = await tx
           .select({ id: staff.id, active: staff.active })
           .from(staff)
@@ -250,7 +263,8 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     },
   );
 
-  app.get('/api/v1/staff/assignable', async () => {
+  app.get('/api/v1/staff/assignable', async (request) => {
+    await requireStaffReader(request);
     const database = db();
     const rows = await database.db
       .select({ id: staff.id, displayName: staff.displayName, active: staff.active })
@@ -261,6 +275,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
   });
 
   app.get<{ Params: { id: string } }>('/api/v1/staff/:id/availability', async (request) => {
+    await requireStaffReader(request);
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(request.params.id)
     ) {

@@ -69,8 +69,10 @@ export const openApiDocument = {
         operationId: 'listAssignableStaff',
         responses: {
           '200': {
-            description: 'Active employees for a new ticket. Inactive employees are omitted.',
+            description:
+              'Active employees for a signed-in staff member or a bearer of MCP_SERVICE_TOKEN. Inactive employees are omitted.',
           },
+          '401': { description: 'No staff session and no API secret.' },
         },
       },
     },
@@ -80,7 +82,7 @@ export const openApiDocument = {
         responses: {
           '200': {
             description:
-              'Microsoft 365 busy times for an active employee, or a not-connected calendar.',
+              'Microsoft 365 busy times for an active employee, or a not-connected calendar. Requires a staff session or MCP_SERVICE_TOKEN.',
           },
         },
       },
@@ -330,7 +332,10 @@ export const openApiDocument = {
       post: {
         operationId: 'closeStaffTicket',
         responses: {
-          '200': { description: 'Closed. The solved mail is a draft in the Drafts folder of GRAPH_MAILBOX.' },
+          '200': {
+            description:
+              'Closed. The solved mail is a draft in the Drafts folder of GRAPH_MAILBOX.',
+          },
           '503': { description: 'Microsoft 365 is not connected, so no draft was created.' },
         },
       },
@@ -338,19 +343,25 @@ export const openApiDocument = {
     '/api/v1/staff/tickets/{number}/working': {
       post: {
         operationId: 'workingStaffTicket',
-        responses: { '503': { description: 'Microsoft 365 is not connected, so no draft was created.' } },
+        responses: {
+          '503': { description: 'Microsoft 365 is not connected, so no draft was created.' },
+        },
       },
     },
     '/api/v1/staff/tickets/{number}/question': {
       post: {
         operationId: 'questionStaffTicket',
-        responses: { '503': { description: 'Microsoft 365 is not connected, so no draft was created.' } },
+        responses: {
+          '503': { description: 'Microsoft 365 is not connected, so no draft was created.' },
+        },
       },
     },
     '/api/v1/staff/tickets/{number}/misread': {
       post: {
         operationId: 'misreadStaffTicket',
-        responses: { '200': { description: 'That mail ticket was removed and the reason stored.' } },
+        responses: {
+          '200': { description: 'That mail ticket was removed and the reason stored.' },
+        },
       },
     },
     '/api/v1/staff/mailbox': {

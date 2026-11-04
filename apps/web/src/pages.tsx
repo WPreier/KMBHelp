@@ -1,6 +1,4 @@
 import {
-  assignableStaffSchema,
-  availabilitySchema,
   categoryListSchema,
   createdTicketSchema,
   faqArticleSchema,
@@ -29,20 +27,6 @@ const firmLinks = publicLinkTargets({
 });
 const firmLinksMissing = !firmLinks.www || !firmLinks.home || !firmLinks.wiki;
 
-function weekDays(lang: 'de' | 'en'): Array<{ key: string; label: string }> {
-  const start = new Date();
-  return Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(start);
-    day.setDate(start.getDate() + index);
-    const label = new Intl.DateTimeFormat(lang === 'de' ? 'de-AT' : 'en-GB', {
-      weekday: 'short',
-      day: '2-digit',
-      month: '2-digit',
-    }).format(day);
-    return { key: day.toISOString().slice(0, 10), label };
-  });
-}
-
 export function HomePage() {
   const { lang, copy } = useLocale();
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -54,14 +38,6 @@ export function HomePage() {
   const [revision, setRevision] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
   const [askNotice, setAskNotice] = useState<string | null>(null);
-  const [assignees, setAssignees] = useState<{ id: string; displayName: string }[]>([]);
-  const [staffId, setStaffId] = useState('');
-  const [availability, setAvailability] = useState<{
-    configured: boolean;
-    windows: { start: string; end: string }[];
-    textDe: string;
-    textEn: string;
-  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,40 +59,6 @@ export function HomePage() {
     };
   }, [created, revision]);
 
-  useEffect(() => {
-    let cancelled = false;
-    getJson('/api/v1/staff/assignable', assignableStaffSchema.parse)
-      .then((body) => {
-        if (!cancelled) {
-          setAssignees(body.staff.filter((person) => person.active));
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setAssignees([]);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (staffId === '') {
-      setAvailability(null);
-      return;
-    }
-    let cancelled = false;
-    getJson(`/api/v1/staff/${staffId}/availability`, availabilitySchema.parse)
-      .then((body) => {
-        if (!cancelled) setAvailability(body);
-      })
-      .catch(() => {
-        if (!cancelled) setAvailability(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [staffId]);
-
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -132,7 +74,6 @@ export function HomePage() {
           subject: String(data.get('subject') ?? ''),
           body: String(data.get('body') ?? ''),
           requesterName: String(data.get('requesterName') ?? ''),
-          assignedStaffId: staffId,
           dueOn: String(data.get('dueOn') ?? ''),
           clientPriority: String(data.get('clientPriority') ?? ''),
           source: 'web',
@@ -140,7 +81,6 @@ export function HomePage() {
         (value) => createdTicketSchema.parse(value),
       );
       setCreated(result);
-      setStaffId('');
       form.reset();
     } catch (error) {
       const text = error instanceof RequestFailed ? error.text : null;
@@ -237,39 +177,6 @@ export function HomePage() {
           {copy.name}
           <input name="requesterName" maxLength={200} autoComplete="name" />
         </label>
-        <label>
-          {copy.assignee}
-          <select
-            name="assignedStaffId"
-            value={staffId}
-            onChange={(event) => setStaffId(event.target.value)}
-          >
-            <option value="">{copy.priorityUnset}</option>
-            {assignees.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-        <fieldset>
-          <legend>{copy.calendarTitle}</legend>
-          <div className="week">
-            {weekDays(lang).map((day) => (
-              <div key={day.key}>{day.label}</div>
-            ))}
-          </div>
-          {availability ? <p>{lang === 'de' ? availability.textDe : availability.textEn}</p> : null}
-          {availability && availability.windows.length > 0 ? (
-            <ul>
-              {availability.windows.map((window) => (
-                <li key={`${window.start}-${window.end}`}>
-                  {window.start} – {window.end}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </fieldset>
         <label>
           {copy.reportedPriority}
           <select name="clientPriority" defaultValue="">

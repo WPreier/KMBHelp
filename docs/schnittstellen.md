@@ -125,8 +125,8 @@ Alle fachlichen Aktionen, die Web, App, Worker oder MCP auslösen, gehen durch `
 
 Ressourcen mindestens:
 
-- `POST /api/v1/tickets` anonym, begrenzt. Optional ein aktiver Mitarbeiter. Inaktive Mitarbeiter werden abgelehnt. Der Kalender dazu ist `GET /api/v1/staff/:id/availability`. Ohne Microsoft-365-Freigabe bleibt er unverbunden und erfindet keine Termine.
-- `GET /api/v1/staff/assignable` nur aktive Mitarbeiter
+- `POST /api/v1/tickets` anonym, begrenzt. Ein anonymer Aufruf nennt keinen Mitarbeiter. Inaktive Mitarbeiter werden abgelehnt.
+- `GET /api/v1/staff/assignable` und `GET /api/v1/staff/:id/availability` antworten nur mit fertiger Mitarbeitersitzung, auf dem Server selbst aus `127.0.0.0/8`, oder mit `Authorization: Bearer` und dem Wert von `MCP_SERVICE_TOKEN`. Ohne das ist die Antwort 401. Die Liste enthält nur aktive Mitarbeiter. Der Kalender erfindet ohne Microsoft-365-Freigabe keine Termine. Das öffentliche Formular zeigt weder Namen noch Kalender.
 - `GET /api/v1/tickets/public` Arbeitsliste mit Nummer, Betreff, den ersten drei Zeichen der Mitarbeiter-E-Mail, Status, Priorität, Alter und Fälligkeit. Kein Beschreibungstext, kein Absender, keine Kommentare. Ein inaktiver Mitarbeiter bleibt an vorhandenen Tickets sichtbar.
 - `POST /api/v1/tickets/public/:number` schaltet offen und inaktiv, ändert die Priorität oder schließt dauerhaft
 - `POST /api/v1/tickets/public/:number/ask` legt von `GRAPH_MAILBOX` einen Entwurf an den zugeordneten Mitarbeiter: Betreff `Ticket` plus Nummer, der sichtbare Text, der Link `/mitarbeit/ticket/{nummer}` und der Satz „Benutzer fragt wann das gelöst ist“. Ohne Graph antwortet die API 503.

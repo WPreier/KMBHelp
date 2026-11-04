@@ -71,6 +71,8 @@ Die Seite `/anmelden` zeigt eine Fehlermeldung direkt unter der Einleitung, in R
 
 Ein lokaler Admin entsteht nur durch `pnpm install:helpdesk`. Derselbe Befehl ersetzt ihn, wenn er schon existiert: das alte Konto wird gelöscht und mit dem neuen Benutzernamen und Passwort angelegt. Domänenkonten bleiben. Benutzername und Passwort stehen danach in keiner Datei, nur der Hash in der Tabelle `staff`. Ohne diese Zeile prüft die Anmeldung das eingegebene Konto im Active Directory.
 
+Die öffentliche Seite und die App nennen keine Mitarbeiternamen und keinen Kalender. `GET /api/v1/staff/assignable` und `GET /api/v1/staff/:id/availability` antworten ohne fertige Sitzung mit 401. Ein Dienst sendet `Authorization: Bearer` und den Wert von `MCP_SERVICE_TOKEN`. Eine Verbindung aus `127.0.0.0/8` auf dem Server selbst bleibt ohne Anmeldung frei. Ein anonymes Ticket wird niemandem zugeordnet.
+
 Jede abgelehnte Anmeldung und jeder andere Fehler schreibt eine Zeile nach `/var/lib/kmbhelp/error.log`. Ein Seitenaufruf schreibt nach `/var/lib/kmbhelp/activity.log`, ein Mailvorgang nach `/var/lib/kmbhelp/mail.log`. Dieselben Zeilen der Seiten und Mails stehen in `activity_log`. Die Datei wird nach der Antwort geschrieben, die Anfrage wartet nicht auf die Festplatte. Passwort, Datenbank-URL, Zertifikatstext und Mailtext stehen nicht darin. Die Prüfung „Das Dienstkonto kann nicht suchen.“ steht in `error.log`.
 
 ## Konfiguration
