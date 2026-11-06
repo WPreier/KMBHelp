@@ -117,6 +117,7 @@ export const sessionViewSchema = z.object({
   isLocalAdmin: z.boolean(),
   displayName: z.string().nullable(),
   internalAdmin: z.boolean(),
+  email: z.string().nullable().optional(),
 });
 
 export type NoticeList = z.infer<typeof noticeListSchema>;

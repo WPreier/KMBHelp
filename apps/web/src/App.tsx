@@ -24,6 +24,7 @@ import {
   FaqPage,
   HomePage,
   MissingPage,
+  MyOpenTicketsPage,
   OpenTicketsPage,
   SearchPage,
 } from './pages.js';
@@ -204,15 +205,17 @@ function Shell({
       </div>
       <main id="content">
         <nav className="content-nav" aria-label={copy.contentNav}>
-          <Link to="/offen">{copy.openTickets}</Link>
-          <Link to="/">{copy.fileTicket}</Link>
-          <Link to="/abgeschlossen">{copy.guides}</Link>
           <Link to="/mitarbeit/dashboard">{copy.dashboardTitle}</Link>
+          <Link to="/">{copy.fileTicket}</Link>
+          <Link to="/meine">{copy.myOpenTickets}</Link>
+          <Link to="/offen">{copy.openTickets}</Link>
+          <Link to="/abgeschlossen">{copy.guides}</Link>
         </nav>
         {session?.signedIn ? <AdminLinks /> : null}
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/offen" element={<OpenTicketsPage />} />
+          <Route path="/meine" element={<MyOpenTicketsPage />} />
           <Route path="/abgeschlossen" element={<ClosedTicketsPage />} />
           <Route path="/abgeschlossen/:code" element={<ClosedSummaryPage />} />
           <Route path="/ticket/:code" element={<TicketWikiPage />} />

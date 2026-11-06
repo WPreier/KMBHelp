@@ -103,6 +103,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
         isLocalAdmin: true,
         displayName: null,
         internalAdmin: true,
+        email: null,
       });
     }
     const anonymous = {
@@ -110,6 +111,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
       isLocalAdmin: false,
       displayName: null,
       internalAdmin: false,
+      email: null,
     };
     if (!options.database) return sessionViewSchema.parse(anonymous);
     const current = await staffFromSession(options.database, request, now());
@@ -125,6 +127,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
       isLocalAdmin: current.isLocalAdmin,
       displayName: loginName || row?.displayName || current.email,
       internalAdmin: false,
+      email: current.email,
     });
   });
 

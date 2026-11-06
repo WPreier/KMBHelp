@@ -10,6 +10,7 @@ import {
   publicLinkTargets,
   publicTicketListSchema,
   publicTicketStateSchema,
+  sessionViewSchema,
   searchResultSchema,
   type CategoryOption,
   type CreatedTicket,
@@ -101,11 +102,27 @@ export function HomePage() {
       setCreated(result);
       form.reset();
       setAssigneeEmail(helpdeskAssigneeEmail);
+      return result;
     } catch (error) {
       const text = error instanceof RequestFailed ? error.text : null;
       setFormError(text ? text[lang] : copy.sendFailed);
+      return null;
     } finally {
       setPending(false);
+    }
+  }
+
+  async function createAndClose(form: HTMLFormElement) {
+    const result = await createTicket(form);
+    if (!result) return;
+    try {
+      await postJson(`/api/v1/tickets/public/${result.number}`, { action: 'close' }, (value) =>
+        publicTicketStateSchema.parse(value),
+      );
+      setAskNotice(copy.closeQueued);
+    } catch (error) {
+      const text = error instanceof RequestFailed ? error.text : null;
+      setFormError(text ? text[lang] : copy.sendFailed);
     }
   }
 
@@ -216,6 +233,24 @@ export function HomePage() {
               {copy.submit}
             </button>
           </Hint>
+          <Hint text={copy.confirmFinish}>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={(event) => {
+                const form = event.currentTarget.form;
+                if (!form) return;
+                setPendingConfirm({
+                  message: copy.confirmFinish,
+                  run: () => {
+                    void createAndClose(form);
+                  },
+                });
+              }}
+            >
+              {copy.closeTicket}
+            </button>
+          </Hint>
           <Hint text={copy.resetTitle}>
             <button
               type="button"
@@ -286,7 +321,17 @@ export function OpenTicketsPage() {
   return <OpenTicketList refreshToken={0} />;
 }
 
-export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
+export function MyOpenTicketsPage() {
+  return <OpenTicketList refreshToken={0} mine />;
+}
+
+export function OpenTicketList({
+  refreshToken,
+  mine = false,
+}: {
+  refreshToken: number;
+  mine?: boolean;
+}) {
   const { lang, copy } = useLocale();
   const [tickets, setTickets] = useState<PublicTicket[]>([]);
   const [loadError, setLoadError] = useState(false);
@@ -297,6 +342,25 @@ export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
     message: string;
     run: () => void;
   } | null>(null);
+  const [accountEmail, setAccountEmail] = useState<string | null | undefined>(
+    mine ? undefined : null,
+  );
+
+  useEffect(() => {
+    if (!mine) return;
+    let cancelled = false;
+    getJson('/api/v1/auth/session', (value) => sessionViewSchema.parse(value))
+      .then((session) => {
+        if (cancelled) return;
+        setAccountEmail(session.signedIn && session.email ? session.email : null);
+      })
+      .catch(() => {
+        if (!cancelled) setAccountEmail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mine]);
 
   useEffect(() => {
     let cancelled = false;
@@ -339,8 +403,16 @@ export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
     }
   }
 
+  const visible = mine
+    ? tickets.filter(
+        (entry) =>
+          accountEmail !== null &&
+          accountEmail !== undefined &&
+          entry.assigneeEmail.toLowerCase() === accountEmail.toLowerCase(),
+      )
+    : tickets;
   const groups = new Map<string, PublicTicket[]>();
-  for (const entry of tickets) {
+  for (const entry of visible) {
     const list = groups.get(entry.groupCode) ?? [];
     list.push(entry);
     groups.set(entry.groupCode, list);
@@ -348,11 +420,14 @@ export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
 
   return (
     <>
-      <h2>{copy.openTickets}</h2>
+      <h2>{mine ? copy.myOpenTickets : copy.openTickets}</h2>
       {loadError ? <p role="alert">{copy.loadFailed}</p> : null}
       {actionError ? <p role="alert">{actionError}</p> : null}
       {askNotice ? <p role="status">{askNotice}</p> : null}
-      {tickets.length === 0 && !loadError ? <p>{copy.noOpenTickets}</p> : null}
+      {mine && accountEmail === null ? <p>{copy.myOpenSignedOut}</p> : null}
+      {visible.length === 0 && !loadError && (!mine || accountEmail) ? (
+        <p>{mine ? copy.myOpenEmpty : copy.noOpenTickets}</p>
+      ) : null}
       {[...groups.entries()].map(([groupCode, entries]) => (
         <section className="group" key={groupCode}>
           <h3>{lang === 'de' ? entries[0]?.groupLabelDe : entries[0]?.groupLabelEn}</h3>
@@ -366,7 +441,7 @@ export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
                     <th scope="col">{copy.ticketText}</th>
                     <th scope="col">{copy.age}</th>
                     <th scope="col">{copy.dueUntil}</th>
-                    <th scope="col">{copy.markOpen}</th>
+                    <th scope="col">{copy.ticketOpen}</th>
                     <th scope="col">{copy.priority}</th>
                     <th scope="col">{copy.doneHead}</th>
                     <th scope="col">{copy.askHead}</th>
@@ -376,8 +451,6 @@ export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
                   {entries.map((entry) => {
                     const switchTitle =
                       entry.status === 'inactive' ? copy.reopenTitle : copy.deactivateTitle;
-                    const switchConfirm =
-                      entry.status === 'inactive' ? copy.confirmReopen : copy.confirmDeactivate;
                     const locked =
                       entry.status === 'closed' ||
                       entry.status === 'expired' ||
@@ -400,17 +473,12 @@ export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
                                 type="checkbox"
                                 checked={entry.status === 'open'}
                                 disabled={locked}
-                                aria-label={switchTitle}
+                                aria-label={copy.ticketOpen}
                                 onChange={() => {
-                                  setPendingConfirm({
-                                    message: switchConfirm,
-                                    run: () => {
-                                      void changeTicket(entry.number, { action: 'toggle' });
-                                    },
-                                  });
+                                  void changeTicket(entry.number, { action: 'toggle' });
                                 }}
                               />
-                              {copy.markOpen}
+                              {copy.ticketOpen}
                             </label>
                           </Hint>
                         </td>

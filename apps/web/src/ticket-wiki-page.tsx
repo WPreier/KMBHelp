@@ -9,6 +9,7 @@ import {
   defaultTicketFileTypes,
   isoDateToDisplay,
   renderMarkdownHtml,
+  publicTicketStateSchema,
   sessionViewSchema,
   ticketFileViewSchema,
   ticketPageSchema,
@@ -222,7 +223,9 @@ export function TicketWikiPage() {
   const [fileError, setFileError] = useState('');
   const [fileTypes, setFileTypes] = useState(() => defaultTicketFileTypes.split(', '));
   const [maxFileBytes, setMaxFileBytes] = useState(defaultTicketFileBytes);
-  const [confirming, setConfirming] = useState<'text' | 'file' | 'delete' | 'ask' | null>(null);
+  const [confirming, setConfirming] = useState<'text' | 'file' | 'delete' | 'ask' | 'close' | null>(
+    null,
+  );
   const [loaded, setLoaded] = useState(false);
   const draft = useRef('');
   const pendingFile = useRef<File | null>(null);
@@ -309,7 +312,7 @@ export function TicketWikiPage() {
     };
   }, [confirming]);
 
-  async function saveText() {
+  async function saveText(): Promise<boolean> {
     try {
       const next = htmlToMarkdown(surface.current?.innerHTML ?? '');
       const result = await postJson(
@@ -322,10 +325,45 @@ export function TicketWikiPage() {
       setLastEditor(result.lastEditor);
       setNotice(copy.saved);
       setFileError('');
+      return true;
     } catch (error) {
       setNotice('');
       const text = error instanceof RequestFailed ? error.text : null;
       setFileError(text ? text[lang] : copy.saveFailed);
+      return false;
+    }
+  }
+
+  async function toggleOpen() {
+    if (!header || header.frozen) return;
+    try {
+      const next = await postJson(
+        `/api/v1/tickets/public/${header.number}`,
+        { action: 'toggle' },
+        (value) => publicTicketStateSchema.parse(value),
+      );
+      setHeader({ ...header, status: next.status });
+      setFileError('');
+    } catch (error) {
+      const text = error instanceof RequestFailed ? error.text : null;
+      setFileError(text ? text[lang] : copy.saveFailed);
+    }
+  }
+
+  async function finishTicket() {
+    if (!header) return;
+    const saved = await saveText();
+    if (!saved) return;
+    try {
+      await postJson(`/api/v1/tickets/public/${header.number}`, { action: 'close' }, (value) =>
+        publicTicketStateSchema.parse(value),
+      );
+      setNotice(copy.closeQueued);
+      setReloadToken((value) => value + 1);
+    } catch (error) {
+      setNotice('');
+      const text = error instanceof RequestFailed ? error.text : null;
+      setFileError(text ? text[lang] : copy.sendFailed);
     }
   }
 
@@ -493,6 +531,21 @@ export function TicketWikiPage() {
               )}
             </dd>
           </div>
+          <div>
+            <dt>{copy.ticketOpen}</dt>
+            <dd>
+              <label className="check">
+                <input
+                  type="checkbox"
+                  checked={header.status === 'open'}
+                  disabled={frozen || header.status === 'expired' || header.status === 'closed'}
+                  aria-label={copy.ticketOpen}
+                  onChange={() => void toggleOpen()}
+                />
+                {copy.ticketOpen}
+              </label>
+            </dd>
+          </div>
           {staff ? (
             <div>
               <dt>{copy.firstDescription}</dt>
@@ -540,6 +593,11 @@ export function TicketWikiPage() {
                 <a className="text-button" href={`/api/v1/staff/tickets/work/${code}/pdf`}>
                   {copy.createPdf}
                 </a>
+              </Hint>
+              <Hint text={copy.confirmFinish}>
+                <button type="button" disabled={frozen} onClick={() => setConfirming('close')}>
+                  {copy.closeTicket}
+                </button>
               </Hint>
               <Hint text={copy.saveTextTitle}>
                 <button type="button" disabled={frozen} onClick={() => setConfirming('text')}>
@@ -678,7 +736,9 @@ export function TicketWikiPage() {
               ? copy.confirmDelete
               : confirming === 'ask'
                 ? copy.confirmAsk
-                : `${confirming === 'text' ? copy.saveText : copy.addFile}?`}
+                : confirming === 'close'
+                  ? copy.confirmFinish
+                  : `${confirming === 'text' ? copy.saveText : copy.addFile}?`}
           </p>
           <button
             type="button"
@@ -689,6 +749,7 @@ export function TicketWikiPage() {
               if (kind === 'file') void storeFile();
               if (kind === 'delete') void removeFile();
               if (kind === 'ask') void askAssignee();
+              if (kind === 'close') void finishTicket();
             }}
           >
             {copy.confirmYes}
