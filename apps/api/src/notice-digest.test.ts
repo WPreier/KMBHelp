@@ -34,9 +34,9 @@ describe('notice digest', () => {
 
   it('runs in production and stays quiet on a workstation unless asked', () => {
     expect(digestEnabled({ NODE_ENV: 'production' })).toBe(true);
-    expect(digestEnabled({ NODE_ENV: 'production', NOTICE_DIGEST: 'off' })).toBe(false);
+    expect(digestEnabled({ NODE_ENV: 'production', MAIL_NOTICE_DIGEST: 'off' })).toBe(false);
     expect(digestEnabled({ NODE_ENV: 'development' })).toBe(false);
-    expect(digestEnabled({ NODE_ENV: 'development', NOTICE_DIGEST: 'on' })).toBe(true);
+    expect(digestEnabled({ NODE_ENV: 'development', MAIL_NOTICE_DIGEST: 'on' })).toBe(true);
     expect(digestHour('7')).toBe(7);
     expect(digestHour('')).toBe(7);
     expect(digestHour('24')).toBe(7);

@@ -2,13 +2,11 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { category, staff, ticket, ticketEvent, ticketFile, type Database } from '@kmbhelp/db';
 import {
-  allowedTicketFile,
   archiveIndexSchema,
   closedTicketListSchema,
   closedTicketPageSchema,
   impacts,
   isTicketCode,
-  maxTicketFileBytes,
   priorities,
   publicErrors,
   ticketFileViewSchema,
@@ -16,6 +14,9 @@ import {
   ticketPageSchema,
   ticketSavedSchema,
   ticketStatuses,
+  ticketFileAllowed,
+  ticketFileMatchesExtension,
+  ticketFilePolicy,
   ticketUploadSchema,
   ticketWorkSchema,
 } from '@kmbhelp/shared';
@@ -94,6 +95,7 @@ export function registerTicketPages(
       updatedAt: row.updatedAt.toISOString(),
       lastEditor: row.lastEditor,
       files: await fileViews(options.db(), row.id),
+      ...filePolicy(),
     });
   });
 
@@ -159,12 +161,16 @@ export function registerTicketPages(
       await options.reader(request);
       const parsed = ticketUploadSchema.safeParse(request.body);
       if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
-      if (!allowedTicketFile(parsed.data.name)) {
-        throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+      const policy = ticketFilePolicy(process.env);
+      if (!ticketFileAllowed(parsed.data.name, policy.extensions)) {
+        throw new PublicError(400, 'file_type', publicErrors.fileType);
       }
       const bytes = Buffer.from(parsed.data.contentBase64, 'base64');
-      if (bytes.length < 1 || bytes.length > maxTicketFileBytes) {
-        throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+      if (bytes.length < 1 || bytes.length > policy.maxBytes) {
+        throw new PublicError(400, 'file_too_big', publicErrors.fileTooBig);
+      }
+      if (!ticketFileMatchesExtension(parsed.data.name, bytes)) {
+        throw new PublicError(400, 'file_content', publicErrors.fileContent);
       }
       const row = await openRow(options.db(), request.params.code);
       const inserted = await options
@@ -248,6 +254,11 @@ export function registerTicketPages(
       return { ok: true };
     },
   );
+}
+
+function filePolicy(): { fileTypes: string[]; maxFileBytes: number } {
+  const policy = ticketFilePolicy(process.env);
+  return { fileTypes: [...policy.extensions], maxFileBytes: policy.maxBytes };
 }
 
 async function touchTicket(

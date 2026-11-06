@@ -76,11 +76,11 @@ export function modelProviderFromEnv(
   env: NodeJS.ProcessEnv,
   fetchImpl: typeof fetch = fetch,
 ): ModelProvider {
-  const endpoint = env.AI_ENDPOINT?.trim() ?? '';
-  const region = env.AI_REGION?.trim() ?? '';
-  const key = env.AI_API_KEY?.trim() ?? '';
-  const avv = env.AI_AVV_REFERENCE?.trim() ?? '';
-  const providerName = env.AI_PROVIDER?.trim() || 'grok';
+  const endpoint = env.SEARCH_AI_ENDPOINT?.trim() ?? '';
+  const region = env.SEARCH_AI_REGION?.trim() ?? '';
+  const key = env.SEARCH_AI_API_KEY?.trim() ?? '';
+  const avv = env.SEARCH_AI_AVV_REFERENCE?.trim() ?? '';
+  const providerName = env.SEARCH_AI_PROVIDER?.trim() || 'grok';
   if (!endpoint || !region || !key || !avv) return unconfiguredModel;
   if (!endpointAllowsProcessing(endpoint) || !regionAllowsProcessing(region))
     return unconfiguredModel;

@@ -18,7 +18,15 @@ import { getJson } from './api.js';
 import { AdminPage, SignInPage } from './auth-pages.js';
 import { AdminLinks, ConfigurationPage, NoticesPage } from './operations-pages.js';
 import { TermPage } from './vocabulary-pages.js';
-import { ArticlePage, FaqListPage, FaqPage, HomePage, MissingPage, SearchPage } from './pages.js';
+import {
+  ArticlePage,
+  FaqListPage,
+  FaqPage,
+  HomePage,
+  MissingPage,
+  OpenTicketsPage,
+  SearchPage,
+} from './pages.js';
 import {
   ArchiveIndexPage,
   ClosedSummaryPage,
@@ -196,6 +204,7 @@ function Shell({
       </div>
       <main id="content">
         <nav className="content-nav" aria-label={copy.contentNav}>
+          <Link to="/offen">{copy.openTickets}</Link>
           <Link to="/">{copy.fileTicket}</Link>
           <Link to="/abgeschlossen">{copy.guides}</Link>
           <Link to="/mitarbeit/dashboard">{copy.dashboardTitle}</Link>
@@ -203,6 +212,7 @@ function Shell({
         {session?.signedIn ? <AdminLinks /> : null}
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/offen" element={<OpenTicketsPage />} />
           <Route path="/abgeschlossen" element={<ClosedTicketsPage />} />
           <Route path="/abgeschlossen/:code" element={<ClosedSummaryPage />} />
           <Route path="/ticket/:code" element={<TicketWikiPage />} />

@@ -16,6 +16,14 @@ export {
   type TicketType,
 } from './domain.js';
 export { allowedTicketFile, formatTicketCode, isTicketCode } from './ticket-code.js';
+export {
+  absoluteTicketFileBytes,
+  defaultTicketFileBytes,
+  defaultTicketFileTypes,
+  ticketFileAllowed,
+  ticketFileMatchesExtension,
+  ticketFilePolicy,
+} from './ticket-file.js';
 export { maxTicketFileBytes, renderMarkdownHtml } from './markdown.js';
 export {
   backupCloseSchema,

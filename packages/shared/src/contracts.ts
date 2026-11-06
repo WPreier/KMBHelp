@@ -212,6 +212,8 @@ export const ticketWorkSchema = z
     updatedAt: z.string(),
     lastEditor: z.string().nullable(),
     files: z.array(ticketFileViewSchema),
+    fileTypes: z.array(z.string().min(1)).min(1),
+    maxFileBytes: z.number().int().positive(),
   })
   .strict();
 
@@ -249,7 +251,7 @@ export const ticketUploadSchema = z
   .object({
     name: z.string().trim().min(1).max(180),
     mediaType: z.string().trim().min(1).max(120),
-    contentBase64: z.string().min(1).max(14_000_000),
+    contentBase64: z.string().min(1).max(48_000_000),
   })
   .strict();
 

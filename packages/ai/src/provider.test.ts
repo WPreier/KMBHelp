@@ -14,15 +14,15 @@ describe('model provider', () => {
       return new Response('{}');
     };
     const missing = modelProviderFromEnv(
-      { AI_ENDPOINT: 'https://model.example.eu/v1', AI_REGION: 'germanywestcentral' },
+      { SEARCH_AI_ENDPOINT: 'https://model.example.eu/v1', SEARCH_AI_REGION: 'germanywestcentral' },
       fetchImpl,
     );
     const unitedStates = modelProviderFromEnv(
       {
-        AI_ENDPOINT: 'https://model.example.eu/v1',
-        AI_REGION: 'eastus',
-        AI_API_KEY: 'secret-key',
-        AI_AVV_REFERENCE: 'AVV-1',
+        SEARCH_AI_ENDPOINT: 'https://model.example.eu/v1',
+        SEARCH_AI_REGION: 'eastus',
+        SEARCH_AI_API_KEY: 'secret-key',
+        SEARCH_AI_AVV_REFERENCE: 'AVV-1',
       },
       fetchImpl,
     );

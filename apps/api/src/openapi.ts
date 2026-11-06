@@ -12,7 +12,7 @@ export const openApiDocument = {
         responses: {
           '200': {
             description:
-              'API and database are reachable. worker is up, down, or not_configured. smtp is up when Postfix accepts TCP on SMTP_SERVER and SMTP_PORT, otherwise down. A stopped worker or a closed SMTP port does not stop the site.',
+              'API and database are reachable. worker is up, down, or not_configured. smtp is up when Postfix accepts TCP on MAIL_SMTP_SERVER and MAIL_SMTP_PORT, otherwise down. A stopped worker or a closed SMTP port does not stop the site.',
           },
           '503': { description: 'API is up and the database is not reachable.' },
         },

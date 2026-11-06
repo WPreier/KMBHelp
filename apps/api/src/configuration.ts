@@ -11,10 +11,10 @@ const secretKeys = [
   'LDAPS_BIND_PASSWORD',
   'LDAPS_CA_PEM',
   'GRAPH_CLIENT_SECRET',
-  'AI_API_KEY',
+  'SEARCH_AI_API_KEY',
   'MCP_SERVICE_TOKEN',
   'LOCAL_ADMIN_PASSWORD',
-  'SMTP_PASSWD',
+  'MAIL_SMTP_PASSWD',
 ];
 
 const shownKeys = [
@@ -40,23 +40,23 @@ const shownKeys = [
   'ACCESS_LOG_RETENTION_DAYS',
   'WEBAUTHN_RP_ID',
   'WEBAUTHN_ORIGIN',
-  'AI_PROVIDER',
+  'SEARCH_AI_PROVIDER',
   'INTERNAL_MAIL_DOMAINS',
-  'AI_MAIL_PROMPT',
-  'AI_ENDPOINT',
-  'AI_REGION',
-  'AI_AVV_REFERENCE',
-  'AI_AUTO_REPLY_CATEGORIES',
-  'OLLAMA_URL',
-  'OLLAMA_MODEL',
+  'MAIL_AI_PROMPT',
+  'SEARCH_AI_ENDPOINT',
+  'SEARCH_AI_REGION',
+  'SEARCH_AI_AVV_REFERENCE',
+  'SEARCH_AI_AUTO_REPLY_CATEGORIES',
+  'MAILCHECK_KI_URL',
+  'MAILCHECK_KI_MODEL',
   'MAIL_ERROR_TO',
-  'SMTP_SERVER',
-  'SMTP_PORT',
-  'SMTP_USER',
-  'SMTP_LOGIN',
-  'SMTP_TO',
-  'NOTICE_DIGEST',
-  'NOTICE_DIGEST_HOUR',
+  'MAIL_SMTP_SERVER',
+  'MAIL_SMTP_PORT',
+  'MAIL_SMTP_USER',
+  'MAIL_SMTP_LOGIN',
+  'MAIL_SMTP_TO',
+  'MAIL_NOTICE_DIGEST',
+  'MAIL_NOTICE_DIGEST_HOUR',
 ];
 
 export type Check = ConfigurationReport['checks'][number];
@@ -455,23 +455,23 @@ export async function inspectConfiguration(
   }
 
   checks.push(
-    present(env, 'AI_ENDPOINT')
+    present(env, 'SEARCH_AI_ENDPOINT')
       ? check(
           'ai',
           'ok',
-          'Ein externer KI-Endpunkt ist gesetzt. Die Mailprüfung spricht davon unabhängig OLLAMA_URL.',
-          'An external model endpoint is set. Mail review calls OLLAMA_URL independently of it.',
+          'Ein externer KI-Endpunkt ist gesetzt. Die Mailprüfung spricht davon unabhängig MAILCHECK_KI_URL.',
+          'An external model endpoint is set. Mail review calls MAILCHECK_KI_URL independently of it.',
         )
       : check(
           'ai.not_configured',
           'informational',
-          'Kein externer KI-Endpunkt. Die Mailprüfung spricht OLLAMA_URL. Die Suche bleibt beim Satz aus Phase 2.',
-          'No external model endpoint. Mail review calls OLLAMA_URL. Search keeps the phase 2 sentence.',
+          'Kein externer KI-Endpunkt. Die Mailprüfung spricht MAILCHECK_KI_URL. Die Suche bleibt beim Satz aus Phase 2.',
+          'No external model endpoint. Mail review calls MAILCHECK_KI_URL. Search keeps the phase 2 sentence.',
         ),
   );
 
-  const smtpHost = env.SMTP_SERVER?.trim() || '127.0.0.1';
-  const smtpPort = Number(env.SMTP_PORT?.trim() || '25');
+  const smtpHost = env.MAIL_SMTP_SERVER?.trim() || '127.0.0.1';
+  const smtpPort = Number(env.MAIL_SMTP_PORT?.trim() || '25');
   const smtpReachable =
     Number.isInteger(smtpPort) && smtpPort >= 1 && smtpPort <= 65535
       ? await probes.tcp(smtpHost, smtpPort)

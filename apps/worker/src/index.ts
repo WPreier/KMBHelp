@@ -1,11 +1,12 @@
 import { createDatabase } from '@kmbhelp/db';
-import { loadEnvFileIfPresent, loadWorkstationEnv } from '@kmbhelp/shared/env';
+import { adoptLegacyConfig, loadEnvFileIfPresent, loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { runMailCycle } from '@kmbhelp/api/mail-cycle';
 import { runTicketArchive } from '@kmbhelp/api/ticket-archive';
 import { workerStartupEvent } from './worker.js';
 
 loadEnvFileIfPresent(new URL('../../../.env', import.meta.url));
 loadWorkstationEnv();
+adoptLegacyConfig();
 
 const database = process.env.DATABASE_URL?.trim()
   ? createDatabase(process.env.DATABASE_URL)

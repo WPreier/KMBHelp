@@ -31,14 +31,10 @@ const firmLinksMissing = !firmLinks.www || !firmLinks.home || !firmLinks.wiki;
 export function HomePage() {
   const { lang, copy } = useLocale();
   const [categories, setCategories] = useState<CategoryOption[]>([]);
-  const [tickets, setTickets] = useState<PublicTicket[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedTicket | null>(null);
   const [pending, setPending] = useState(false);
-  const [revision, setRevision] = useState(0);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [askNotice, setAskNotice] = useState<string | null>(null);
   const [pendingConfirm, setPendingConfirm] = useState<{
     message: string;
     run: () => void;
@@ -46,14 +42,10 @@ export function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      getJson('/api/v1/categories', (value) => categoryListSchema.parse(value)),
-      getJson('/api/v1/tickets/public', (value) => publicTicketListSchema.parse(value)),
-    ])
-      .then(([categoryBody, ticketBody]) => {
+    getJson('/api/v1/categories', (value) => categoryListSchema.parse(value))
+      .then((categoryBody) => {
         if (cancelled) return;
         setCategories(categoryBody.categories);
-        setTickets(ticketBody.tickets);
         setLoadError(false);
       })
       .catch(() => {
@@ -62,7 +54,7 @@ export function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [created, revision]);
+  }, []);
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -102,38 +94,6 @@ export function HomePage() {
     } finally {
       setPending(false);
     }
-  }
-
-  async function askTicket(number: number) {
-    setAskNotice(null);
-    setActionError(null);
-    try {
-      await postJson(`/api/v1/tickets/public/${number}/ask`, {}, (value) => value);
-      setAskNotice(copy.mailSent);
-    } catch (error) {
-      const text = error instanceof RequestFailed ? error.text : null;
-      setActionError(text ? text[lang] : copy.sendFailed);
-    }
-  }
-
-  async function changeTicket(number: number, body: { action: string; priority?: string }) {
-    setActionError(null);
-    try {
-      await postJson(`/api/v1/tickets/public/${number}`, body, (value) =>
-        publicTicketStateSchema.parse(value),
-      );
-      setRevision((value) => value + 1);
-    } catch (error) {
-      const text = error instanceof RequestFailed ? error.text : null;
-      setActionError(text ? text[lang] : copy.sendFailed);
-    }
-  }
-
-  const groups = new Map<string, PublicTicket[]>();
-  for (const entry of tickets) {
-    const list = groups.get(entry.groupCode) ?? [];
-    list.push(entry);
-    groups.set(entry.groupCode, list);
   }
 
   return (
@@ -235,6 +195,91 @@ export function HomePage() {
           </p>
         </section>
       ) : null}
+      {loadError ? <p role="alert">{copy.loadFailed}</p> : null}
+      <OpenTicketList refreshToken={created?.number ?? 0} />
+      {pendingConfirm ? (
+        <ConfirmDialog
+          message={pendingConfirm.message}
+          yesLabel={copy.confirmYes}
+          noLabel={copy.confirmNo}
+          onYes={() => {
+            const run = pendingConfirm.run;
+            setPendingConfirm(null);
+            run();
+          }}
+          onNo={() => setPendingConfirm(null)}
+        />
+      ) : null}
+    </>
+  );
+}
+
+export function OpenTicketsPage() {
+  return <OpenTicketList refreshToken={0} />;
+}
+
+export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
+  const { lang, copy } = useLocale();
+  const [tickets, setTickets] = useState<PublicTicket[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [askNotice, setAskNotice] = useState<string | null>(null);
+  const [revision, setRevision] = useState(0);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    message: string;
+    run: () => void;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getJson('/api/v1/tickets/public', (value) => publicTicketListSchema.parse(value))
+      .then((body) => {
+        if (cancelled) return;
+        setTickets(body.tickets);
+        setLoadError(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshToken, revision]);
+
+  async function askTicket(number: number) {
+    setAskNotice(null);
+    setActionError(null);
+    try {
+      await postJson(`/api/v1/tickets/public/${number}/ask`, {}, (value) => value);
+      setAskNotice(copy.mailSent);
+    } catch (error) {
+      const text = error instanceof RequestFailed ? error.text : null;
+      setActionError(text ? text[lang] : copy.sendFailed);
+    }
+  }
+
+  async function changeTicket(number: number, body: { action: string; priority?: string }) {
+    setActionError(null);
+    try {
+      await postJson(`/api/v1/tickets/public/${number}`, body, (value) =>
+        publicTicketStateSchema.parse(value),
+      );
+      setRevision((value) => value + 1);
+    } catch (error) {
+      const text = error instanceof RequestFailed ? error.text : null;
+      setActionError(text ? text[lang] : copy.sendFailed);
+    }
+  }
+
+  const groups = new Map<string, PublicTicket[]>();
+  for (const entry of tickets) {
+    const list = groups.get(entry.groupCode) ?? [];
+    list.push(entry);
+    groups.set(entry.groupCode, list);
+  }
+
+  return (
+    <>
       <h2>{copy.openTickets}</h2>
       {loadError ? <p role="alert">{copy.loadFailed}</p> : null}
       {actionError ? <p role="alert">{actionError}</p> : null}

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { sql } from 'drizzle-orm';
 import { appSetting, createDatabase, type Database } from '@kmbhelp/db';
+import { legacyConfigNames } from '@kmbhelp/shared/env';
 import {
   configField,
   isSecretConfig,
@@ -97,11 +98,22 @@ export async function applyStoredConfig(): Promise<void> {
     const rows = await database.db
       .select({ key: appSetting.key, value: appSetting.value })
       .from(appSetting);
+    const carried: Array<{ key: string; value: string }> = [];
     for (const row of rows) {
       if (!row.key.startsWith('config.')) continue;
       const key = row.key.slice('config.'.length);
+      const current = legacyConfigNames[key];
+      if (current) {
+        carried.push({ key: current, value: row.value });
+        continue;
+      }
       if (!configField(key) || isSecretConfig(key) || row.value.trim() === '') continue;
       process.env[key] = row.value;
+    }
+    for (const row of carried) {
+      if ((process.env[row.key] ?? '').trim() !== '') continue;
+      if (!configField(row.key) || isSecretConfig(row.key) || row.value.trim() === '') continue;
+      process.env[row.key] = row.value;
     }
   } catch {
     // The table is absent until the first migration.

@@ -24,7 +24,7 @@ Gesundheit:
 curl -fsS https://helpdesk.kmbcloud.at/api/health
 ```
 
-`worker` steht auf `up`, `down` oder `not_configured`. `smtp` steht auf `up`, wenn Postfix auf `SMTP_SERVER` und `SMTP_PORT` eine Verbindung annimmt, sonst auf `down`. `down` bei Worker oder Postfix macht die Webseite nicht unerreichbar. Die Antwort bleibt 200, solange die Datenbank antwortet. `not_configured` heißt: die Graph-Werte fehlen, der Worker stürzt nicht ab. Das Ergebnis für Postfix wird 30 Sekunden gehalten, damit jede Abfrage nicht neu verbindet.
+`worker` steht auf `up`, `down` oder `not_configured`. `smtp` steht auf `up`, wenn Postfix auf `MAIL_SMTP_SERVER` und `MAIL_SMTP_PORT` eine Verbindung annimmt, sonst auf `down`. `down` bei Worker oder Postfix macht die Webseite nicht unerreichbar. Die Antwort bleibt 200, solange die Datenbank antwortet. `not_configured` heißt: die Graph-Werte fehlen, der Worker stürzt nicht ab. Das Ergebnis für Postfix wird 30 Sekunden gehalten, damit jede Abfrage nicht neu verbindet.
 
 Das Dashboard unter `/mitarbeit/dashboard` zeigt dieselben Dienste mit einem grünen Häkchen oder einem roten Kreuz: Datenbank, Mail-Worker, Postfix, Verzeichnis, Helpdesk-Mailbox, Ollama und Syslog. Grün heißt, der Dienst antwortet. Rot heißt, er meldet einen Fehler oder ist nicht erreichbar. Beim Verzeichnis zählen ein lesbares, nicht abgelaufenes Zertifikat, eine offene LDAPS-Verbindung und eine Suche mit dem Dienstkonto. Die Mailbox gilt als in Ordnung, wenn die Graph-Anmeldung angenommen wird. Syslog ist grün, sobald ein Ziel gesetzt ist. UDP bestätigt den Empfang nicht. Die Ticketzahlen laden unabhängig von dieser Prüfung.
 
@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.2`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.3`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 
@@ -85,11 +85,11 @@ Jede abgelehnte Anmeldung und jeder andere Fehler schreibt eine Zeile nach `/var
 
 Die Seite ist `https://helpdesk.kmbcloud.at/verwaltung/konfiguration`. Sie ist aus `192.168.36.0/24` und `192.168.191.0/24` mit Anmeldung erreichbar, und auf dem Server selbst ohne Anmeldung.
 
-Werte ohne Geheimnis speichert die Seite in der Datenbank und in `.env`. Ein Geheimnis, darunter `SMTP_PASSWD` und `LDAPS_CA_PEM`, schreibt die Seite auf dem Produktionsserver nicht. Es steht in `/etc/kmbhelp/kmbhelp.env`. Danach die API und den Worker neu starten.
+Die Konfiguration steht alphabetisch. Ältere Namen wie `OLLAMA_URL`, `SMTP_SERVER`, `NOTICE_DIGEST` und `AI_ENDPOINT` werden noch gelesen, solange der neue Name leer ist. Werte ohne Geheimnis speichert die Seite in der Datenbank und in `.env`. Ein Geheimnis, darunter `MAIL_SMTP_PASSWD` und `LDAPS_CA_PEM`, schreibt die Seite auf dem Produktionsserver nicht. Es steht in `/etc/kmbhelp/kmbhelp.env`. Danach die API und den Worker neu starten.
 
 Das Domänencontroller-Zertifikat liegt als PEM-Datei unter `/etc/kmbhelp/madc1.crt`, mit `BEGIN CERTIFICATE`, `END CERTIFICATE` und echten Zeilenumbrüchen. `LDAPS_CA_FILE` nennt diesen Pfad. `LDAPS_CA_PEM` bleibt leer. `certificate.missing: Das Zertifikat lässt sich nicht lesen.` heißt, dass ein Wert gesetzt ist, die Datei aber fehlt oder der Text keine Zeilenumbrüche mehr hat. Danach `sudo systemctl restart kmbhelp-api`.
 
-`Prüfen und melden` prüft die Werte und ob `SMTP_SERVER` auf `SMTP_PORT` eine Verbindung annimmt. `SMTP testen` schickt eine kurze Mail über den lokalen Postfix an `SMTP_TO`. Das ist keine Störungsmeldung.
+`Prüfen und melden` prüft die Werte und ob `MAIL_SMTP_SERVER` auf `MAIL_SMTP_PORT` eine Verbindung annimmt. `SMTP testen` schickt eine kurze Mail über den lokalen Postfix an `MAIL_SMTP_TO`. Das ist keine Störungsmeldung.
 
 ## Fehlermail
 
@@ -97,7 +97,7 @@ Eine KI-Abfrage, die länger als 5 Minuten dauert, legt die ursprüngliche Mail 
 
 Der erste Weg ist Microsoft Graph an `MAIL_ERROR_TO`, Auslieferung `helpdesk@ppc.at`. Dafür braucht die App-Registrierung `Mail.Send`. Antworten an Melder bleiben Entwürfe.
 
-Gelingt Graph nicht, schickt der lokale Postfix dieselbe Mail an `SMTP_TO`, Auslieferung ebenfalls `helpdesk@ppc.at`. Die Anwendung spricht dabei `SMTP_SERVER` `127.0.0.1`, `SMTP_PORT` `25`, `SMTP_USER` leer, `SMTP_PASSWD` leer und `SMTP_LOGIN` `none`.
+Gelingt Graph nicht, schickt der lokale Postfix dieselbe Mail an `MAIL_SMTP_TO`, Auslieferung ebenfalls `helpdesk@ppc.at`. Die Anwendung spricht dabei `MAIL_SMTP_SERVER` `127.0.0.1`, `MAIL_SMTP_PORT` `25`, `MAIL_SMTP_USER` leer, `MAIL_SMTP_PASSWD` leer und `MAIL_SMTP_LOGIN` `none`.
 
 Dieser Weg erreicht den Admin unter `helpdesk@ppc.at`. Er erreicht nicht den Chat, in dem die Anwendung gebaut wurde.
 
@@ -105,13 +105,13 @@ Andere Störungen stehen im Journal und unter `/verwaltung/meldungen`. Sie werde
 
 ## Tagesmail
 
-Einmal am Tag, ab `NOTICE_DIGEST_HOUR` (Auslieferung 7) in der Uhr `SYSLOG_UTC_OFFSET`, prüft der Worker die Konfiguration. Gibt es Warnungen oder Fehler, geht eine kurze Liste an `MAIL_ERROR_TO`. Gelingt Graph nicht, übernimmt Postfix an `SMTP_TO`. Hinweise wie der fehlende externe KI-Endpunkt stehen nicht darin. Ist nichts offen, geht keine Mail hinaus.
+Einmal am Tag, ab `MAIL_NOTICE_DIGEST_HOUR` (Auslieferung 7) in der Uhr `SYSLOG_UTC_OFFSET`, prüft der Worker die Konfiguration. Gibt es Warnungen oder Fehler, geht eine kurze Liste an `MAIL_ERROR_TO`. Gelingt Graph nicht, übernimmt Postfix an `MAIL_SMTP_TO`. Hinweise wie der fehlende externe KI-Endpunkt stehen nicht darin. Ist nichts offen, geht keine Mail hinaus.
 
-`NOTICE_DIGEST` leer lässt das auf dem Produktionsserver laufen und auf dem Arbeitsplatz aus. `on` schaltet es überall ein, `off` überall aus. Es gibt einen Versuch am Tag. Gelingt der Versand nicht, steht `digest-failed` im Protokoll, der nächste Versuch ist am nächsten Tag. Die Seite Meldungen zeigt den Stand trotzdem.
+`MAIL_NOTICE_DIGEST` leer lässt das auf dem Produktionsserver laufen und auf dem Arbeitsplatz aus. `on` schaltet es überall ein, `off` überall aus. Es gibt einen Versuch am Tag. Gelingt der Versand nicht, steht `digest-failed` im Protokoll, der nächste Versuch ist am nächsten Tag. Die Seite Meldungen zeigt den Stand trotzdem.
 
 ## Ticketarchiv
 
-Der Worker prüft jede Minute, ob in Europa/Wien ein Werktag 23:00 erreicht oder ein früherer Werktagsabend verpasst wurde. Vorgemerkte Tickets und schon geschlossene Tickets ohne Archiv schreibt er nach `TICKET_ARCHIVE_DIR`. Leer heißt auf dem Server `/var/lib/kmbhelp/archiv/{code}/`. Darin liegen `index.html`, `ticket.md`, `summary.md`, `fazit.md`, `ticket.pdf` und der Ordner `dateien` mit den Originalen. `index.html` zeigt das vollständige Ticket und verlinkt Summary, Fazit, das PDF und die Dateien mit Name, Größe und Datum. Die Ticketseite merkt sich `last_editor` und `updated_at` bei jedem Speichern. Die Seite im Web unter `/archiv/{code}` zeigt denselben Inhalt nur mit Staff-Sitzung, lokalem Admin oder Dienst-Token. Das PDF ist der Text des Berichts. Bilder und Excel werden nicht in das PDF gezeichnet. Die Originale liegen daneben. Fazit und Summary bleiben in der Datenbank. Beschreibung, Bearbeitung und Dateien werden danach aus der Datenbank gelöscht. Das Verzeichnis liegt nicht im Webroot.
+Der Worker prüft jede Minute, ob in Europa/Wien ein Werktag 23:00 erreicht oder ein früherer Werktagsabend verpasst wurde. Vorgemerkte Tickets und schon geschlossene Tickets ohne Archiv schreibt er nach `TICKET_ARCHIVE_DIR`. Leer heißt auf dem Server `/var/lib/kmbhelp/archiv/{code}/`. Darin liegen `index.html`, `ticket.md`, `summary.md`, `fazit.md`, `ticket.pdf` und der Ordner `dateien` mit den Originalen. `index.html` zeigt das vollständige Ticket und verlinkt Summary, Fazit, das PDF und die Dateien mit Name, Größe und Datum. Die Ticketseite merkt sich `last_editor` und `updated_at` bei jedem Speichern. `TICKET_FILE_TYPES` und `TICKET_FILE_MAX_BYTES` begrenzen die Anhänge. Ein leeres Feld benutzt png, jpg, jpeg, gif, webp, bmp, tif, tiff, pdf, docx, xlsx, pptx, txt, csv, md und 10485760 Bytes. Der Inhalt muss zur Endung passen. Die Seite im Web unter `/archiv/{code}` zeigt denselben Inhalt nur mit Staff-Sitzung, lokalem Admin oder Dienst-Token. Das PDF ist der Text des Berichts. Bilder und Excel werden nicht in das PDF gezeichnet. Die Originale liegen daneben. Fazit und Summary bleiben in der Datenbank. Beschreibung, Bearbeitung und Dateien werden danach aus der Datenbank gelöscht. Das Verzeichnis liegt nicht im Webroot.
 
 ## Postfix
 

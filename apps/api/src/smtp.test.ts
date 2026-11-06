@@ -7,7 +7,7 @@ function speak(socket: Socket, line: string): void {
 }
 
 describe('sendSmtp', () => {
-  it('sends without login when SMTP_LOGIN is none', async () => {
+  it('sends without login when MAIL_SMTP_LOGIN is none', async () => {
     const seen: string[] = [];
     const server: Server = createServer((socket) => {
       speak(socket, '220 local');

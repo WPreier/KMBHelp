@@ -42,9 +42,39 @@ export function fillBlankEnvFromJson(fileUrl: URL): void {
   }
 }
 
+export const legacyConfigNames: Readonly<Record<string, string>> = {
+  OLLAMA_URL: 'MAILCHECK_KI_URL',
+  OLLAMA_MODEL: 'MAILCHECK_KI_MODEL',
+  SMTP_SERVER: 'MAIL_SMTP_SERVER',
+  SMTP_PORT: 'MAIL_SMTP_PORT',
+  SMTP_USER: 'MAIL_SMTP_USER',
+  SMTP_PASSWD: 'MAIL_SMTP_PASSWD',
+  SMTP_LOGIN: 'MAIL_SMTP_LOGIN',
+  SMTP_TO: 'MAIL_SMTP_TO',
+  NOTICE_DIGEST: 'MAIL_NOTICE_DIGEST',
+  NOTICE_DIGEST_HOUR: 'MAIL_NOTICE_DIGEST_HOUR',
+  AI_MAIL_PROMPT: 'MAIL_AI_PROMPT',
+  AI_PROVIDER: 'SEARCH_AI_PROVIDER',
+  AI_ENDPOINT: 'SEARCH_AI_ENDPOINT',
+  AI_REGION: 'SEARCH_AI_REGION',
+  AI_API_KEY: 'SEARCH_AI_API_KEY',
+  AI_AVV_REFERENCE: 'SEARCH_AI_AVV_REFERENCE',
+  AI_AUTO_REPLY_CATEGORIES: 'SEARCH_AI_AUTO_REPLY_CATEGORIES',
+};
+
+export function adoptLegacyConfig(env: NodeJS.ProcessEnv = process.env): void {
+  for (const [previous, current] of Object.entries(legacyConfigNames)) {
+    if ((env[current] ?? '').trim() !== '') continue;
+    const value = env[previous];
+    if (value === undefined || value.trim() === '') continue;
+    env[current] = value;
+  }
+}
+
 export function loadProjectEnv(projectEnv: URL, serverEnv = '/etc/kmbhelp/kmbhelp.env'): void {
   loadEnvFileIfPresent(projectEnv);
   fillBlankEnvFromFile(pathToFileURL(serverEnv));
+  adoptLegacyConfig();
 }
 
 export function loadWorkstationEnv(): void {
@@ -54,4 +84,5 @@ export function loadWorkstationEnv(): void {
   const directory = join(root, 'kmbhelp');
   fillBlankEnvFromFile(pathToFileURL(join(directory, 'dev.env')));
   fillBlankEnvFromJson(pathToFileURL(join(directory, 'secrets.json')));
+  adoptLegacyConfig();
 }

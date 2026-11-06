@@ -129,7 +129,7 @@ function ConfigField({
     entry.key === 'LDAPS_CA_PEM' ||
     entry.key === 'ADMIN_IP_ALLOWLIST' ||
     entry.key === 'WORKER_SCHEDULE' ||
-    entry.key === 'AI_MAIL_PROMPT' ||
+    entry.key === 'MAIL_AI_PROMPT' ||
     entry.key === 'INTERNAL_MAIL_DOMAINS';
 
   async function run(

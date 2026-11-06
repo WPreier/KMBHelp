@@ -77,7 +77,10 @@ export const messages = {
     frozenNote: 'Dieses Ticket ist eingefroren.',
     fileHint: 'Bilder, PDF, Word, Excel, PowerPoint, Text und CSV.',
     dropHint: 'Drag und Drop hier oder wähle Datei aus',
-    fileTooBig: 'Die Datei ist größer als 10 Megabyte.',
+    fileTypeRejected: 'Dateitype unzulässig',
+    fileTooBig: 'Datei ist zu groß',
+    fileContentRejected:
+      'Dateiinhalt entspricht nicht der Dateiendung, diese Datei wird nicht akzeptiert.',
     deleteFile: 'löschen',
     confirmDelete: 'Diese Datei löschen?',
     fileName: 'Name',
@@ -191,7 +194,7 @@ export const messages = {
     configurationSource:
       'Die Daten kommen aus drei Orten. Ein hier gespeicherter Wert ohne Geheimnis liegt in der Datenbank, Tabelle app_setting, Schlüssel config.NAME, und gilt beim nächsten Start vor der Datei .env im Projektordner. Geheimnisse liegen nur in %LOCALAPPDATA%\\kmbhelp\\secrets.json und im laufenden Prozess, nie in Git. Was dort noch leer ist, füllt die Datei .env. Ein leeres Feld mit Vorgabe benutzt diese Vorgabe, bis es gespeichert wird.',
     graphSetup:
-      'Microsoft 365: Im Entra-Verwaltungszentrum eine App-Registrierung anlegen. Die Verzeichnis-ID wird GRAPH_TENANT_ID, die Anwendungs-ID wird GRAPH_CLIENT_ID, ein neues Client-Geheimnis wird GRAPH_CLIENT_SECRET. Unter API-Berechtigungen die Anwendungsberechtigungen Mail.Read, Mail.ReadWrite, Mail.Send und Calendars.ReadWrite hinzufügen und den Admin-Consent erteilen. Antworten an Melder bleiben Entwürfe. Die Fehlermail geht zuerst über Graph an MAIL_ERROR_TO. Dafür ist Mail.Send nötig. Gelingt das nicht, schickt der lokale SMTP-Server sie an SMTP_TO. GRAPH_MAILBOX bleibt helpdesk@kmbcloud.at.',
+      'Microsoft 365: Im Entra-Verwaltungszentrum eine App-Registrierung anlegen. Die Verzeichnis-ID wird GRAPH_TENANT_ID, die Anwendungs-ID wird GRAPH_CLIENT_ID, ein neues Client-Geheimnis wird GRAPH_CLIENT_SECRET. Unter API-Berechtigungen die Anwendungsberechtigungen Mail.Read, Mail.ReadWrite, Mail.Send und Calendars.ReadWrite hinzufügen und den Admin-Consent erteilen. Antworten an Melder bleiben Entwürfe. Die Fehlermail geht zuerst über Graph an MAIL_ERROR_TO. Dafür ist Mail.Send nötig. Gelingt das nicht, schickt der lokale SMTP-Server sie an MAIL_SMTP_TO. GRAPH_MAILBOX bleibt helpdesk@kmbcloud.at.',
     syslogServer: 'Syslog-Server',
     syslogPort: 'Port',
     saveSyslog: 'Syslog speichern',
@@ -201,7 +204,7 @@ export const messages = {
     syslogTestFailed: 'Das Datagramm wurde nicht übergeben.',
     smtpTitle: 'Lokaler SMTP',
     smtpLead:
-      'Die Fehlermail geht zuerst über Graph an MAIL_ERROR_TO. Gelingt das nicht, schickt Postfix auf diesem Rechner sie an SMTP_TO. Der Test verschickt eine kurze Mail über die gespeicherten SMTP-Werte.',
+      'Die Fehlermail geht zuerst über Graph an MAIL_ERROR_TO. Gelingt das nicht, schickt Postfix auf diesem Rechner sie an MAIL_SMTP_TO. Der Test verschickt eine kurze Mail über die gespeicherten SMTP-Werte.',
     testSmtp: 'SMTP testen',
     smtpTestOk: 'Die Prüfmail wurde an den lokalen SMTP-Server übergeben.',
     smtpTestFailed: 'Der lokale SMTP-Server hat die Prüfmail nicht angenommen.',
@@ -217,7 +220,7 @@ export const messages = {
     valueMissing: 'fehlt',
     activityTitle: 'Protokoll',
     activityLead:
-      'Vier Protokolldateien. Von steht sieben Tage vor heute, Bis auf heute. Aktivität, Fehler und Mail enthalten keinen Mailtext. Die KI-Datei enthält den maskierten Auftrag und die Antwort des Modells.',
+      'Vier Protokolldateien. Von steht sieben Tage vor heute, Bis auf heute. Aktivität, Fehler und Mail enthalten keinen Mailtext. Die KI-Datei zeigt Auftrag und Antwort getrennt und die Antwortzeit in Sekunden.',
     activityFrom: 'Von',
     activityTo: 'Bis',
     activitySearch: 'Suchtext',
@@ -225,6 +228,9 @@ export const messages = {
     activityEmpty: 'Keine Einträge.',
     activityDate: 'Das Datum hat die Form dd.MM.yyyy.',
     activityWhen: 'Zeitpunkt',
+    activitySeconds: 'Antwortzeit',
+    activityRequest: 'Auftrag',
+    activityAnswer: 'Antwort',
     activityActor: 'Akteur',
     activityKind: 'Art',
     activityTarget: 'Ziel',
@@ -378,7 +384,10 @@ export const messages = {
     frozenNote: 'This ticket is frozen.',
     fileHint: 'Images, PDF, Word, Excel, PowerPoint, text and CSV.',
     dropHint: 'Drag and drop here or choose a file',
-    fileTooBig: 'The file is larger than 10 megabytes.',
+    fileTypeRejected: 'File type not allowed',
+    fileTooBig: 'File is too large',
+    fileContentRejected:
+      'The file content does not match the extension. This file is not accepted.',
     deleteFile: 'delete',
     confirmDelete: 'Delete this file?',
     fileName: 'Name',
@@ -492,7 +501,7 @@ export const messages = {
     configurationSource:
       'The data comes from three places. A non-secret value saved here lives in the database, table app_setting, key config.NAME, and wins over the .env file in the project folder on the next start. Secrets live only in %LOCALAPPDATA%\\kmbhelp\\secrets.json and in the running process, never in git. The .env file fills whatever is still empty. An empty field that has a default uses that default until it is saved.',
     graphSetup:
-      'Microsoft 365: create an app registration in the Entra admin center. The directory id becomes GRAPH_TENANT_ID, the application id becomes GRAPH_CLIENT_ID, and a new client secret becomes GRAPH_CLIENT_SECRET. Under API permissions add the application permissions Mail.Read, Mail.ReadWrite, Mail.Send and Calendars.ReadWrite and grant admin consent. Replies to requesters stay drafts. The error mail goes through Graph to MAIL_ERROR_TO first. That needs Mail.Send. If that fails, the local SMTP server sends it to SMTP_TO. GRAPH_MAILBOX stays helpdesk@kmbcloud.at.',
+      'Microsoft 365: create an app registration in the Entra admin center. The directory id becomes GRAPH_TENANT_ID, the application id becomes GRAPH_CLIENT_ID, and a new client secret becomes GRAPH_CLIENT_SECRET. Under API permissions add the application permissions Mail.Read, Mail.ReadWrite, Mail.Send and Calendars.ReadWrite and grant admin consent. Replies to requesters stay drafts. The error mail goes through Graph to MAIL_ERROR_TO first. That needs Mail.Send. If that fails, the local SMTP server sends it to MAIL_SMTP_TO. GRAPH_MAILBOX stays helpdesk@kmbcloud.at.',
     syslogServer: 'Syslog server',
     syslogPort: 'Port',
     saveSyslog: 'Save syslog',
@@ -502,7 +511,7 @@ export const messages = {
     syslogTestFailed: 'The datagram was not handed over.',
     smtpTitle: 'Local SMTP',
     smtpLead:
-      'The error mail goes through Graph to MAIL_ERROR_TO first. If that fails, Postfix on this computer sends it to SMTP_TO. The test sends a short mail with the saved SMTP values.',
+      'The error mail goes through Graph to MAIL_ERROR_TO first. If that fails, Postfix on this computer sends it to MAIL_SMTP_TO. The test sends a short mail with the saved SMTP values.',
     testSmtp: 'Test SMTP',
     smtpTestOk: 'The test mail was handed to the local SMTP server.',
     smtpTestFailed: 'The local SMTP server did not accept the test mail.',
@@ -518,7 +527,7 @@ export const messages = {
     valueMissing: 'missing',
     activityTitle: 'Log',
     activityLead:
-      'Four log files. From is seven days before today and To is today. Activity, errors and mail do not contain a mail body. The model file contains the masked request and the model answer.',
+      'Four log files. From is seven days before today and To is today. Activity, errors and mail do not contain a mail body. The model file shows the request and the answer apart, and the response time in seconds.',
     activityFrom: 'From',
     activityTo: 'To',
     activitySearch: 'Search text',
@@ -526,6 +535,9 @@ export const messages = {
     activityEmpty: 'No entries.',
     activityDate: 'The date has the form dd.MM.yyyy.',
     activityWhen: 'Time',
+    activitySeconds: 'Response time',
+    activityRequest: 'Request',
+    activityAnswer: 'Answer',
     activityActor: 'Actor',
     activityKind: 'Kind',
     activityTarget: 'Target',
@@ -618,6 +630,18 @@ export const publicErrors = {
   invalidInput: {
     de: 'Die Eingabe ist ungültig.',
     en: 'The input is invalid.',
+  },
+  fileType: {
+    de: 'Dateitype unzulässig',
+    en: 'File type not allowed',
+  },
+  fileTooBig: {
+    de: 'Datei ist zu groß',
+    en: 'File is too large',
+  },
+  fileContent: {
+    de: 'Dateiinhalt entspricht nicht der Dateiendung, diese Datei wird nicht akzeptiert.',
+    en: 'The file content does not match the extension. This file is not accepted.',
   },
   unknownCategory: {
     de: 'Diese Kategorie gibt es nicht.',

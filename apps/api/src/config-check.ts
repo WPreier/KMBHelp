@@ -377,18 +377,18 @@ export async function checkConfigField(
           'The mailbox is missing or is not an email address.',
         );
   }
-  if (key === 'AI_PROVIDER') {
+  if (key === 'SEARCH_AI_PROVIDER') {
     const name = value.trim().toLowerCase();
     return !name || ['grok', 'gemini', 'deepseek', 'other'].includes(name)
       ? line(
           key,
           'ok',
           name
-            ? `Der Anbieter heißt ${name}. Die Adresse bleibt AI_ENDPOINT.`
-            : 'Ohne Namen gilt grok. Die Adresse bleibt AI_ENDPOINT.',
+            ? `Der Anbieter heißt ${name}. Die Adresse bleibt SEARCH_AI_ENDPOINT.`
+            : 'Ohne Namen gilt grok. Die Adresse bleibt SEARCH_AI_ENDPOINT.',
           name
-            ? `The provider is named ${name}. The address stays AI_ENDPOINT.`
-            : 'Without a name, grok applies. The address stays AI_ENDPOINT.',
+            ? `The provider is named ${name}. The address stays SEARCH_AI_ENDPOINT.`
+            : 'Without a name, grok applies. The address stays SEARCH_AI_ENDPOINT.',
         )
       : line(
           key,
@@ -419,7 +419,7 @@ export async function checkConfigField(
           'Each domain needs a dot and no address in front of it.',
         );
   }
-  if (key === 'AI_MAIL_PROMPT') {
+  if (key === 'MAIL_AI_PROMPT') {
     if (!value.trim()) {
       return line(
         key,
@@ -438,7 +438,7 @@ export async function checkConfigField(
           'The instruction should contain JA and NEIN.',
         );
   }
-  if (key === 'OLLAMA_URL') {
+  if (key === 'MAILCHECK_KI_URL') {
     const url = value.trim() || 'http://192.168.191.131:11434';
     return /^https?:\/\/[^/\s]+/u.test(url) && !url.includes('@')
       ? line(key, 'ok', `Die Mailprüfung spricht ${url}.`, `Mail review calls ${url}.`)
@@ -449,11 +449,11 @@ export async function checkConfigField(
           'The address must be http or https and must not contain a password.',
         );
   }
-  if (key === 'OLLAMA_MODEL') {
+  if (key === 'MAILCHECK_KI_MODEL') {
     const model = value.trim() || 'qwen2.5:7b';
     return line(key, 'ok', `Das Modell heißt ${model}.`, `The model is named ${model}.`);
   }
-  if (key === 'SMTP_SERVER') {
+  if (key === 'MAIL_SMTP_SERVER') {
     const host = value.trim() || '127.0.0.1';
     return /^[A-Za-z0-9.-]+$/u.test(host) && !host.includes('@')
       ? line(key, 'ok', `Der lokale SMTP-Server ist ${host}.`, `The local SMTP server is ${host}.`)
@@ -464,7 +464,7 @@ export async function checkConfigField(
           'The SMTP server must be a hostname or an IP address without a password.',
         );
   }
-  if (key === 'SMTP_PORT') {
+  if (key === 'MAIL_SMTP_PORT') {
     const port = Number(value.trim() || '25');
     return Number.isInteger(port) && port >= 1 && port <= 65535
       ? line(key, 'ok', `Der SMTP-Port ist ${port}.`, `The SMTP port is ${port}.`)
@@ -475,40 +475,40 @@ export async function checkConfigField(
           'The SMTP port must be from 1 to 65535.',
         );
   }
-  if (key === 'SMTP_USER') {
+  if (key === 'MAIL_SMTP_USER') {
     return line(
       key,
       'ok',
       value.trim() === ''
-        ? 'Kein SMTP-Benutzer. Das passt zu SMTP_LOGIN none.'
+        ? 'Kein SMTP-Benutzer. Das passt zu MAIL_SMTP_LOGIN none.'
         : 'Ein SMTP-Benutzer ist gesetzt.',
-      value.trim() === '' ? 'No SMTP user. That matches SMTP_LOGIN none.' : 'An SMTP user is set.',
+      value.trim() === '' ? 'No SMTP user. That matches MAIL_SMTP_LOGIN none.' : 'An SMTP user is set.',
     );
   }
-  if (key === 'SMTP_PASSWD') {
+  if (key === 'MAIL_SMTP_PASSWD') {
     return line(
       key,
       'ok',
       value === ''
-        ? 'Kein SMTP-Passwort. Das passt zu SMTP_LOGIN none.'
+        ? 'Kein SMTP-Passwort. Das passt zu MAIL_SMTP_LOGIN none.'
         : 'Ein SMTP-Passwort ist gesetzt und wird nicht angezeigt.',
       value === ''
-        ? 'No SMTP password. That matches SMTP_LOGIN none.'
+        ? 'No SMTP password. That matches MAIL_SMTP_LOGIN none.'
         : 'An SMTP password is set and is not shown.',
     );
   }
-  if (key === 'SMTP_LOGIN') {
+  if (key === 'MAIL_SMTP_LOGIN') {
     const login = (value.trim() || 'none').toLowerCase();
     return login === 'none' || login === 'plain' || login === 'login'
       ? line(key, 'ok', `Die SMTP-Anmeldung ist ${login}.`, `SMTP sign-in is ${login}.`)
       : line(
           key,
           'warning',
-          'SMTP_LOGIN muss none, plain oder login sein.',
-          'SMTP_LOGIN must be none, plain or login.',
+          'MAIL_SMTP_LOGIN muss none, plain oder login sein.',
+          'MAIL_SMTP_LOGIN must be none, plain or login.',
         );
   }
-  if (key === 'SMTP_TO') {
+  if (key === 'MAIL_SMTP_TO') {
     const address = value.trim() || 'helpdesk@ppc.at';
     return /^[^@\s]+@[^@\s]+$/u.test(address)
       ? line(
@@ -520,11 +520,11 @@ export async function checkConfigField(
       : line(
           key,
           'warning',
-          'SMTP_TO muss eine E-Mail-Adresse sein.',
-          'SMTP_TO must be an email address.',
+          'MAIL_SMTP_TO muss eine E-Mail-Adresse sein.',
+          'MAIL_SMTP_TO must be an email address.',
         );
   }
-  if (key === 'NOTICE_DIGEST') {
+  if (key === 'MAIL_NOTICE_DIGEST') {
     const flag = value.trim().toLowerCase();
     return flag === '' || flag === 'on' || flag === 'off'
       ? line(
@@ -544,11 +544,11 @@ export async function checkConfigField(
       : line(
           key,
           'warning',
-          'NOTICE_DIGEST muss leer, on oder off sein.',
-          'NOTICE_DIGEST must be empty, on or off.',
+          'MAIL_NOTICE_DIGEST muss leer, on oder off sein.',
+          'MAIL_NOTICE_DIGEST must be empty, on or off.',
         );
   }
-  if (key === 'NOTICE_DIGEST_HOUR') {
+  if (key === 'MAIL_NOTICE_DIGEST_HOUR') {
     const hour = value.trim() === '' ? 7 : Number(value.trim());
     return Number.isInteger(hour) && hour >= 0 && hour <= 23
       ? line(
@@ -580,13 +580,13 @@ export async function checkConfigField(
           'The error address must be an email address.',
         );
   }
-  if (key === 'AI_ENDPOINT') {
+  if (key === 'SEARCH_AI_ENDPOINT') {
     if (!value) {
       return line(
         key,
         'informational',
-        'Kein externer Anbieter. Die Mailprüfung spricht OLLAMA_URL. Die Suche bleibt beim Satz aus Phase 2.',
-        'No external provider. Mail review calls OLLAMA_URL. Search keeps the phase 2 sentence.',
+        'Kein externer Anbieter. Die Mailprüfung spricht MAILCHECK_KI_URL. Die Suche bleibt beim Satz aus Phase 2.',
+        'No external provider. Mail review calls MAILCHECK_KI_URL. Search keeps the phase 2 sentence.',
       );
     }
     return endpointAllowsProcessing(value)
@@ -598,7 +598,7 @@ export async function checkConfigField(
           'The address must be https and must not contain a password.',
         );
   }
-  if (key === 'AI_REGION') {
+  if (key === 'SEARCH_AI_REGION') {
     if (!value) {
       return line(key, 'informational', 'Keine Region hinterlegt.', 'No region is stored.');
     }
@@ -611,7 +611,7 @@ export async function checkConfigField(
           'The region is not recognisable as EU processing.',
         );
   }
-  if (key === 'AI_AVV_REFERENCE') {
+  if (key === 'SEARCH_AI_AVV_REFERENCE') {
     return value
       ? line(key, 'ok', 'Ein Vertragsverweis ist hinterlegt.', 'A contract reference is stored.')
       : line(
@@ -621,7 +621,7 @@ export async function checkConfigField(
           'Without a contract reference no text goes to a model.',
         );
   }
-  if (key === 'AI_AUTO_REPLY_CATEGORIES') {
+  if (key === 'SEARCH_AI_AUTO_REPLY_CATEGORIES') {
     if (!value) {
       return line(
         key,

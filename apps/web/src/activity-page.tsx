@@ -175,6 +175,7 @@ export function ActivityPage() {
               <thead>
                 <tr>
                   <th>{copy.activityWhen}</th>
+                  {file === 'ki' ? <th>{copy.activitySeconds}</th> : null}
                   {file === 'error' ? (
                     <th>{copy.activityText}</th>
                   ) : (
@@ -182,7 +183,14 @@ export function ActivityPage() {
                       <th>{copy.activityActor}</th>
                       <th>{copy.activityKind}</th>
                       <th>{copy.activityTarget}</th>
-                      <th>{copy.activityDetail}</th>
+                      {file === 'ki' ? (
+                        <>
+                          <th>{copy.activityRequest}</th>
+                          <th>{copy.activityAnswer}</th>
+                        </>
+                      ) : (
+                        <th>{copy.activityDetail}</th>
+                      )}
                     </>
                   )}
                 </tr>
@@ -190,14 +198,27 @@ export function ActivityPage() {
               <tbody>
                 {logs[file].length === 0 ? (
                   <tr>
-                    <td colSpan={file === 'error' ? 2 : 5}>{copy.activityEmpty}</td>
+                    <td colSpan={file === 'error' ? 2 : file === 'ki' ? 7 : 5}>
+                      {copy.activityEmpty}
+                    </td>
                   </tr>
                 ) : (
                   logs[file].map((line) => (
                     <tr key={`${file}-${line.at}-${line.actor}-${line.target}-${line.detail}`}>
                       <td>{line.at}</td>
+                      {file === 'ki' ? (
+                        <td>{line.seconds === '' ? '' : `${line.seconds} s`}</td>
+                      ) : null}
                       {file === 'error' ? (
                         <td>{line.detail}</td>
+                      ) : file === 'ki' ? (
+                        <>
+                          <td>{line.actor}</td>
+                          <td>{line.kind}</td>
+                          <td>{line.target}</td>
+                          <td>{line.request}</td>
+                          <td>{line.answer}</td>
+                        </>
                       ) : (
                         <>
                           <td>{line.actor}</td>

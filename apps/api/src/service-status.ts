@@ -160,7 +160,7 @@ async function probeOllama(
   env: NodeJS.ProcessEnv,
   fetchImpl: FetchLike,
 ): Promise<'ok' | 'bad' | 'down'> {
-  const raw = env.OLLAMA_URL?.trim() || defaultOllamaUrl;
+  const raw = env.MAILCHECK_KI_URL?.trim() || defaultOllamaUrl;
   let address: URL;
   try {
     address = new URL('/api/tags', raw);
@@ -270,7 +270,7 @@ function mailboxRow(state: ServiceFacts['mailbox']): ServiceRow {
 function ollamaRow(state: ServiceFacts['ollama']): ServiceRow {
   if (state === 'ok') return row('ollama', 'ok', 'Ollama antwortet.', 'Ollama answers.');
   if (state === 'bad')
-    return row('ollama', 'error', 'OLLAMA_URL ist ungültig.', 'OLLAMA_URL is invalid.');
+    return row('ollama', 'error', 'MAILCHECK_KI_URL ist ungültig.', 'MAILCHECK_KI_URL is invalid.');
   return row('ollama', 'error', 'Ollama ist nicht erreichbar.', 'Ollama cannot be reached.');
 }
 

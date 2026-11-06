@@ -21,16 +21,16 @@ export function smtpLogin(value: string | undefined): SmtpLogin {
 }
 
 export function smtpSettingsFromEnv(env: NodeJS.ProcessEnv): SmtpSettings {
-  const port = Number(env.SMTP_PORT?.trim() || '25');
+  const port = Number(env.MAIL_SMTP_PORT?.trim() || '25');
   const mailbox = env.GRAPH_MAILBOX?.trim() ?? '';
   return {
-    host: env.SMTP_SERVER?.trim() || '127.0.0.1',
+    host: env.MAIL_SMTP_SERVER?.trim() || '127.0.0.1',
     port: Number.isInteger(port) && port >= 1 && port <= 65535 ? port : 25,
-    user: env.SMTP_USER?.trim() ?? '',
-    password: env.SMTP_PASSWD ?? '',
-    login: smtpLogin(env.SMTP_LOGIN),
+    user: env.MAIL_SMTP_USER?.trim() ?? '',
+    password: env.MAIL_SMTP_PASSWD ?? '',
+    login: smtpLogin(env.MAIL_SMTP_LOGIN),
     from: emailPattern.test(mailbox) ? mailbox : 'helpdesk@kmbcloud.at',
-    to: env.SMTP_TO?.trim() || 'helpdesk@ppc.at',
+    to: env.MAIL_SMTP_TO?.trim() || 'helpdesk@ppc.at',
   };
 }
 

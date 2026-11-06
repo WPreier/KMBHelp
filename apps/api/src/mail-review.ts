@@ -111,7 +111,7 @@ export function domainsFromSetting(value: string | undefined): string[] {
 }
 
 export async function loadReviewSettings(database: Database, env: NodeJS.ProcessEnv) {
-  const names = ['AI_MAIL_PROMPT', 'INTERNAL_MAIL_DOMAINS', 'AI_PROVIDER'];
+  const names = ['MAIL_AI_PROMPT', 'INTERNAL_MAIL_DOMAINS', 'SEARCH_AI_PROVIDER'];
   const stored = new Map<string, string>();
   const rows = await database.db
     .select({ key: appSetting.key, value: appSetting.value })
@@ -120,9 +120,9 @@ export async function loadReviewSettings(database: Database, env: NodeJS.Process
   for (const row of rows) stored.set(row.key.slice('config.'.length), row.value);
   const value = (key: string) => stored.get(key) ?? env[key];
   return {
-    prompt: mailPromptText(value('AI_MAIL_PROMPT')),
+    prompt: mailPromptText(value('MAIL_AI_PROMPT')),
     domains: internalMailDomains(value('INTERNAL_MAIL_DOMAINS')),
-    providerName: aiProviderName(value('AI_PROVIDER')),
+    providerName: aiProviderName(value('SEARCH_AI_PROVIDER')),
     helpdeskMailbox: env.GRAPH_MAILBOX ?? '',
   };
 }

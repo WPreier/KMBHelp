@@ -318,7 +318,7 @@ Der Probelauf muss die Datei über Port 80 von außen lesen können. Nach einer 
 
 ## Postfix
 
-Die Fehlermail geht zuerst über Microsoft Graph an `MAIL_ERROR_TO`. Gelingt das nicht, nimmt Postfix auf demselben Rechner sie an und stellt sie an `SMTP_TO` zu. Postfix hört nur auf `127.0.0.1` Port 25. Es ist kein offenes Relay. Die Anwendung meldet sich mit `SMTP_LOGIN=none` an, also ohne Benutzer und ohne Passwort.
+Die Fehlermail geht zuerst über Microsoft Graph an `MAIL_ERROR_TO`. Gelingt das nicht, nimmt Postfix auf demselben Rechner sie an und stellt sie an `MAIL_SMTP_TO` zu. Postfix hört nur auf `127.0.0.1` Port 25. Es ist kein offenes Relay. Die Anwendung meldet sich mit `MAIL_SMTP_LOGIN=none` an, also ohne Benutzer und ohne Passwort.
 
 ```bash
 echo 'postfix postfix/mailname string helpdesk.kmbcloud.at' | sudo debconf-set-selections

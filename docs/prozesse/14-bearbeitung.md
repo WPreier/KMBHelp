@@ -28,7 +28,7 @@ Ein Knopf legt an den Auftraggeber einen Entwurf mit dem Satz ab, dass der Mitar
 
 Eine Rückfrage wird im Ticket gespeichert und zusätzlich als Entwurf an den Benutzer abgelegt. Auch diese Mail nennt den direkten Link und darunter den Text der ursprünglichen Meldung.
 
-Ohne Microsoft-365-Freigabe wird keine Mail erfunden. Die Aktion antwortet, dass der Entwurf nicht angelegt werden kann. Antworten an Melder bleiben Entwürfe. Die Fehlermail nach einer Ollama-Abfrage über 5 Minuten geht zuerst über Graph an `MAIL_ERROR_TO`. Gelingt das nicht, schickt der lokale Postfix sie an `SMTP_TO`.
+Ohne Microsoft-365-Freigabe wird keine Mail erfunden. Die Aktion antwortet, dass der Entwurf nicht angelegt werden kann. Antworten an Melder bleiben Entwürfe. Die Fehlermail nach einer Ollama-Abfrage über 5 Minuten geht zuerst über Graph an `MAIL_ERROR_TO`. Gelingt das nicht, schickt der lokale Postfix sie an `MAIL_SMTP_TO`.
 
 ## Postfach
 
@@ -40,6 +40,6 @@ Wird ein Ticket als Fehlinterpretation markiert, wird genau dieses Ticket gelös
 
 ## Ollama
 
-Helpdesk-Mails gehen an den lokalen Ollama-Server `OLLAMA_URL`, Modell `OLLAMA_MODEL`. Auslieferung ist `http://192.168.191.131:11434` und `qwen2.5:7b`. `AI_ENDPOINT` wird dafür nicht gefragt. Microsoft 365 Copilot wird dafür nicht eingeschaltet. Der Prüfstand vom 28.10.2026 steht in `docs/schnittstellen.md`. Jeder Absender wird geprüft. SUPPORT wird ein Ticket, die Kategorie wird bei Bedarf angelegt, und eine eindeutige Wichtigkeit setzt P1, P2 oder P3. Fehlt sie, fragt der Worker einmal nach. ANTWORT und ABSCHLUSS ändern ein bestehendes Ticket. FREMD und SPAM werden gelesen markiert. Eine Abfrage wartet höchstens 5 Minuten.
+Helpdesk-Mails gehen an den lokalen Ollama-Server `MAILCHECK_KI_URL`, Modell `MAILCHECK_KI_MODEL`. Auslieferung ist `http://192.168.191.131:11434` und `qwen2.5:7b`. `SEARCH_AI_ENDPOINT` wird dafür nicht gefragt. Microsoft 365 Copilot wird dafür nicht eingeschaltet. Der Prüfstand vom 28.10.2026 steht in `docs/schnittstellen.md`. Jeder Absender wird geprüft. SUPPORT wird ein Ticket, die Kategorie wird bei Bedarf angelegt, und eine eindeutige Wichtigkeit setzt P1, P2 oder P3. Fehlt sie, fragt der Worker einmal nach. ANTWORT und ABSCHLUSS ändern ein bestehendes Ticket. FREMD und SPAM werden gelesen markiert. Eine Abfrage wartet höchstens 5 Minuten.
 
 Meldet der Agent, dass ein Mail ein Ticket werden soll, entstehen Kategorie, Priorität, Benutzer und Mitarbeiter. Der Mitarbeiter muss aktiv sein und laut seinem Microsoft-365-Kalender verfügbar. Für ihn liegt eine Mail mit der Ticketnummer, allen Ticketangaben und dem Originalmail als Anhang als Entwurf im Ordner Entwürfe. Absender ist `GRAPH_MAILBOX`.

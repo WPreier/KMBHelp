@@ -97,8 +97,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     if (process.env.NODE_ENV === 'test') return 'down';
     const nowMs = Date.now();
     if (smtpCache && nowMs - smtpCache.at < 30_000) return smtpCache.value;
-    const host = process.env.SMTP_SERVER?.trim() || '127.0.0.1';
-    const port = Number(process.env.SMTP_PORT?.trim() || '25');
+    const host = process.env.MAIL_SMTP_SERVER?.trim() || '127.0.0.1';
+    const port = Number(process.env.MAIL_SMTP_PORT?.trim() || '25');
     const open =
       Number.isInteger(port) && port >= 1 && port <= 65535
         ? (await tcpOpen(host, port, 1500)) === 'open'

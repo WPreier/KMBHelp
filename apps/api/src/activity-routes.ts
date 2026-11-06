@@ -236,9 +236,23 @@ function sendLogExport(
   reply: FastifyReply,
   file: LogName,
   format: 'csv' | 'pdf',
-  rows: { at: string; actor: string; kind: string; target: string; detail: string }[],
+  rows: {
+    at: string;
+    actor: string;
+    kind: string;
+    target: string;
+    detail: string;
+    seconds: string;
+    request: string;
+    answer: string;
+  }[],
 ): FastifyReply {
-  const cells = rows.map((row) => [row.at, row.actor, row.kind, row.target, row.detail]);
+  const ki = file === 'ki';
+  const cells = rows.map((row) =>
+    ki
+      ? [row.at, row.seconds, row.actor, row.kind, row.target, row.request, row.answer]
+      : [row.at, row.actor, row.kind, row.target, row.detail],
+  );
   if (format === 'pdf') {
     const lines = cells.map((cell) => cell.join(' | ').slice(0, 180));
     return reply
@@ -246,7 +260,7 @@ function sendLogExport(
       .header('content-disposition', `attachment; filename="kmbhelp-${file}.pdf"`)
       .send(renderTextPdf(logTitle[file], lines));
   }
-  const header = 'at,actor,kind,target,detail';
+  const header = ki ? 'at,seconds,actor,kind,target,request,answer' : 'at,actor,kind,target,detail';
   const body = [header, ...cells.map((cell) => cell.map(csvCell).join(','))].join('\n');
   return reply
     .header('content-type', 'text/csv; charset=utf-8')

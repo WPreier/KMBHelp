@@ -8,6 +8,9 @@ export const logLineSchema = z.object({
   kind: z.string(),
   target: z.string(),
   detail: z.string(),
+  seconds: z.string().default(''),
+  request: z.string().default(''),
+  answer: z.string().default(''),
 });
 
 export const logReportSchema = z.object({

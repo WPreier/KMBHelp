@@ -52,8 +52,18 @@ function parseLine(file: LogName, raw: string): LogLine | null {
   const parts = line.split('\t');
   const at = parts[0] ?? '';
   if (file === 'error') {
-    return { at, actor: '', kind: '', target: '', detail: parts.slice(1).join('\t') };
+    return {
+      at,
+      actor: '',
+      kind: '',
+      target: '',
+      detail: parts.slice(1).join('\t'),
+      seconds: '',
+      request: '',
+      answer: '',
+    };
   }
+  if (file === 'ki') return parseKiLine(parts);
   const detail = parts.length > 5 ? parts.slice(4, -1).join('\t') : (parts[4] ?? '');
   return {
     at,
@@ -61,11 +71,49 @@ function parseLine(file: LogName, raw: string): LogLine | null {
     kind: parts[2] ?? '',
     target: parts[3] ?? '',
     detail,
+    seconds: '',
+    request: '',
+    answer: '',
+  };
+}
+
+function parseKiLine(parts: string[]): LogLine {
+  const at = parts[0] ?? '';
+  const actor = parts[1] ?? '';
+  const kind = parts[2] ?? '';
+  const target = parts[3] ?? '';
+  const secondsField = parts[4] ?? '';
+  if (parts.length >= 7 && /^\d+(?:\.\d+)?$/u.test(secondsField)) {
+    return {
+      at,
+      actor,
+      kind,
+      target,
+      detail: '',
+      seconds: secondsField,
+      request: parts[5] ?? '',
+      answer: parts.slice(6).join('\t'),
+    };
+  }
+  const detail = parts.slice(4).join('\t');
+  const measured = detail.match(/(?:^|\s)(\d+)ms(?:\s|$)/u);
+  const answer = detail.match(/antwort=(.*?)(?: auftrag=|$)/u);
+  const request = detail.match(/auftrag=(.*)$/u);
+  const seconds = measured ? (Number(measured[1]) / 1000).toFixed(1) : '';
+  return {
+    at,
+    actor,
+    kind,
+    target,
+    detail: '',
+    seconds,
+    request: request?.[1] ?? '',
+    answer: answer?.[1] ?? '',
   };
 }
 
 function haystack(line: LogLine): string {
-  return `${line.at} ${line.actor} ${line.kind} ${line.target} ${line.detail}`.toLocaleLowerCase(
+  return `${line.at} ${line.actor} ${line.kind} ${line.target} ${line.detail} ${line.request} ${line.answer}`.toLocaleLowerCase(
     'de',
   );
 }

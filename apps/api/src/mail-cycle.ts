@@ -6,6 +6,7 @@ import {
   type ModelProvider,
 } from '@kmbhelp/ai';
 import { appSetting, type Database } from '@kmbhelp/db';
+import { legacyConfigNames } from '@kmbhelp/shared/env';
 import { inArray } from 'drizzle-orm';
 import {
   calendarDate,
@@ -153,7 +154,7 @@ export async function runMailCycle(options: {
   try {
     await maybeNoticeDigest({
       database,
-      env: { ...options.env, NOTICE_DIGEST: settings.digestFlag },
+      env: { ...options.env, MAIL_NOTICE_DIGEST: settings.digestFlag },
       now: at,
       offset: settings.offset,
       hourText: settings.digestHour,
@@ -649,17 +650,18 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     'CALENDAR_DELAY_P2',
     'CALENDAR_DELAY_P3',
     'ONCALL_EMAIL',
-    'AI_AUTO_REPLY_CATEGORIES',
-    'OLLAMA_URL',
-    'OLLAMA_MODEL',
+    'SEARCH_AI_AUTO_REPLY_CATEGORIES',
+    'MAILCHECK_KI_URL',
+    'MAILCHECK_KI_MODEL',
     'MAIL_ERROR_TO',
-    'SMTP_SERVER',
-    'SMTP_PORT',
-    'SMTP_USER',
-    'SMTP_LOGIN',
-    'SMTP_TO',
-    'NOTICE_DIGEST',
-    'NOTICE_DIGEST_HOUR',
+    'MAIL_SMTP_SERVER',
+    'MAIL_SMTP_PORT',
+    'MAIL_SMTP_USER',
+    'MAIL_SMTP_LOGIN',
+    'MAIL_SMTP_TO',
+    'MAIL_NOTICE_DIGEST',
+    'MAIL_NOTICE_DIGEST_HOUR',
+    ...Object.keys(legacyConfigNames),
   ];
   const stored = new Map<string, string>();
   try {
@@ -672,7 +674,16 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
           names.map((name) => `config.${name}`),
         ),
       );
-    for (const row of rows) stored.set(row.key.slice('config.'.length), row.value.trim());
+    const older = new Map<string, string>();
+    for (const row of rows) {
+      const raw = row.key.slice('config.'.length);
+      const current = legacyConfigNames[raw];
+      if (current) older.set(current, row.value.trim());
+      else stored.set(raw, row.value.trim());
+    }
+    for (const [key, value] of older) {
+      if ((stored.get(key) ?? '') === '' && value !== '') stored.set(key, value);
+    }
   } catch {
     // Missing table uses the environment and the defaults.
   }
@@ -688,20 +699,20 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
       p3: boundedMinutes(value('CALENDAR_DELAY_P3', defaultCalendarDelayP3), 240, 0, 1440),
     },
     oncallEmail: value('ONCALL_EMAIL', ''),
-    autoReplyCategories: value('AI_AUTO_REPLY_CATEGORIES', ''),
-    ollamaUrl: value('OLLAMA_URL', defaultOllamaUrl),
-    ollamaModel: value('OLLAMA_MODEL', defaultOllamaModel),
+    autoReplyCategories: value('SEARCH_AI_AUTO_REPLY_CATEGORIES', ''),
+    ollamaUrl: value('MAILCHECK_KI_URL', defaultOllamaUrl),
+    ollamaModel: value('MAILCHECK_KI_MODEL', defaultOllamaModel),
     mailErrorTo: value('MAIL_ERROR_TO', defaultMailErrorTo),
-    digestFlag: value('NOTICE_DIGEST', ''),
-    digestHour: value('NOTICE_DIGEST_HOUR', '7'),
+    digestFlag: value('MAIL_NOTICE_DIGEST', ''),
+    digestHour: value('MAIL_NOTICE_DIGEST_HOUR', '7'),
     smtp: smtpSettingsFromEnv({
       ...env,
-      SMTP_SERVER: value('SMTP_SERVER', '127.0.0.1'),
-      SMTP_PORT: value('SMTP_PORT', '25'),
-      SMTP_USER: value('SMTP_USER', ''),
-      SMTP_LOGIN: value('SMTP_LOGIN', 'none'),
-      SMTP_TO: value('SMTP_TO', defaultMailErrorTo),
-      SMTP_PASSWD: env.SMTP_PASSWD ?? '',
+      MAIL_SMTP_SERVER: value('MAIL_SMTP_SERVER', '127.0.0.1'),
+      MAIL_SMTP_PORT: value('MAIL_SMTP_PORT', '25'),
+      MAIL_SMTP_USER: value('MAIL_SMTP_USER', ''),
+      MAIL_SMTP_LOGIN: value('MAIL_SMTP_LOGIN', 'none'),
+      MAIL_SMTP_TO: value('MAIL_SMTP_TO', defaultMailErrorTo),
+      MAIL_SMTP_PASSWD: env.MAIL_SMTP_PASSWD ?? '',
     }),
   };
 }

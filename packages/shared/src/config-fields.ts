@@ -1,4 +1,5 @@
 import { defaultAiProvider, defaultInternalMailDomains, defaultMailPrompt } from './mail-prompt.js';
+import { defaultTicketFileBytes, defaultTicketFileTypes } from './ticket-file.js';
 
 export type ConfigField = {
   key: string;
@@ -24,17 +25,19 @@ const shownWhenEmpty: Record<string, string> = {
   FALLBACK_CATEGORY: defaultFallbackCategory,
   WORKER_SCHEDULE: defaultWorkerSchedule,
   ACCESS_LOG_RETENTION_DAYS: '90',
-  AI_PROVIDER: defaultAiProvider,
+  SEARCH_AI_PROVIDER: defaultAiProvider,
   INTERNAL_MAIL_DOMAINS: defaultInternalMailDomains,
-  AI_MAIL_PROMPT: defaultMailPrompt,
-  OLLAMA_URL: 'http://192.168.191.131:11434',
-  OLLAMA_MODEL: 'qwen2.5:7b',
+  MAIL_AI_PROMPT: defaultMailPrompt,
+  MAILCHECK_KI_URL: 'http://192.168.191.131:11434',
+  MAILCHECK_KI_MODEL: 'qwen2.5:7b',
   MAIL_ERROR_TO: 'helpdesk@ppc.at',
-  SMTP_SERVER: '127.0.0.1',
-  SMTP_PORT: '25',
-  SMTP_LOGIN: 'none',
-  SMTP_TO: 'helpdesk@ppc.at',
-  NOTICE_DIGEST_HOUR: '7',
+  MAIL_SMTP_SERVER: '127.0.0.1',
+  MAIL_SMTP_PORT: '25',
+  MAIL_SMTP_LOGIN: 'none',
+  MAIL_SMTP_TO: 'helpdesk@ppc.at',
+  MAIL_NOTICE_DIGEST_HOUR: '7',
+  TICKET_FILE_TYPES: defaultTicketFileTypes,
+  TICKET_FILE_MAX_BYTES: String(defaultTicketFileBytes),
 };
 
 export const configFields: readonly ConfigField[] = [
@@ -299,12 +302,12 @@ export const configFields: readonly ConfigField[] = [
       'The exact web address the passkey is for. Locally that is http://127.0.0.1:5173. In production it is the helpdesk address.',
   },
   {
-    key: 'AI_PROVIDER',
+    key: 'SEARCH_AI_PROVIDER',
     secret: false,
     textDe:
-      'Anzeigename für den Aufruf an AI_ENDPOINT. Auslieferung grok. Ein anderer Name, auch MS 365 Copilot, schaltet keine andere Schnittstelle ein. Copilot hat auf dieser Seite keinen Schalter. Der Prüfstand steht in docs/schnittstellen.md.',
+      'Anzeigename für den Aufruf an SEARCH_AI_ENDPOINT. Auslieferung grok. Ein anderer Name, auch MS 365 Copilot, schaltet keine andere Schnittstelle ein. Copilot hat auf dieser Seite keinen Schalter. Der Prüfstand steht in docs/schnittstellen.md.',
     textEn:
-      'Display name for the call to AI_ENDPOINT. The delivered name is grok. Another name, including MS 365 Copilot, does not switch the interface. Copilot has no switch on this page. The check is recorded in docs/schnittstellen.md.',
+      'Display name for the call to SEARCH_AI_ENDPOINT. The delivered name is grok. Another name, including MS 365 Copilot, does not switch the interface. Copilot has no switch on this page. The check is recorded in docs/schnittstellen.md.',
   },
   {
     key: 'INTERNAL_MAIL_DOMAINS',
@@ -315,7 +318,7 @@ export const configFields: readonly ConfigField[] = [
       'The earlier list of internal senders. The local mail check asks about every sender. The field stays visible and no longer blocks a mail.',
   },
   {
-    key: 'OLLAMA_URL',
+    key: 'MAILCHECK_KI_URL',
     secret: false,
     textDe:
       'Adresse des lokalen Ollama-Servers für die Mailprüfung. Auslieferung http://192.168.191.131:11434. Eine Abfrage dauert höchstens 5 Minuten.',
@@ -323,7 +326,7 @@ export const configFields: readonly ConfigField[] = [
       'Address of the local Ollama server for mail review. The delivered value is http://192.168.191.131:11434. One query waits at most 5 minutes.',
   },
   {
-    key: 'OLLAMA_MODEL',
+    key: 'MAILCHECK_KI_MODEL',
     secret: false,
     textDe: 'Name des lokalen Modells. Auslieferung qwen2.5:7b.',
     textEn: 'Name of the local model. The delivered value is qwen2.5:7b.',
@@ -337,7 +340,7 @@ export const configFields: readonly ConfigField[] = [
       'Recipient of the error mail through Microsoft Graph when a model query takes longer than 5 minutes. The delivered value is helpdesk@ppc.at. The mail is sent, not stored as a draft. If that fails, the local SMTP server sends it.',
   },
   {
-    key: 'SMTP_SERVER',
+    key: 'MAIL_SMTP_SERVER',
     secret: false,
     textDe:
       'Adresse des lokalen SMTP-Servers für die Fehlermail, wenn Graph sie nicht verschicken kann. Auslieferung 127.0.0.1. Postfix hört nur dort.',
@@ -345,34 +348,34 @@ export const configFields: readonly ConfigField[] = [
       'Address of the local SMTP server for the error mail when Graph cannot send it. The delivered value is 127.0.0.1. Postfix listens only there.',
   },
   {
-    key: 'SMTP_PORT',
+    key: 'MAIL_SMTP_PORT',
     secret: false,
     textDe: 'TCP-Port des lokalen SMTP-Servers. Auslieferung 25.',
     textEn: 'TCP port of the local SMTP server. The delivered value is 25.',
   },
   {
-    key: 'SMTP_USER',
+    key: 'MAIL_SMTP_USER',
     secret: false,
-    textDe: 'SMTP-Benutzer. Leer, solange SMTP_LOGIN none ist.',
-    textEn: 'SMTP user. Empty while SMTP_LOGIN is none.',
+    textDe: 'SMTP-Benutzer. Leer, solange MAIL_SMTP_LOGIN none ist.',
+    textEn: 'SMTP user. Empty while MAIL_SMTP_LOGIN is none.',
   },
   {
-    key: 'SMTP_PASSWD',
+    key: 'MAIL_SMTP_PASSWD',
     secret: true,
     textDe:
-      'SMTP-Passwort. Es wird nicht angezeigt. Bei SMTP_LOGIN none bleibt es leer und liegt nicht im Git.',
+      'SMTP-Passwort. Es wird nicht angezeigt. Bei MAIL_SMTP_LOGIN none bleibt es leer und liegt nicht im Git.',
     textEn:
-      'SMTP password. It is not shown. While SMTP_LOGIN is none it stays empty and is not stored in git.',
+      'SMTP password. It is not shown. While MAIL_SMTP_LOGIN is none it stays empty and is not stored in git.',
   },
   {
-    key: 'SMTP_LOGIN',
+    key: 'MAIL_SMTP_LOGIN',
     secret: false,
     textDe: 'Anmeldung am SMTP-Server. Auslieferung none. Erlaubt sind none, plain und login.',
     textEn:
       'Sign-in to the SMTP server. The delivered value is none. Allowed values are none, plain and login.',
   },
   {
-    key: 'SMTP_TO',
+    key: 'MAIL_SMTP_TO',
     secret: false,
     textDe:
       'Empfänger der Fehlermail über den lokalen SMTP-Server. Auslieferung helpdesk@ppc.at. Das ist der Ersatzweg, wenn Graph die Mail an MAIL_ERROR_TO nicht verschickt.',
@@ -380,15 +383,15 @@ export const configFields: readonly ConfigField[] = [
       'Recipient of the error mail through the local SMTP server. The delivered value is helpdesk@ppc.at. This is the fallback when Graph does not send the mail to MAIL_ERROR_TO.',
   },
   {
-    key: 'NOTICE_DIGEST',
+    key: 'MAIL_NOTICE_DIGEST',
     secret: false,
     textDe:
-      'Tägliche Mail mit den offenen Warnungen und Fehlern. Leer lässt sie in Produktion laufen und auf dem Arbeitsplatz aus. on schaltet sie überall ein, off überall aus. Der Weg ist derselbe wie bei der Fehlermail: zuerst Graph an MAIL_ERROR_TO, sonst der lokale SMTP-Server an SMTP_TO.',
+      'Tägliche Mail mit den offenen Warnungen und Fehlern. Leer lässt sie in Produktion laufen und auf dem Arbeitsplatz aus. on schaltet sie überall ein, off überall aus. Der Weg ist derselbe wie bei der Fehlermail: zuerst Graph an MAIL_ERROR_TO, sonst der lokale SMTP-Server an MAIL_SMTP_TO.',
     textEn:
-      'Daily mail listing open warnings and errors. Empty runs it in production and keeps a workstation quiet. on enables it everywhere, off disables it everywhere. The path is the same as the error mail: Graph to MAIL_ERROR_TO first, otherwise the local SMTP server to SMTP_TO.',
+      'Daily mail listing open warnings and errors. Empty runs it in production and keeps a workstation quiet. on enables it everywhere, off disables it everywhere. The path is the same as the error mail: Graph to MAIL_ERROR_TO first, otherwise the local SMTP server to MAIL_SMTP_TO.',
   },
   {
-    key: 'NOTICE_DIGEST_HOUR',
+    key: 'MAIL_NOTICE_DIGEST_HOUR',
     secret: false,
     textDe:
       'Stunde der täglichen Zusammenfassung in der Uhr SYSLOG_UTC_OFFSET. Auslieferung 7. Erlaubt ist 0 bis 23. Ein Versuch am Tag. Ohne offene Warnung geht keine Mail hinaus.',
@@ -396,7 +399,7 @@ export const configFields: readonly ConfigField[] = [
       'Hour of the daily summary on the SYSLOG_UTC_OFFSET clock. The delivered value is 7. Allowed is 0 to 23. One attempt per day. No mail goes out when nothing is open.',
   },
   {
-    key: 'AI_MAIL_PROMPT',
+    key: 'MAIL_AI_PROMPT',
     secret: false,
     textDe:
       'Früherer Auftrag für die externe JA/NEIN-Prüfung. Die Mailprüfung nutzt ihn nicht mehr. Der Auftrag an das lokale Modell steht im Worker.',
@@ -404,15 +407,15 @@ export const configFields: readonly ConfigField[] = [
       'Earlier instruction for the external JA/NEIN review. Mail review no longer uses it. The instruction for the local model lives in the worker.',
   },
   {
-    key: 'AI_ENDPOINT',
+    key: 'SEARCH_AI_ENDPOINT',
     secret: false,
     textDe:
-      'Die https-Adresse eines Anbieters mit eigenem Schlüssel für Suche und Kenntnisse. Die Mailprüfung nutzt diese Adresse nicht. Sie spricht OLLAMA_URL.',
+      'Die https-Adresse eines Anbieters mit eigenem Schlüssel für Suche und Kenntnisse. Die Mailprüfung nutzt diese Adresse nicht. Sie spricht MAILCHECK_KI_URL.',
     textEn:
-      'The https address of a provider that issues its own key, used for search and skills. Mail review does not use this address. It calls OLLAMA_URL.',
+      'The https address of a provider that issues its own key, used for search and skills. Mail review does not use this address. It calls MAILCHECK_KI_URL.',
   },
   {
-    key: 'AI_REGION',
+    key: 'SEARCH_AI_REGION',
     secret: false,
     textDe:
       'Die Region, in der der Anbieter verarbeiten soll. Gewünscht ist die EU, sobald ein Vertrag steht.',
@@ -420,12 +423,12 @@ export const configFields: readonly ConfigField[] = [
       'The region where the provider should process data. The EU is the intended region once a contract exists.',
   },
   {
-    key: 'AI_API_KEY',
+    key: 'SEARCH_AI_API_KEY',
     secret: true,
     textDe:
-      'Der Schlüssel eines Anbieters mit AI_ENDPOINT. Er wird nicht angezeigt. Für Microsoft 365 Copilot gibt es keinen Schlüssel. Das Client-Geheimnis der Graph-App und der Anwendungs-Token gehören nicht in dieses Feld.',
+      'Der Schlüssel eines Anbieters mit SEARCH_AI_ENDPOINT. Er wird nicht angezeigt. Für Microsoft 365 Copilot gibt es keinen Schlüssel. Das Client-Geheimnis der Graph-App und der Anwendungs-Token gehören nicht in dieses Feld.',
     textEn:
-      'The key of a provider that uses AI_ENDPOINT. It is not shown. Microsoft 365 Copilot has no such key. The Graph app client secret and the application token do not belong in this field.',
+      'The key of a provider that uses SEARCH_AI_ENDPOINT. It is not shown. Microsoft 365 Copilot has no such key. The Graph app client secret and the application token do not belong in this field.',
   },
   {
     key: 'MCP_SERVICE_TOKEN',
@@ -436,7 +439,7 @@ export const configFields: readonly ConfigField[] = [
       'Service token for the MCP tools. At least 16 characters. It is not a staff account. It is not shown and is not stored in git. The API reads it after a restart. The same value belongs in the Cursor configuration, not in the repository.',
   },
   {
-    key: 'AI_AVV_REFERENCE',
+    key: 'SEARCH_AI_AVV_REFERENCE',
     secret: false,
     textDe:
       'Ein Hinweis auf den Auftragsverarbeitungsvertrag. Ohne diesen Vertrag geht kein Tickettext an ein Modell.',
@@ -444,7 +447,7 @@ export const configFields: readonly ConfigField[] = [
       'A reference to the processing agreement. Without that contract no ticket text goes to a model.',
   },
   {
-    key: 'AI_AUTO_REPLY_CATEGORIES',
+    key: 'SEARCH_AI_AUTO_REPLY_CATEGORIES',
     secret: false,
     textDe:
       'Kategorie-Codes, die eine veröffentlichte FAQ automatisch beantworten darf. Leer heißt: nie automatisch schließen. Die Konfidenz muss mindestens 0,85 sein, und der Text darf keine SVNR, IBAN, Karte oder ein Geburtsdatum enthalten.',
@@ -478,6 +481,22 @@ export const configFields: readonly ConfigField[] = [
       'Der Benutzername des einen lokalen Admins. Angelegt wird er mit pnpm install:helpdesk, nicht durch dieses Feld allein.',
     textEn:
       'The username of the single local admin. pnpm install:helpdesk creates the account. This field alone does not.',
+  },
+  {
+    key: 'TICKET_FILE_TYPES',
+    secret: false,
+    textDe:
+      'Erlaubte Dateiendungen für Ticketdateien, durch Komma getrennt. Leer heißt png, jpg, jpeg, gif, webp, bmp, tif, tiff, pdf, docx, xlsx, pptx, txt, csv, md. Der Inhalt muss zur Endung passen.',
+    textEn:
+      'Allowed ticket file extensions, separated by commas. Empty means png, jpg, jpeg, gif, webp, bmp, tif, tiff, pdf, docx, xlsx, pptx, txt, csv, md. The content must match the extension.',
+  },
+  {
+    key: 'TICKET_FILE_MAX_BYTES',
+    secret: false,
+    textDe:
+      'Maximale Dateigröße in Bytes. Leer heißt 10485760, also 10 Megabyte. Ein größerer Wert als 33554432 wird auf diese Obergrenze gesetzt.',
+    textEn:
+      'Maximum file size in bytes. Empty means 10485760, which is 10 megabytes. A larger value than 33554432 is capped there.',
   },
   {
     key: 'TICKET_ARCHIVE_DIR',
@@ -534,7 +553,8 @@ export const configFields: readonly ConfigField[] = [
   {
     key: 'SEARCH_MODEL_API_KEY',
     secret: true,
-    textDe: 'API-Schlüssel für die spätere Suche. Das Feld zeigt ihn nie an. Noch wird er nicht verwendet.',
+    textDe:
+      'API-Schlüssel für die spätere Suche. Das Feld zeigt ihn nie an. Noch wird er nicht verwendet.',
     textEn: 'API key for the later search. The field never shows it. It is not used yet.',
   },
   {
@@ -545,7 +565,7 @@ export const configFields: readonly ConfigField[] = [
     textEn:
       'The local admin installation password. Afterwards only an Argon2id hash is stored in the database. The field never shows it.',
   },
-];
+].sort((left, right) => left.key.localeCompare(right.key, 'en'));
 
 const secretKeys = new Set(configFields.filter((field) => field.secret).map((field) => field.key));
 

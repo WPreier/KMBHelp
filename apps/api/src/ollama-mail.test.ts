@@ -123,7 +123,8 @@ describe('local mail review', () => {
       expect(model).toContain('qwen2.5:7b');
       expect(model).toContain('classify');
       expect(model).toContain('importance');
-      expect(model).toContain('antwort=SUPPORT');
+      expect(model).toContain('\tSUPPORT');
+      expect(model).toMatch(/\t\d+\.\d\t/u);
       expect(model).not.toContain('1234');
       expect(model).not.toContain('Bearer');
       expect(mailbox).toContain('helpdesk@kmbcloud.at');

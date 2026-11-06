@@ -12,7 +12,7 @@ export const digestSentKey = 'notice.digest_on';
 const addressPattern = /^[^@\s]+@[^@\s]+$/u;
 
 export function digestEnabled(env: NodeJS.ProcessEnv): boolean {
-  const flag = env.NOTICE_DIGEST?.trim().toLowerCase();
+  const flag = env.MAIL_NOTICE_DIGEST?.trim().toLowerCase();
   if (flag === 'off') return false;
   if (flag === 'on') return true;
   return env.NODE_ENV === 'production';

@@ -2,8 +2,9 @@ import {
   archiveIndexSchema,
   closedTicketListSchema,
   closedTicketPageSchema,
+  defaultTicketFileBytes,
+  defaultTicketFileTypes,
   isoDateToDisplay,
-  maxTicketFileBytes,
   renderMarkdownHtml,
   sessionViewSchema,
   ticketFileViewSchema,
@@ -209,6 +210,8 @@ export function TicketWikiPage() {
   const [notice, setNotice] = useState('');
   const [failed, setFailed] = useState(false);
   const [fileError, setFileError] = useState('');
+  const [fileTypes, setFileTypes] = useState(() => defaultTicketFileTypes.split(', '));
+  const [maxFileBytes, setMaxFileBytes] = useState(defaultTicketFileBytes);
   const [confirming, setConfirming] = useState<'text' | 'file' | 'delete' | null>(null);
   const [loaded, setLoaded] = useState(false);
   const draft = useRef('');
@@ -245,6 +248,8 @@ export function TicketWikiPage() {
         setUpdatedAt(work.updatedAt);
         setLastEditor(work.lastEditor);
         setFiles(work.files);
+        setFileTypes(work.fileTypes);
+        setMaxFileBytes(work.maxFileBytes);
         setLoaded(true);
       })
       .catch(() => {
@@ -308,7 +313,13 @@ export function TicketWikiPage() {
 
   function chooseFile(file: File | undefined) {
     if (!file) return;
-    if (file.size > maxTicketFileBytes) {
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const named = file.name.includes('.') && extension !== '';
+    if (!named || !fileTypes.includes(extension)) {
+      setFileError(copy.fileTypeRejected);
+      return;
+    }
+    if (file.size < 1 || file.size > maxFileBytes) {
       setFileError(copy.fileTooBig);
       return;
     }
@@ -320,14 +331,20 @@ export function TicketWikiPage() {
   async function storeFile() {
     const file = pendingFile.current;
     if (!file) return;
-    const contentBase64 = await readBase64(file);
-    const stored = await postJson(
-      `/api/v1/staff/tickets/work/${code}/files`,
-      { name: file.name, mediaType: file.type || 'application/octet-stream', contentBase64 },
-      (value) => ticketFileViewSchema.parse(value),
-    );
-    setFiles((current) => [...current, stored]);
-    pendingFile.current = null;
+    try {
+      const contentBase64 = await readBase64(file);
+      const stored = await postJson(
+        `/api/v1/staff/tickets/work/${code}/files`,
+        { name: file.name, mediaType: file.type || 'application/octet-stream', contentBase64 },
+        (value) => ticketFileViewSchema.parse(value),
+      );
+      setFiles((current) => [...current, stored]);
+      setFileError('');
+      pendingFile.current = null;
+    } catch (error) {
+      const text = error instanceof RequestFailed ? error.text : null;
+      setFileError(text ? text[lang] : copy.fileContentRejected);
+    }
   }
 
   async function removeFile() {
@@ -502,6 +519,7 @@ export function TicketWikiPage() {
             ref={picker}
             className="file-input"
             type="file"
+            accept={fileTypes.map((extension) => `.${extension}`).join(',')}
             disabled={frozen}
             onChange={(event) => {
               chooseFile(event.target.files?.[0]);

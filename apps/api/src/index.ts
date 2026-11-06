@@ -1,5 +1,5 @@
 import { createDatabase } from '@kmbhelp/db';
-import { loadEnvFileIfPresent, loadWorkstationEnv } from '@kmbhelp/shared/env';
+import { adoptLegacyConfig, loadEnvFileIfPresent, loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { readRuntimeAuth } from './auth.js';
 import { buildApp } from './app.js';
 import { inspectConfiguration } from './configuration.js';
@@ -10,6 +10,7 @@ import { readSyslogTarget } from './syslog-settings.js';
 
 loadEnvFileIfPresent(new URL('../../../.env', import.meta.url));
 loadWorkstationEnv();
+adoptLegacyConfig();
 await applyStoredConfig();
 
 let testAuthEnabled = false;

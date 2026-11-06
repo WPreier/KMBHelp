@@ -1,6 +1,6 @@
 # Version
 
-Aktueller Stand: **V 0.1.2**
+Aktueller Stand: **V 0.1.3**
 
 | | |
 |---|---|
@@ -19,11 +19,15 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 | 1 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. |
 | 1 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.1.3**. Die Minor-Stelle bleibt 1, bis Wolfgang eine Minor freigibt. Die erste Minor danach heißt **V 0.2.0**, der Patch beginnt wieder bei 0. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.1.4**. Die Minor-Stelle bleibt 1, bis Wolfgang eine Minor freigibt. Die erste Minor danach heißt **V 0.2.0**, der Patch beginnt wieder bei 0. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.1.3 — 06.11.2026
+
+Anhänge werden vor dem Hochladen auf Typ und Größe geprüft und danach auf den Inhalt. Die Grenzen stehen in `TICKET_FILE_TYPES` und `TICKET_FILE_MAX_BYTES`. Die Konfiguration ist alphabetisch sortiert. `OLLAMA_` heißt `MAILCHECK_KI_`, `SMTP_` heißt `MAIL_SMTP_`, `NOTICE_` heißt `MAIL_NOTICE_DIGEST`, `AI_MAIL_` heißt `MAIL_AI_` und die übrigen `AI_` heißen `SEARCH_AI_`. Ein alter Name gilt weiter, solange der neue Name leer ist. Offene Tickets ist der erste Menüpunkt. Das KI-Protokoll zeigt Auftrag und Antwort getrennt und die Antwortzeit in Sekunden.
 
 ### V 0.1.2 — 06.11.2026
 

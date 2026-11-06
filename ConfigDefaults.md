@@ -81,26 +81,26 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `CALENDAR_DELAY_P3` | `240` | Minuten nach dem Anlegen, wann ein P3-Termin beginnt. |
 | `WORKER_SCHEDULE` | `00:00-08:00=30,08:00-12:00=10,12:00-12:30=0,12:30-17:00=10,17:00-24:00=30` | Abruf bei Microsoft 365. `0` ist eine Pause. Die Uhr ist `SYSLOG_UTC_OFFSET`. |
 | `ACCESS_LOG_RETENTION_DAYS` | `90` | Danach löscht der Review-Lauf die IP-Zeilen in `access_log`. `activity_log` bleibt. |
-| `AI_PROVIDER` | `grok` | Nur der Name. Erlaubt sind grok, gemini, deepseek, other. Die Adresse ist `AI_ENDPOINT`. |
+| `SEARCH_AI_PROVIDER` | `grok` | Nur der Name. Erlaubt sind grok, gemini, deepseek, other. Die Adresse ist `SEARCH_AI_ENDPOINT`. |
 | `INTERNAL_MAIL_DOMAINS` | `kmb-steuerberatung.at,ght.at,koller-rohrschach.at` | Frühere Absenderliste. Die Mailprüfung sperrt damit niemanden mehr. |
-| `OLLAMA_URL` | `http://192.168.191.131:11434` | Lokaler Ollama-Server. Eine Abfrage wartet höchstens 5 Minuten. |
-| `OLLAMA_MODEL` | `qwen2.5:7b` | Modellname für die Mailprüfung. |
+| `MAILCHECK_KI_URL` | `http://192.168.191.131:11434` | Lokaler Ollama-Server. Eine Abfrage wartet höchstens 5 Minuten. |
+| `MAILCHECK_KI_MODEL` | `qwen2.5:7b` | Modellname für die Mailprüfung. |
 | `MAIL_ERROR_TO` | `helpdesk@ppc.at` | Empfänger der Fehlermail über Graph, wenn eine Abfrage zu lange dauert. Die Mail wird verschickt. |
-| `SMTP_SERVER` | `127.0.0.1` | Lokaler Postfix. Nur diese Adresse. |
-| `SMTP_PORT` | `25` | TCP. |
-| `SMTP_USER` | leer | Benutzer. Leer, solange `SMTP_LOGIN` `none` ist. |
-| `SMTP_PASSWD` | leer | Passwort. Geheimnis, nicht im Git. Bei `none` leer. |
-| `SMTP_LOGIN` | `none` | `none`, `plain` oder `login`. |
-| `SMTP_TO` | `helpdesk@ppc.at` | Empfänger, wenn Graph die Fehlermail oder die Tagesmail nicht verschickt. |
-| `NOTICE_DIGEST` | leer | Tagesmail mit offenen Warnungen. Leer gilt in Produktion. `on` überall, `off` aus. |
-| `NOTICE_DIGEST_HOUR` | `7` | Stunde in der Uhr `SYSLOG_UTC_OFFSET`. Ein Versuch am Tag. |
-| `AI_MAIL_PROMPT` | eingebauter JA/NEIN-Auftrag | Früherer Auftrag. Die Mailprüfung nutzt ihn nicht mehr. |
+| `MAIL_SMTP_SERVER` | `127.0.0.1` | Lokaler Postfix. Nur diese Adresse. |
+| `MAIL_SMTP_PORT` | `25` | TCP. |
+| `MAIL_SMTP_USER` | leer | Benutzer. Leer, solange `MAIL_SMTP_LOGIN` `none` ist. |
+| `MAIL_SMTP_PASSWD` | leer | Passwort. Geheimnis, nicht im Git. Bei `none` leer. |
+| `MAIL_SMTP_LOGIN` | `none` | `none`, `plain` oder `login`. |
+| `MAIL_SMTP_TO` | `helpdesk@ppc.at` | Empfänger, wenn Graph die Fehlermail oder die Tagesmail nicht verschickt. |
+| `MAIL_NOTICE_DIGEST` | leer | Tagesmail mit offenen Warnungen. Leer gilt in Produktion. `on` überall, `off` aus. |
+| `MAIL_NOTICE_DIGEST_HOUR` | `7` | Stunde in der Uhr `SYSLOG_UTC_OFFSET`. Ein Versuch am Tag. |
+| `MAIL_AI_PROMPT` | eingebauter JA/NEIN-Auftrag | Früherer Auftrag. Die Mailprüfung nutzt ihn nicht mehr. |
 | `ACTIVITY_LOG_FILE` | `%LOCALAPPDATA%\kmbhelp\activity.log` | Seitenprotokoll. Im selben Verzeichnis liegen `error.log` und `mail.log`. Auf dem Server `/var/lib/kmbhelp/`. |
-| `AI_ENDPOINT` | leer | https-Adresse für Suche und Kenntnisprüfung. Die Mailprüfung nutzt `OLLAMA_URL`. Ohne EU-Region, Schlüssel und AVV kein Aufruf. |
-| `AI_REGION` | leer | Muss als EU-Verarbeitung erkennbar sein. Eine US-Region sperrt den Aufruf. |
-| `AI_API_KEY` | leer | Schlüssel. Nur in `secrets.json`, nie in Git. |
-| `AI_AVV_REFERENCE` | leer | Verweis auf den Auftragsverarbeitungsvertrag. |
-| `AI_AUTO_REPLY_CATEGORIES` | leer | Kategorie-Codes für automatisches Schließen. Leer schließt nie automatisch. |
+| `SEARCH_AI_ENDPOINT` | leer | https-Adresse für Suche und Kenntnisprüfung. Die Mailprüfung nutzt `MAILCHECK_KI_URL`. Ohne EU-Region, Schlüssel und AVV kein Aufruf. |
+| `SEARCH_AI_REGION` | leer | Muss als EU-Verarbeitung erkennbar sein. Eine US-Region sperrt den Aufruf. |
+| `SEARCH_AI_API_KEY` | leer | Schlüssel. Nur in `secrets.json`, nie in Git. |
+| `SEARCH_AI_AVV_REFERENCE` | leer | Verweis auf den Auftragsverarbeitungsvertrag. |
+| `SEARCH_AI_AUTO_REPLY_CATEGORIES` | leer | Kategorie-Codes für automatisches Schließen. Leer schließt nie automatisch. |
 
 Die Kategorien selbst stehen nicht in dieser Datei. Sie liegen in `packages/db/src/catalog.ts`, fachlich in `docs/ticketkatalog.md`, und `pnpm db:seed` schreibt sie in die Tabelle `category`. Eine Seite zum Anlegen von Kategorien gibt es nicht. `/verwaltung` ordnet vorhandene Kategorien nur den Mitarbeitern zu.
 

@@ -226,8 +226,10 @@ function noteModel(
       new Date().toISOString(),
       'ollama',
       kind,
-      name,
-      `${oneLine(model)} http=${status} ${ms}ms antwort=${oneLine(answer, 4000)} auftrag=${oneLine(prompt, 12000)}`,
+      `${name} ${oneLine(model)} http=${status}`,
+      (ms / 1000).toFixed(1),
+      oneLine(prompt, 12000),
+      oneLine(answer, 4000),
     ].join('\t'),
   );
 }
