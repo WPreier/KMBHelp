@@ -15,6 +15,8 @@ export {
   type TicketStatus,
   type TicketType,
 } from './domain.js';
+export { allowedTicketFile, formatTicketCode, isTicketCode } from './ticket-code.js';
+export { maxTicketFileBytes, renderMarkdownHtml } from './markdown.js';
 export {
   backupCloseSchema,
   backupTestInputSchema,
@@ -52,9 +54,19 @@ export {
   publicTicketSchema,
   publicTicketStateSchema,
   readPublicError,
+  closedTicketListSchema,
+  closedTicketPageSchema,
   searchHitSchema,
   searchQuerySchema,
   searchResultSchema,
+  searchScopes,
+  archiveIndexSchema,
+  ticketFileViewSchema,
+  ticketMarkdownSchema,
+  ticketPageSchema,
+  ticketSavedSchema,
+  ticketUploadSchema,
+  ticketWorkSchema,
   staffTicketListSchema,
   staffTicketSchema,
   type CategoryOption,
@@ -63,6 +75,7 @@ export {
   type FaqArticleView,
   type PublicTicket,
   type SearchHit,
+  type TicketPage,
   type StaffTicket,
   type StaffTicketList,
 } from './contracts.js';

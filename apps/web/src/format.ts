@@ -11,6 +11,14 @@ export function formatAge(seconds: number, copy: Copy): string {
   return `${Math.floor(hours / 24)} ${copy.days}`;
 }
 
+export function impactLabel(impact: string, copy: Copy): string {
+  if (impact === 'filing') return copy.impactFiling;
+  if (impact === 'payroll') return copy.impactPayroll;
+  if (impact === 'workplace') return copy.impactWorkplace;
+  if (impact === 'cosmetic') return copy.impactCosmetic;
+  return impact;
+}
+
 export function priorityLabel(priority: string, copy: Copy): string {
   if (priority === 'p1') return copy.priorityP1;
   if (priority === 'p2') return copy.priorityP2;

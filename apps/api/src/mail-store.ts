@@ -175,7 +175,7 @@ export function drizzleMailStore(database: Database): MailStore {
     async closeTicket(ticketId) {
       await database.db
         .update(ticket)
-        .set({ status: 'closed', closedAt: new Date(), updatedAt: new Date() })
+        .set({ closeRequestedAt: new Date(), updatedAt: new Date() })
         .where(eq(ticket.id, ticketId));
     },
     async publishedFaqs() {

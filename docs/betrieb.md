@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.1`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.2`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 
@@ -108,6 +108,10 @@ Andere Störungen stehen im Journal und unter `/verwaltung/meldungen`. Sie werde
 Einmal am Tag, ab `NOTICE_DIGEST_HOUR` (Auslieferung 7) in der Uhr `SYSLOG_UTC_OFFSET`, prüft der Worker die Konfiguration. Gibt es Warnungen oder Fehler, geht eine kurze Liste an `MAIL_ERROR_TO`. Gelingt Graph nicht, übernimmt Postfix an `SMTP_TO`. Hinweise wie der fehlende externe KI-Endpunkt stehen nicht darin. Ist nichts offen, geht keine Mail hinaus.
 
 `NOTICE_DIGEST` leer lässt das auf dem Produktionsserver laufen und auf dem Arbeitsplatz aus. `on` schaltet es überall ein, `off` überall aus. Es gibt einen Versuch am Tag. Gelingt der Versand nicht, steht `digest-failed` im Protokoll, der nächste Versuch ist am nächsten Tag. Die Seite Meldungen zeigt den Stand trotzdem.
+
+## Ticketarchiv
+
+Der Worker prüft jede Minute, ob in Europa/Wien ein Werktag 23:00 erreicht oder ein früherer Werktagsabend verpasst wurde. Vorgemerkte Tickets und schon geschlossene Tickets ohne Archiv schreibt er nach `TICKET_ARCHIVE_DIR`. Leer heißt auf dem Server `/var/lib/kmbhelp/archiv/{code}/`. Darin liegen `index.html`, `ticket.md`, `summary.md`, `fazit.md`, `ticket.pdf` und der Ordner `dateien` mit den Originalen. `index.html` zeigt das vollständige Ticket und verlinkt Summary, Fazit, das PDF und die Dateien mit Name, Größe und Datum. Die Ticketseite merkt sich `last_editor` und `updated_at` bei jedem Speichern. Die Seite im Web unter `/archiv/{code}` zeigt denselben Inhalt nur mit Staff-Sitzung, lokalem Admin oder Dienst-Token. Das PDF ist der Text des Berichts. Bilder und Excel werden nicht in das PDF gezeichnet. Die Originale liegen daneben. Fazit und Summary bleiben in der Datenbank. Beschreibung, Bearbeitung und Dateien werden danach aus der Datenbank gelöscht. Das Verzeichnis liegt nicht im Webroot.
 
 ## Postfix
 

@@ -19,6 +19,12 @@ import { AdminPage, SignInPage } from './auth-pages.js';
 import { AdminLinks, ConfigurationPage, NoticesPage } from './operations-pages.js';
 import { TermPage } from './vocabulary-pages.js';
 import { ArticlePage, FaqListPage, FaqPage, HomePage, MissingPage, SearchPage } from './pages.js';
+import {
+  ArchiveIndexPage,
+  ClosedSummaryPage,
+  ClosedTicketsPage,
+  TicketWikiPage,
+} from './ticket-wiki-page.js';
 import { ActivityPage } from './activity-page.js';
 import { DashboardPage } from './dashboard-page.js';
 import { TicketPage } from './ticket-page.js';
@@ -191,12 +197,16 @@ function Shell({
       <main id="content">
         <nav className="content-nav" aria-label={copy.contentNav}>
           <Link to="/">{copy.fileTicket}</Link>
-          <Link to="/faq">{copy.guides}</Link>
+          <Link to="/abgeschlossen">{copy.guides}</Link>
           <Link to="/mitarbeit/dashboard">{copy.dashboardTitle}</Link>
         </nav>
         {session?.signedIn ? <AdminLinks /> : null}
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/abgeschlossen" element={<ClosedTicketsPage />} />
+          <Route path="/abgeschlossen/:code" element={<ClosedSummaryPage />} />
+          <Route path="/ticket/:code" element={<TicketWikiPage />} />
+          <Route path="/archiv/:code" element={<ArchiveIndexPage />} />
           <Route path="/faq" element={<FaqListPage />} />
           <Route path="/faq/:slug" element={<FaqPage />} />
           <Route path="/wissen/:id" element={<ArticlePage />} />
@@ -233,13 +243,20 @@ function SearchForm() {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const q = String(new FormData(event.currentTarget).get('q') ?? '').trim();
-    navigate(q ? `/suche?q=${encodeURIComponent(q)}` : '/suche');
+    const data = new FormData(event.currentTarget);
+    const q = String(data.get('q') ?? '').trim();
+    const scope = String(data.get('scope') ?? 'verdict');
+    navigate(q ? `/suche?q=${encodeURIComponent(q)}&scope=${encodeURIComponent(scope)}` : '/suche');
   }
 
   return (
     <form className="search" role="search" onSubmit={onSubmit}>
       <input name="q" type="search" maxLength={80} aria-label={copy.searchSubmit} />
+      <select name="scope" defaultValue="verdict" aria-label={copy.searchScope}>
+        <option value="verdict">{copy.scopeVerdict}</option>
+        <option value="summary">{copy.scopeSummary}</option>
+        <option value="ticket">{copy.scopeTicket}</option>
+      </select>
       <button type="submit" title={copy.searchTitle} aria-label={copy.searchSubmit}>
         <SearchIcon />
       </button>

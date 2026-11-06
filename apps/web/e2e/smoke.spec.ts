@@ -28,6 +28,8 @@ test('files a ticket, hides the description, and switches language and theme', a
           tickets: [
             {
               number: 8,
+              code: '26-0008',
+              closeRequested: false,
               groupCode: 'workplace',
               groupLabelDe: 'Arbeitsplatz',
               groupLabelEn: 'Workplace',
@@ -54,7 +56,12 @@ test('files a ticket, hides the description, and switches language and theme', a
       return;
     }
     await route.fulfill({
-      json: { number: 8, priority: 'p2', priorityReason: 'impact_without_date' },
+      json: {
+        number: 8,
+        code: '26-0008',
+        priority: 'p2',
+        priorityReason: 'impact_without_date',
+      },
     });
   });
 

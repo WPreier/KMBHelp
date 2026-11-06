@@ -43,6 +43,8 @@ export type CreateTicketInput = z.infer<typeof createTicketSchema>;
 export const publicTicketSchema = z
   .object({
     number: z.number().int().positive(),
+    code: z.string().regex(/^\d{2}-\d{4}$/),
+    closeRequested: z.boolean(),
     groupCode: z.string(),
     groupLabelDe: z.string(),
     groupLabelEn: z.string(),
@@ -63,6 +65,7 @@ export type PublicTicket = z.infer<typeof publicTicketSchema>;
 export const createdTicketSchema = z
   .object({
     number: z.number().int().positive(),
+    code: z.string().regex(/^\d{2}-\d{4}$/),
     priority: z.enum(priorities),
     priorityReason: z.enum([
       'deadline_today_or_overdue',
@@ -148,9 +151,107 @@ export const searchHitSchema = z
 
 export type SearchHit = z.infer<typeof searchHitSchema>;
 
+export const searchScopes = ['verdict', 'summary', 'ticket'] as const;
+
 export const searchQuerySchema = z.object({
   q: z.string().trim().max(80),
+  scope: z.enum(searchScopes).optional(),
 });
+
+export const closedTicketSchema = z
+  .object({
+    code: z.string(),
+    subject: z.string(),
+    verdict: z.string(),
+  })
+  .strict();
+
+export const closedTicketListSchema = z.object({ tickets: z.array(closedTicketSchema) }).strict();
+
+export const closedTicketPageSchema = z
+  .object({
+    code: z.string(),
+    subject: z.string(),
+    summary: z.string(),
+    verdict: z.string(),
+  })
+  .strict();
+
+export const ticketPageSchema = z
+  .object({
+    code: z.string(),
+    categoryLabelDe: z.string(),
+    categoryLabelEn: z.string(),
+    impact: z.enum(impacts),
+    subject: z.string(),
+    dueOn: z.string().nullable(),
+    priority: z.enum(priorities),
+    status: z.enum(ticketStatuses),
+    closeRequested: z.boolean(),
+    frozen: z.boolean(),
+  })
+  .strict();
+
+export type TicketPage = z.infer<typeof ticketPageSchema>;
+
+export const ticketFileViewSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string(),
+    mediaType: z.string(),
+    bytes: z.number().int().nonnegative(),
+    createdAt: z.string(),
+  })
+  .strict();
+
+export const ticketWorkSchema = z
+  .object({
+    body: z.string(),
+    workingMarkdown: z.string(),
+    requesterName: z.string().nullable(),
+    updatedAt: z.string(),
+    lastEditor: z.string().nullable(),
+    files: z.array(ticketFileViewSchema),
+  })
+  .strict();
+
+export const ticketSavedSchema = z
+  .object({
+    updatedAt: z.string(),
+    lastEditor: z.string(),
+  })
+  .strict();
+
+export const archiveIndexSchema = z
+  .object({
+    code: z.string(),
+    archived: z.boolean(),
+    markdown: z.string(),
+    files: z.array(
+      z
+        .object({
+          name: z.string(),
+          bytes: z.number().int().nonnegative(),
+          modifiedAt: z.string(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const ticketMarkdownSchema = z
+  .object({
+    markdown: z.string().max(100_000),
+  })
+  .strict();
+
+export const ticketUploadSchema = z
+  .object({
+    name: z.string().trim().min(1).max(180),
+    mediaType: z.string().trim().min(1).max(120),
+    contentBase64: z.string().min(1).max(14_000_000),
+  })
+  .strict();
 
 export const publicTicketListSchema = z.object({ tickets: z.array(publicTicketSchema) }).strict();
 export const assignableStaffSchema = z

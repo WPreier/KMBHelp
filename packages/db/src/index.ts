@@ -32,6 +32,8 @@ export {
   staffSkill,
   supplier,
   ticket,
+  ticketCodeCounter,
   ticketEvent,
+  ticketFile,
   webauthnChallenge,
 } from './schema.js';

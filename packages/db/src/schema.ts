@@ -102,6 +102,13 @@ export const ticket = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     number: integer('number').generatedAlwaysAsIdentity().notNull().unique(),
+    code: text('code').notNull().default('').unique(),
+    summary: text('summary'),
+    verdict: text('verdict'),
+    workingMarkdown: text('working_markdown'),
+    lastEditor: text('last_editor'),
+    closeRequestedAt: timestamp('close_requested_at', { withTimezone: true, mode: 'date' }),
+    archivedAt: timestamp('archived_at', { withTimezone: true, mode: 'date' }),
     type: text('type').notNull(),
     categoryCode: text('category_code')
       .notNull()
@@ -154,6 +161,26 @@ export const ticket = pgTable(
     ),
   ],
 );
+
+export const ticketFile = pgTable(
+  'ticket_file',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ticketId: uuid('ticket_id')
+      .notNull()
+      .references(() => ticket.id),
+    name: text('name').notNull(),
+    mediaType: text('media_type').notNull(),
+    contentBase64: text('content_base64').notNull(),
+    createdAt: createdAtColumn(),
+  },
+  (table) => [index('ticket_file_ticket_idx').on(table.ticketId)],
+);
+
+export const ticketCodeCounter = pgTable('ticket_code_counter', {
+  year: integer('year').primaryKey(),
+  lastValue: integer('last_value').notNull(),
+});
 
 export const ticketEvent = pgTable(
   'ticket_event',

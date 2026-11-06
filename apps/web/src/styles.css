@@ -168,7 +168,8 @@ label {
 
 input,
 select,
-textarea {
+textarea,
+.wysiwyg {
   border: 1px solid #d9d0c2;
   border-radius: 4px;
   background: var(--surface);
@@ -181,7 +182,8 @@ textarea {
 
 input,
 select,
-textarea {
+textarea,
+.wysiwyg {
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
@@ -189,7 +191,8 @@ textarea {
 
 :root[data-theme='dark'] input,
 :root[data-theme='dark'] select,
-:root[data-theme='dark'] textarea {
+:root[data-theme='dark'] textarea,
+:root[data-theme='dark'] .wysiwyg {
   border-color: #46505b;
   box-shadow:
     inset 1px 1px 0 rgba(255, 255, 255, 0.06),
@@ -210,7 +213,83 @@ header .search {
 }
 
 header .search input {
-  width: 16.5rem;
+  width: min(16.5rem, 42vw);
+}
+
+header .search select {
+  max-width: 8rem;
+}
+
+.wiki-head,
+.format-bar,
+.archive-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wiki-head {
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+
+.format-bar button,
+.wiki-head button {
+  min-height: 2rem;
+}
+
+.wiki {
+  width: 100%;
+  min-height: 16rem;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.wysiwyg {
+  font-family: "Segoe UI", sans-serif;
+  padding: 0.6rem 0.8rem;
+  overflow: auto;
+}
+
+.wysiwyg:focus {
+  outline: 2px solid var(--green);
+}
+
+.drop {
+  width: 100%;
+  min-height: 6rem;
+  margin: 0.5rem 0 1rem;
+  border: 1px dashed var(--line, #8aa);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+.md {
+  overflow-wrap: anywhere;
+}
+
+.md pre {
+  overflow: auto;
+}
+
+.ticket-facts {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.ticket-facts div {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: 0.5rem;
 }
 
 .who {
@@ -346,7 +425,10 @@ fieldset.check-list input {
     inset 1px 1px 0 rgba(255, 252, 247, 0.9),
     inset -1px -1px 0 rgba(88, 78, 62, 0.08),
     0 2px 5px rgba(28, 36, 48, 0.12);
-  overflow: hidden;
+}
+
+.ticket-scroll {
+  overflow-x: auto;
 }
 
 :root[data-theme='dark'] .ticket-panel {
@@ -358,10 +440,11 @@ fieldset.check-list input {
 }
 
 .ticket-table {
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  table-layout: fixed;
+  table-layout: auto;
 }
 
 .ticket-table th,
@@ -372,37 +455,14 @@ fieldset.check-list input {
   text-align: left;
 }
 
-.ticket-table th:nth-child(1),
-.ticket-table td:nth-child(1) {
-  width: 4.5rem;
-}
-
-.ticket-table th:nth-child(3),
-.ticket-table td:nth-child(3) {
-  width: 7.5rem;
-}
-
-.ticket-table th:nth-child(4),
-.ticket-table td:nth-child(4) {
-  width: 8.5rem;
-}
-
-.ticket-table th:nth-child(5),
-.ticket-table td:nth-child(5) {
-  width: 6.5rem;
-}
-
-.ticket-table th:nth-child(6),
-.ticket-table td:nth-child(6) {
-  width: 13rem;
-}
-
-.ticket-table th:nth-child(7),
-.ticket-table td:nth-child(7) {
-  width: 4rem;
-}
-
 .ticket-table .ticket-text {
+  max-width: 24rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticket-table .ticket-text .hint {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -440,8 +500,57 @@ fieldset.check-list input {
 }
 
 .ticket-table select {
-  width: 100%;
-  min-width: 0;
+  width: max-content;
+  min-width: 13rem;
+  field-sizing: content;
+}
+
+.hint {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  vertical-align: middle;
+}
+
+.hint button:disabled {
+  pointer-events: none;
+}
+
+.hint-pop {
+  position: fixed;
+  z-index: 40;
+  max-width: min(18rem, calc(100vw - 16px));
+  padding: 6px 8px;
+  border-radius: 2px;
+  background: #1c2430;
+  color: #fffdf9;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+}
+
+.confirm {
+  position: fixed;
+  top: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--ink);
+  padding: 16px;
+  max-width: min(28rem, calc(100vw - 32px));
+}
+
+.confirm::backdrop {
+  background: rgba(28, 36, 48, 0.45);
+}
+
+.confirm p {
+  margin: 0 0 12px;
 }
 
 .ticket-list {

@@ -16,7 +16,7 @@ Verbindlich für die Umsetzung:
 |---|---|---|
 | Ticket anlegen (Web, App) | ja, mit Ratenlimit | ja |
 | Liste offener Tickets nach Abteilung | Eine Zeile je Ticket mit Köpfen ID, Text, Alter, Ablauf bis, dazu Offen, Priorität und Erledigt. Kein Beschreibungstext, kein Absender, keine Kommentare | volle Arbeitsliste |
-| Ticketdetail mit Beschreibung | nein. Es gibt keinen Geheimlink | ja |
+| Ticketdetail mit Beschreibung | nein. Die öffentliche Seite zeigt nur die Köpfe der Liste. Es gibt keinen Geheimlink | ja, die Wiki-Seite `/ticket/{code}` |
 | Kommentare, Anhänge, KI-Begründung | niemals öffentlich | ja, nach Rolle |
 | FAQ | ja, redaktionell freigegeben | ja |
 | Gelöste Tickets als Wissen | nur redigierte Artikel, nie der Roh-Tickettext | Rohtext nur Staff |
@@ -25,7 +25,11 @@ Verbindlich für die Umsetzung:
 
 Anonim anlegen bleibt möglich. Die IP wird gespeichert. Eine E-Mail für einen Geheimlink wird nicht abgefragt. Den Geheimlink gibt es nicht. Die Nummer steht in der öffentlichen Liste. Beschreibung, Absender und Kommentare bleiben dort unsichtbar. Datumseingaben haben die Form `dd.MM.yyyy`. Die Prioritäten heißen in der Oberfläche „Sehr wichtig“, „bitte heute noch“ und „bei Gelegenheit“.
 
-Die öffentliche Arbeitsliste kennt die Status `open`, `inactive`, `expired` und `closed`. Weitere Status bleiben für spätere Prozesse. Ein offenes Ticket mit Fälligkeit vor heute wird `expired`. Die Checkbox setzt `open` auf `inactive`. Ist es `inactive`, öffnet sie es wieder und speichert, dass alle zu informieren sind. Ist Graph konfiguriert, legt der Worker die Mail an alle aktiven Mitarbeiter als Entwurf im Ordner Entwürfe ab. Sonst bleibt das Ereignis stehen, bis die Werte gesetzt sind. Es wird nichts verschickt. `expired` und `closed` schaltet die Checkbox nicht um. Der Knopf Erledigt setzt `closed`. Ein geschlossenes Ticket kann nicht wieder geöffnet werden. Die Priorität in der Liste ist eine spätere menschliche Änderung und wird als Ereignis festgehalten.
+Die sichtbare ID setzt sich aus der zweistelligen Jahreszahl in Europa/Wien, einem Bindestrich und einer vierstelligen fortlaufenden Nummer mit führenden Nullen zusammen. `26-0091` ist nur ein Beispiel für das Jahr 2026. Sie wird einmal vergeben und bleibt. Ab 9999 Tickets in einem Jahr lehnt die Datenbank die nächste Nummer ab. Die interne Kennung der Ereignisse bleibt unverändert, damit bestehende Verweise nicht umgehängt werden.
+
+Die öffentliche Arbeitsliste kennt die Status `open`, `inactive`, `expired` und `closed`. Weitere Status bleiben für spätere Prozesse. Ein offenes Ticket mit Fälligkeit vor heute wird `expired`. Die Checkbox setzt `open` auf `inactive`. Ist es `inactive`, öffnet sie es wieder und speichert, dass alle zu informieren sind. Ist Graph konfiguriert, legt der Worker die Mail an alle aktiven Mitarbeiter als Entwurf im Ordner Entwürfe ab. Sonst bleibt das Ereignis stehen, bis die Werte gesetzt sind. Es wird nichts verschickt. `expired` und `closed` schaltet die Checkbox nicht um. Der Knopf Fertig merkt den Abschluss vor und friert die Bearbeitung ein. An Werktagen um 23:00 Uhr Europa/Wien schreibt der Worker das Ticket nach `/var/lib/kmbhelp/archiv/{code}/`, speichert Fazit und Summary in der Datenbank und setzt erst dann `closed`. Beschreibung, Bearbeitungstext und Dateien verlassen danach die Datenbank. Ein vorgemerktes oder geschlossenes Ticket kann nicht wieder geöffnet werden. Die Priorität in der Liste ist eine spätere menschliche Änderung und wird als Ereignis festgehalten.
+
+Die Liste Abgeschlossene Tickets zeigt ID, Betreff und Fazit. Die Summary-Seite zeigt Fazit und Summary. Beschreibung, Absender, Kommentare und Dateien stehen dort nicht. Die Wiki-Bearbeitung und die Dateien sehen nur eine Staff-Sitzung, der lokale Admin oder ein Dienst mit `MCP_SERVICE_TOKEN`. Das Bearbeitungsfeld zeigt Überschriften, Fett und Kursiv direkt. Speichern schreibt den Text und setzt Änderungszeit und letzten Bearbeiter. Beide Angaben stehen auf der Ticketseite der angemeldeten Bearbeitung. Zulässige Dateien sind Bilder, PDF, Word, Excel, PowerPoint, Text, CSV und Markdown. HTML und ausführbare Dateien bleiben draußen.
 
 ## IP-Adressen
 

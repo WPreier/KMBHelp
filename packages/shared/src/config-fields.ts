@@ -480,6 +480,64 @@ export const configFields: readonly ConfigField[] = [
       'The username of the single local admin. pnpm install:helpdesk creates the account. This field alone does not.',
   },
   {
+    key: 'TICKET_ARCHIVE_DIR',
+    secret: false,
+    textDe:
+      'Das Verzeichnis für abgeschlossene Tickets. Leer heißt auf dem Server /var/lib/kmbhelp/archiv. Jedes Ticket bekommt dort einen eigenen Ordner.',
+    textEn:
+      'The directory for closed tickets. Empty means /var/lib/kmbhelp/archiv on the server. Each ticket gets its own folder there.',
+  },
+  {
+    key: 'SEARCH_MODEL_URL',
+    secret: false,
+    textDe:
+      'Adresse des späteren Suchmodells, zum Beispiel http://192.168.191.131:11434 oder eine HTTPS-Schnittstelle. Leer heißt: die Suche bleibt die Textsuche.',
+    textEn:
+      'Address of the later search model, for example http://192.168.191.131:11434 or an HTTPS endpoint. Empty means search stays a text search.',
+  },
+  {
+    key: 'SEARCH_MODEL_NAME',
+    secret: false,
+    textDe: 'Name des Suchmodells, zum Beispiel qwen2.5:7b. Noch nicht angebunden.',
+    textEn: 'Name of the search model, for example qwen2.5:7b. Not connected yet.',
+  },
+  {
+    key: 'SEARCH_MODEL_INTERFACE',
+    secret: false,
+    textDe: 'Art des späteren Aufrufs: api, rest oder ssh. Leer heißt api.',
+    textEn: 'How the later call is made: api, rest or ssh. Empty means api.',
+  },
+  {
+    key: 'SEARCH_MODEL_CALL',
+    secret: false,
+    textDe: 'Pfad oder Befehl des späteren Aufrufs, zum Beispiel /api/chat.',
+    textEn: 'Path or command of the later call, for example /api/chat.',
+  },
+  {
+    key: 'SEARCH_MODEL_USER',
+    secret: false,
+    textDe: 'Benutzername für das spätere Suchmodell, falls die Schnittstelle einen verlangt.',
+    textEn: 'Username for the later search model, when the endpoint requires one.',
+  },
+  {
+    key: 'SEARCH_MODEL_PASSWORD',
+    secret: true,
+    textDe: 'Passwort für das spätere Suchmodell. Das Feld zeigt es nie an.',
+    textEn: 'Password for the later search model. The field never shows it.',
+  },
+  {
+    key: 'SEARCH_MODEL_API_ID',
+    secret: false,
+    textDe: 'API-Kennung für eine spätere Suche, zum Beispiel bei einem Anbieter wie OpenRouter.',
+    textEn: 'API id for a later search, for example at a provider such as OpenRouter.',
+  },
+  {
+    key: 'SEARCH_MODEL_API_KEY',
+    secret: true,
+    textDe: 'API-Schlüssel für die spätere Suche. Das Feld zeigt ihn nie an. Noch wird er nicht verwendet.',
+    textEn: 'API key for the later search. The field never shows it. It is not used yet.',
+  },
+  {
     key: 'LOCAL_ADMIN_PASSWORD',
     secret: true,
     textDe:

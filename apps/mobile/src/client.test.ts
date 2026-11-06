@@ -44,12 +44,19 @@ describe('mobile client', () => {
     const http: HelpdeskHttp = async (url, init) => {
       calls.push({ url, body: String(init?.body ?? '') });
       if (url.endsWith('/api/v1/tickets')) {
-        return jsonResponse({ number: 4, priority: 'p3', priorityReason: 'single_workplace' });
+        return jsonResponse({
+          number: 4,
+          code: '26-0004',
+          priority: 'p3',
+          priorityReason: 'single_workplace',
+        });
       }
       return jsonResponse({
         tickets: [
           {
             number: 4,
+            code: '26-0004',
+            closeRequested: false,
             groupCode: 'workplace',
             groupLabelDe: 'Arbeitsplatz',
             groupLabelEn: 'Workplace',
@@ -101,6 +108,8 @@ describe('mobile client', () => {
     const row = presentPublicRow(
       {
         number: 4,
+        code: '26-0004',
+        closeRequested: false,
         groupCode: 'workplace',
         groupLabelDe: 'Arbeitsplatz',
         groupLabelEn: 'Workplace',

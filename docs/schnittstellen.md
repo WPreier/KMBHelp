@@ -45,6 +45,14 @@ Gesundheit: `https://helpdesk.kmbcloud.at/api/health`. `smtp` ist `up`, wenn `SM
 
 ## 6. KI-Suche
 
+Die Kopfzeile sucht mit `scope=verdict`, `scope=summary` oder `scope=ticket`. Ohne `scope` bleibt die bisherige Suche in FAQ und redigiertem Wissen. Fazit und Summary durchsuchen nur abgeschlossene Tickets. Der Bereich Ticket durchsucht den Text nur mit Staff-Sitzung. Ohne Sitzung sucht er den Betreff abgeschlossener Tickets.
+
+Für ein späteres lokales Suchmodell sind die Konfigurationsfelder `SEARCH_MODEL_URL`, `SEARCH_MODEL_NAME`, `SEARCH_MODEL_INTERFACE` (`api`, `rest` oder `ssh`), `SEARCH_MODEL_CALL`, `SEARCH_MODEL_USER`, `SEARCH_MODEL_PASSWORD`, `SEARCH_MODEL_API_ID` und `SEARCH_MODEL_API_KEY` angelegt. Passwort und Schlüssel bleiben Geheimnisse. Es gibt noch keinen Aufruf. Die Suche bleibt Volltext, bis ein Modell feststeht.
+
+`POST /api/v1/staff/tickets/work/{code}` speichert den Tickettext. Die Antwort nennt `updatedAt` und `lastEditor`. Dieselben Leser wie die Wiki-Seite. Ohne Sitzung antwortet der Aufruf mit 401. Ein eingefrorenes Ticket antwortet mit 409.
+
+## 6a. Bisherige Suche
+
 - Auf allen inhaltlichen Seiten ein Suchfeld.
 - Durchsucht FAQ, freigegebene Artikel und — nur für Staff — Tickettexte.
 - Ergebnis: Link, Titel, kurze Begründung warum der Treffer passt. Keine freie Nacherzählung von Mandantendaten in der öffentlichen Suche.

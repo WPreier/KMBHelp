@@ -7,6 +7,10 @@
     "./mail-cycle": {
       "types": "./src/mail-cycle.ts",
       "default": "./src/mail-cycle.ts"
+    },
+    "./ticket-archive": {
+      "types": "./src/ticket-archive.ts",
+      "default": "./src/ticket-archive.ts"
     }
   },
   "scripts": {

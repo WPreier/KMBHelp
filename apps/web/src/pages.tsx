@@ -14,10 +14,11 @@ import {
   type PriorityReason,
   type PublicTicket,
 } from '@kmbhelp/shared';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getJson, postJson, RequestFailed } from './api.js';
 import { formatAge, priorityLabel, reasonLabel } from './format.js';
+import { Hint } from './hint.js';
 import { useLocale } from './locale.js';
 
 const firmLinks = publicLinkTargets({
@@ -38,6 +39,10 @@ export function HomePage() {
   const [revision, setRevision] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
   const [askNotice, setAskNotice] = useState<string | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<{
+    message: string;
+    run: () => void;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,9 +64,18 @@ export function HomePage() {
     };
   }, [created, revision]);
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
+    setPendingConfirm({
+      message: copy.confirmCreate,
+      run: () => {
+        void createTicket(form);
+      },
+    });
+  }
+
+  async function createTicket(form: HTMLFormElement) {
     const data = new FormData(form);
     setPending(true);
     setFormError(null);
@@ -74,7 +88,7 @@ export function HomePage() {
           subject: String(data.get('subject') ?? ''),
           body: String(data.get('body') ?? ''),
           requesterName: String(data.get('requesterName') ?? ''),
-          dueOn: String(data.get('dueOn') ?? ''),
+          dueOn: isoDateToDisplay(String(data.get('dueOn') ?? '')),
           clientPriority: String(data.get('clientPriority') ?? ''),
           source: 'web',
         },
@@ -165,13 +179,7 @@ export function HomePage() {
         </label>
         <label>
           {copy.dueOn}
-          <input
-            name="dueOn"
-            inputMode="numeric"
-            placeholder="dd.MM.yyyy"
-            maxLength={10}
-            pattern="\d{2}\.\d{2}\.\d{4}"
-          />
+          <input name="dueOn" type="date" />
         </label>
         <label>
           {copy.name}
@@ -189,27 +197,31 @@ export function HomePage() {
         <p>{copy.priorityHint}</p>
         {formError ? <p role="alert">{formError}</p> : null}
         <div className="form-actions">
-          <button type="submit" disabled={pending}>
-            {copy.submit}
-          </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              const form = event.currentTarget.form;
-              if (!form) return;
-              for (const field of form.elements) {
-                if (
-                  field instanceof HTMLInputElement ||
-                  field instanceof HTMLTextAreaElement ||
-                  field instanceof HTMLSelectElement
-                ) {
-                  field.value = '';
+          <Hint text={copy.submitTitle}>
+            <button type="submit" disabled={pending}>
+              {copy.submit}
+            </button>
+          </Hint>
+          <Hint text={copy.resetTitle}>
+            <button
+              type="button"
+              onClick={(event) => {
+                const form = event.currentTarget.form;
+                if (!form) return;
+                for (const field of form.elements) {
+                  if (
+                    field instanceof HTMLInputElement ||
+                    field instanceof HTMLTextAreaElement ||
+                    field instanceof HTMLSelectElement
+                  ) {
+                    field.value = '';
+                  }
                 }
-              }
-            }}
-          >
-            {copy.reset}
-          </button>
+              }}
+            >
+              {copy.reset}
+            </button>
+          </Hint>
         </div>
       </form>
       {created ? (
@@ -232,110 +244,147 @@ export function HomePage() {
         <section className="group" key={groupCode}>
           <h3>{lang === 'de' ? entries[0]?.groupLabelDe : entries[0]?.groupLabelEn}</h3>
           <div className="ticket-panel">
-            <table className="ticket-table">
-              <thead>
-                <tr>
-                  <th scope="col">{copy.ticketId}</th>
-                  <th scope="col">{copy.ticketText}</th>
-                  <th scope="col">{copy.staffMark}</th>
-                  <th scope="col">{copy.age}</th>
-                  <th scope="col">{copy.dueUntil}:</th>
-                  <th scope="col">
-                    <span className="visually-hidden">{copy.markOpen}</span>
-                  </th>
-                  <th scope="col">
-                    <span className="visually-hidden">{copy.priority}</span>
-                  </th>
-                  <th scope="col">
-                    <span className="visually-hidden">{copy.done}</span>
-                  </th>
-                  <th scope="col">
-                    <span className="visually-hidden">{copy.askStaffTitle}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((entry) => {
-                  const switchTitle =
-                    entry.status === 'inactive' ? copy.reopenTitle : copy.deactivateTitle;
-                  const locked = entry.status === 'closed' || entry.status === 'expired';
-                  return (
-                    <tr key={entry.number}>
-                      <td>{entry.number}</td>
-                      <td className="ticket-text" title={entry.subject}>
-                        {entry.subject}
-                      </td>
-                      <td>{entry.staffMark ?? ''}</td>
-                      <td>{formatAge(entry.ageSeconds, copy)}</td>
-                      <td>{entry.dueOn ? isoDateToDisplay(entry.dueOn) : copy.noDue}</td>
-                      <td>
-                        <label className="check">
-                          <input
-                            type="checkbox"
-                            checked={entry.status === 'open'}
-                            disabled={locked}
-                            title={switchTitle}
-                            aria-label={switchTitle}
-                            onChange={() => {
-                              void changeTicket(entry.number, { action: 'toggle' });
-                            }}
-                          />
-                          {copy.markOpen}
-                        </label>
-                      </td>
-                      <td>
-                        <select
-                          value={entry.priority}
-                          title={copy.priorityTitle}
-                          aria-label={copy.priorityTitle}
-                          disabled={entry.status === 'closed'}
-                          onChange={(event) => {
-                            void changeTicket(entry.number, {
-                              action: 'priority',
-                              priority: event.target.value,
-                            });
-                          }}
-                        >
-                          <option value="p1">{copy.priorityP1}</option>
-                          <option value="p2">{copy.priorityP2}</option>
-                          <option value="p3">{copy.priorityP3}</option>
-                        </select>
-                      </td>
-                      <td>
-                        <button
-                          type="button"
-                          title={copy.closeTitle}
-                          aria-label={copy.done}
-                          disabled={entry.status === 'closed'}
-                          onClick={() => {
-                            void changeTicket(entry.number, { action: 'close' });
-                          }}
-                        >
-                          <CheckIcon />
-                        </button>
-                      </td>
-                      <td>
-                        {entry.status === 'open' ? (
-                          <button
-                            type="button"
-                            title={copy.askStaffTitle}
-                            aria-label={copy.askStaffTitle}
-                            onClick={() => {
-                              void askTicket(entry.number);
-                            }}
-                          >
-                            {copy.askStaff}
-                          </button>
-                        ) : null}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="ticket-scroll">
+              <table className="ticket-table">
+                <thead>
+                  <tr>
+                    <th scope="col">{copy.ticketId}</th>
+                    <th scope="col">{copy.ticketText}</th>
+                    <th scope="col">{copy.age}</th>
+                    <th scope="col">{copy.dueUntil}</th>
+                    <th scope="col">{copy.markOpen}</th>
+                    <th scope="col">{copy.priority}</th>
+                    <th scope="col">{copy.doneHead}</th>
+                    <th scope="col">{copy.askHead}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry) => {
+                    const switchTitle =
+                      entry.status === 'inactive' ? copy.reopenTitle : copy.deactivateTitle;
+                    const switchConfirm =
+                      entry.status === 'inactive' ? copy.confirmReopen : copy.confirmDeactivate;
+                    const locked =
+                      entry.status === 'closed' ||
+                      entry.status === 'expired' ||
+                      entry.closeRequested;
+                    return (
+                      <tr key={entry.number}>
+                        <td>
+                          <Link to={`/ticket/${entry.code}`}>{entry.code}</Link>
+                        </td>
+                        <td className="ticket-text">
+                          <Hint text={entry.subject}>{entry.subject}</Hint>
+                        </td>
+                        <td>{formatAge(entry.ageSeconds, copy)}</td>
+                        <td>{entry.dueOn ? isoDateToDisplay(entry.dueOn) : copy.noDue}</td>
+                        <td>
+                          <Hint text={switchTitle}>
+                            <label className="check">
+                              <input
+                                type="checkbox"
+                                checked={entry.status === 'open'}
+                                disabled={locked}
+                                aria-label={switchTitle}
+                                onChange={() => {
+                                  setPendingConfirm({
+                                    message: switchConfirm,
+                                    run: () => {
+                                      void changeTicket(entry.number, { action: 'toggle' });
+                                    },
+                                  });
+                                }}
+                              />
+                              {copy.markOpen}
+                            </label>
+                          </Hint>
+                        </td>
+                        <td>
+                          <Hint text={copy.priorityTitle}>
+                            <select
+                              value={entry.priority}
+                              aria-label={copy.priorityTitle}
+                              disabled={locked}
+                              onChange={(event) => {
+                                const priority = event.target.value;
+                                setPendingConfirm({
+                                  message: copy.confirmPriority,
+                                  run: () => {
+                                    void changeTicket(entry.number, {
+                                      action: 'priority',
+                                      priority,
+                                    });
+                                  },
+                                });
+                              }}
+                            >
+                              <option value="p1">{copy.priorityP1}</option>
+                              <option value="p2">{copy.priorityP2}</option>
+                              <option value="p3">{copy.priorityP3}</option>
+                            </select>
+                          </Hint>
+                        </td>
+                        <td>
+                          <Hint text={copy.closeTitle}>
+                            <button
+                              type="button"
+                              aria-label={entry.closeRequested ? copy.closeQueued : copy.done}
+                              disabled={locked}
+                              onClick={() => {
+                                setPendingConfirm({
+                                  message: copy.confirmClose,
+                                  run: () => {
+                                    void changeTicket(entry.number, { action: 'close' });
+                                  },
+                                });
+                              }}
+                            >
+                              <CheckIcon />
+                            </button>
+                          </Hint>
+                        </td>
+                        <td>
+                          {entry.status === 'open' ? (
+                            <Hint text={copy.askStaffTitle}>
+                              <button
+                                type="button"
+                                aria-label={copy.askStaffTitle}
+                                onClick={() => {
+                                  setPendingConfirm({
+                                    message: copy.confirmAsk,
+                                    run: () => {
+                                      void askTicket(entry.number);
+                                    },
+                                  });
+                                }}
+                              >
+                                {copy.askStaff}
+                              </button>
+                            </Hint>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       ))}
+      {pendingConfirm ? (
+        <ConfirmDialog
+          message={pendingConfirm.message}
+          yesLabel={copy.confirmYes}
+          noLabel={copy.confirmNo}
+          onYes={() => {
+            const run = pendingConfirm.run;
+            setPendingConfirm(null);
+            run();
+          }}
+          onNo={() => setPendingConfirm(null)}
+        />
+      ) : null}
     </>
   );
 }
@@ -449,6 +498,8 @@ export function SearchPage() {
   const { lang, copy } = useLocale();
   const [params] = useSearchParams();
   const q = params.get('q')?.trim() ?? '';
+  const scope = params.get('scope') ?? '';
+  const chosen = scope === 'verdict' || scope === 'summary' || scope === 'ticket' ? scope : '';
   const [hits, setHits] = useState<{ title: string; href: string | null; sentence: string }[]>([]);
   const [failed, setFailed] = useState(false);
 
@@ -458,7 +509,10 @@ export function SearchPage() {
       return;
     }
     let cancelled = false;
-    getJson(`/api/v1/search?q=${encodeURIComponent(q)}`, (value) => searchResultSchema.parse(value))
+    const address = chosen
+      ? `/api/v1/search?q=${encodeURIComponent(q)}&scope=${chosen}`
+      : `/api/v1/search?q=${encodeURIComponent(q)}`;
+    getJson(address, (value) => searchResultSchema.parse(value))
       .then((body) => {
         if (cancelled) return;
         setHits(
@@ -476,7 +530,7 @@ export function SearchPage() {
     return () => {
       cancelled = true;
     };
-  }, [lang, q]);
+  }, [chosen, lang, q]);
 
   return (
     <>
@@ -492,6 +546,50 @@ export function SearchPage() {
         ))}
       </ul>
     </>
+  );
+}
+
+function ConfirmDialog({
+  message,
+  yesLabel,
+  noLabel,
+  onYes,
+  onNo,
+}: {
+  message: string;
+  yesLabel: string;
+  noLabel: string;
+  onYes: () => void;
+  onNo: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    dialog.showModal();
+    return () => {
+      dialog.close();
+    };
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className="confirm"
+      onCancel={(event) => {
+        event.preventDefault();
+        onNo();
+      }}
+    >
+      <p>{message}</p>
+      <div className="form-actions">
+        <button type="button" onClick={onYes}>
+          {yesLabel}
+        </button>
+        <button type="button" onClick={onNo}>
+          {noLabel}
+        </button>
+      </div>
+    </dialog>
   );
 }
 

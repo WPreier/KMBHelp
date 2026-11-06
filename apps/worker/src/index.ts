@@ -1,6 +1,7 @@
 import { createDatabase } from '@kmbhelp/db';
 import { loadEnvFileIfPresent, loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { runMailCycle } from '@kmbhelp/api/mail-cycle';
+import { runTicketArchive } from '@kmbhelp/api/ticket-archive';
 import { workerStartupEvent } from './worker.js';
 
 loadEnvFileIfPresent(new URL('../../../.env', import.meta.url));
@@ -23,6 +24,7 @@ async function tick(): Promise<void> {
   try {
     const result = await runMailCycle({ database, env: process.env, lastSlot });
     if (result.slot) lastSlot = result.slot;
+    await runTicketArchive({ database, env: process.env });
   } catch {
     process.stderr.write(
       `${JSON.stringify({ level: 'error', component: 'kmbhelp-worker', event: 'cycle_failed' })}\n`,

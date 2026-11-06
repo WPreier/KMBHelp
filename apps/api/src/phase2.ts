@@ -39,6 +39,7 @@ import {
   type SearchHit,
   type StaffTicket,
 } from '@kmbhelp/shared';
+import { registerTicketPages } from './ticket-pages.js';
 import {
   localhostAdmin,
   optionalStaff,
@@ -96,6 +97,8 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     await requireStaff(db(), request, options.testAuthEnabled, now());
   }
 
+  registerTicketPages(app, { db, reader: requireStaffReader, now });
+
   app.post('/api/v1/tickets', async (request) => {
     const parsed = createTicketSchema.safeParse(request.body);
     if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
@@ -146,7 +149,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
           dueOn: input.dueOn ?? null,
           assignedStaffId,
         })
-        .returning({ id: ticket.id, number: ticket.number });
+        .returning({ id: ticket.id, number: ticket.number, code: ticket.code });
       const row = rows[0];
       if (!row) throw new Error('ticket insert returned no row');
       await tx.insert(ticketEvent).values({
@@ -159,6 +162,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     await writeAccessLog(database, request, created.id);
     return createdTicketSchema.parse({
       number: created.number,
+      code: created.code,
       priority: decision.priority,
       priorityReason: decision.reason,
     });
@@ -171,6 +175,8 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     const rows = await database.db
       .select({
         number: ticket.number,
+        code: ticket.code,
+        closeRequestedAt: ticket.closeRequestedAt,
         groupCode: category.groupCode,
         categoryCode: category.code,
         categoryLabelDe: category.labelDe,
@@ -210,6 +216,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         number: ticket.number,
         status: ticket.status,
         priority: ticket.priority,
+        closeRequestedAt: ticket.closeRequestedAt,
       })
       .from(ticket)
       .where(eq(ticket.number, number));
@@ -449,7 +456,11 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     const actor = await optionalStaff(database, request, options.testAuthEnabled, now());
     const query = parsed.data.q.trim();
     const hits =
-      query.length < 2 ? [] : await searchContent(database, query, actor !== null, explainer);
+      query.length < 2
+        ? []
+        : parsed.data.scope
+          ? await searchScoped(database, query, parsed.data.scope, actor !== null, explainer)
+          : await searchContent(database, query, actor !== null, explainer);
     if (actor && options.model?.configured && hits.length > 0) {
       try {
         const sentence = await options.model.explain(
@@ -486,6 +497,8 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
 function publicFields(
   row: {
     number: number;
+    code: string;
+    closeRequestedAt: Date | null;
     groupCode: string;
     categoryCode: string;
     categoryLabelDe: string;
@@ -502,6 +515,8 @@ function publicFields(
   const group = departmentLabel(row.groupCode);
   return publicTicketSchema.parse({
     number: row.number,
+    code: row.code,
+    closeRequested: row.closeRequestedAt !== null,
     groupCode: row.groupCode,
     groupLabelDe: group.de,
     groupLabelEn: group.en,
@@ -548,27 +563,27 @@ async function expireDueTickets(database: Database, today: string): Promise<void
 
 async function applyPublicAction(
   database: Database,
-  row: { id: string; status: string; priority: string },
+  row: { id: string; status: string; priority: string; closeRequestedAt: Date | null },
   action: { action: 'toggle' | 'close' | 'priority'; priority?: 'p1' | 'p2' | 'p3' },
   current: Date,
   notice: { mailer: Mailer; origin: string; number: number },
 ): Promise<{ status: string; priority: string }> {
-  if (row.status === 'closed') {
+  if (row.status === 'closed' || row.closeRequestedAt) {
     throw new PublicError(409, 'cannot_reopen', publicErrors.cannotReopen);
   }
   if (action.action === 'close') {
     await database.db.transaction(async (tx) => {
       await tx
         .update(ticket)
-        .set({ status: 'closed', closedAt: current, updatedAt: current })
+        .set({ closeRequestedAt: current, updatedAt: current })
         .where(eq(ticket.id, row.id));
       await tx.insert(ticketEvent).values({
         ticketId: row.id,
-        kind: 'closed',
+        kind: 'close_requested',
         payload: { source: 'web' },
       });
     });
-    return { status: 'closed', priority: row.priority };
+    return { status: row.status, priority: row.priority };
   }
   if (action.action === 'priority') {
     const priority = action.priority ?? row.priority;
@@ -694,6 +709,48 @@ function toStaffTicket(row: StaffRow, current: Date, withDuration: boolean): Sta
     ageSeconds: elapsedSeconds(row.createdAt, current),
     durationSeconds: withDuration ? elapsedSeconds(row.createdAt, end) : null,
   });
+}
+
+async function searchScoped(
+  database: Database,
+  query: string,
+  scope: 'verdict' | 'summary' | 'ticket',
+  staffReader: boolean,
+  explainer: SearchExplainer,
+): Promise<SearchHit[]> {
+  const pattern = likePattern(query);
+  const column =
+    scope === 'verdict'
+      ? 'ticket.verdict'
+      : scope === 'summary'
+        ? 'ticket.summary'
+        : staffReader
+          ? `ticket.subject || ' ' || ticket.body || ' ' || coalesce(ticket.working_markdown, '')`
+          : 'ticket.subject';
+  const closedOnly = scope !== 'ticket' || !staffReader;
+  const rows = await database.pool.query<{ code: string; subject: string }>(
+    `select ticket.code, ticket.subject
+     from ticket
+     where ticket.code <> ''
+       and ($3::boolean = false or ticket.archived_at is not null)
+       and (
+         to_tsvector('german', ${column}) @@ plainto_tsquery('german', $1)
+         or ${column} ilike $2 escape '\\'
+       )
+     order by ticket.created_at desc
+     limit 20`,
+    [query, pattern, closedOnly],
+  );
+  return rows.rows.map((row) =>
+    toHit(explainer, {
+      kind: 'ticket',
+      id: row.code,
+      titleDe: row.subject,
+      titleEn: row.subject,
+      href:
+        staffReader && scope === 'ticket' ? `/ticket/${row.code}` : `/abgeschlossen/${row.code}`,
+    }),
+  );
 }
 
 async function searchContent(

@@ -164,7 +164,9 @@ export function registerStaffTicket(
     const actor = await reader(request);
     const database = db();
     const current = await loadRow(database, readNumber(request.params));
-    if (current.status === 'closed') return loadTicket(database, current.number);
+    if (current.status === 'closed' || current.closeRequestedAt) {
+      return loadTicket(database, current.number);
+    }
     await sendToRequester(
       mailer(),
       current,
@@ -172,11 +174,11 @@ export function registerStaffTicket(
     );
     await database.db
       .update(ticket)
-      .set({ status: 'closed', closedAt: now(), updatedAt: now() })
+      .set({ closeRequestedAt: now(), updatedAt: now() })
       .where(eq(ticket.id, current.id));
     await database.db.insert(ticketEvent).values({
       ticketId: current.id,
-      kind: 'closed',
+      kind: 'close_requested',
       actorStaffId: actor.id,
       payload: { mailed: Boolean(current.requesterEmail) },
     });
@@ -337,6 +339,7 @@ async function loadRow(database: Database, number: number) {
       requesterEmail: ticket.requesterEmail,
       body: ticket.body,
       internetMessageId: ticket.internetMessageId,
+      closeRequestedAt: ticket.closeRequestedAt,
     })
     .from(ticket)
     .where(eq(ticket.number, number))

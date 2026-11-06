@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { App } from './App';
+import { DashboardPage } from './dashboard-page';
+import { LocaleProvider } from './locale';
 
 function json(body: unknown) {
   return { ok: true, status: 200, json: async () => body };
@@ -52,6 +55,8 @@ describe('placeholder page', () => {
             tickets: [
               {
                 number: 7,
+                code: '26-0007',
+                closeRequested: false,
                 groupCode: 'payroll',
                 groupLabelDe: 'Lohn',
                 groupLabelEn: 'Payroll',
@@ -103,7 +108,7 @@ describe('placeholder page', () => {
     const search = screen.getByRole('search');
     expect(search.closest('header')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Search' }).getAttribute('title')).toBe(
-      'Searches the published guides.',
+      'Searches the chosen area: verdict, summary or ticket.',
     );
     expect(screen.getByRole('heading', { name: 'KMBHelp' })).toBeTruthy();
     expect(screen.getByText('IT helpdesk for KMB Steuerberatung')).toBeTruthy();
@@ -115,8 +120,9 @@ describe('placeholder page', () => {
     expect(screen.getByRole('columnheader', { name: 'ID' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'Text' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'Age' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'Due by:' })).toBeTruthy();
-    expect(screen.getByText('7')).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'Due by' })).toBeTruthy();
+    expect(screen.queryByRole('columnheader', { name: 'Mark' })).toBeNull();
+    expect(screen.getByText('26-0007')).toBeTruthy();
     expect(screen.getByText('26.10.2026')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reset' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in' }).closest('header')).toBeTruthy();
@@ -127,10 +133,16 @@ describe('placeholder page', () => {
     expect(screen.getAllByRole('option', { name: 'Very important' }).length).toBeGreaterThan(0);
     expect(document.body.textContent).not.toMatch(/Age:/);
     expect(document.body.textContent).not.toMatch(/Text:/);
-    expect(screen.getByRole('checkbox').getAttribute('title')).toContain('inactive');
-    expect(screen.getByRole('button', { name: 'Done' }).getAttribute('title')).toContain(
-      'cannot be opened',
-    );
+    expect(
+      screen.getByRole('checkbox').closest('[data-hint]')?.getAttribute('data-hint'),
+    ).toContain('inactive');
+    expect(
+      screen
+        .getByRole('button', { name: 'Done' })
+        .closest('[data-hint]')
+        ?.getAttribute('data-hint'),
+    ).toContain('cannot be opened');
+    expect(screen.getByLabelText('Due on').getAttribute('type')).toBe('date');
     expect(document.body.textContent).not.toContain('secret subject');
   });
 
@@ -237,6 +249,53 @@ describe('placeholder page', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[1]!);
     expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Set up a one-time code' })).toBeNull();
+  });
+
+  it('hides the service check for a signed-out visitor and shows a failure after sign-in', async () => {
+    function session(signedIn: boolean) {
+      return json({
+        signedIn,
+        isLocalAdmin: false,
+        displayName: signedIn ? 'Ada' : null,
+        internalAdmin: false,
+      });
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/v1/auth/session')) return session(false);
+        return { ok: false, status: 401, json: async () => null };
+      }),
+    );
+    const { unmount } = render(
+      <MemoryRouter>
+        <LocaleProvider lang="de">
+          <DashboardPage />
+        </LocaleProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Die Daten konnten nicht geladen werden.')).toBeTruthy();
+    expect(screen.queryByText('Die Dienstprüfung ist nicht erreichbar.')).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Dienste' })).toBeNull();
+    unmount();
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/v1/auth/session')) return session(true);
+        return { ok: false, status: 503, json: async () => null };
+      }),
+    );
+    render(
+      <MemoryRouter>
+        <LocaleProvider lang="de">
+          <DashboardPage />
+        </LocaleProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Die Dienstprüfung ist nicht erreichbar.')).toBeTruthy();
   });
 
   it('boots from the browser before the module loads', () => {

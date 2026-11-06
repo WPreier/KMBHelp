@@ -3,6 +3,7 @@ import {
   dashboardSchema,
   pieSliceKeys,
   serviceReportSchema,
+  sessionViewSchema,
   type DashboardRange,
   type DashboardReport,
   type PieSliceKey,
@@ -49,6 +50,7 @@ export function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [services, setServices] = useState<ServiceReport | null>(null);
   const [serviceError, setServiceError] = useState(false);
+  const [serviceAllowed, setServiceAllowed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,12 +76,21 @@ export function DashboardPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getJson('/api/v1/staff/services', serviceReportSchema.parse)
-      .then((loaded) => {
-        if (!cancelled) setServices(loaded);
+    getJson('/api/v1/auth/session', sessionViewSchema.parse)
+      .then(async (session) => {
+        if (cancelled) return;
+        const allowed = session.signedIn || session.internalAdmin;
+        setServiceAllowed(allowed);
+        if (!allowed) return;
+        try {
+          const loaded = await getJson('/api/v1/staff/services', serviceReportSchema.parse);
+          if (!cancelled) setServices(loaded);
+        } catch {
+          if (!cancelled) setServiceError(true);
+        }
       })
       .catch(() => {
-        if (!cancelled) setServiceError(true);
+        if (!cancelled) setServiceAllowed(false);
       });
     return () => {
       cancelled = true;
@@ -90,23 +101,27 @@ export function DashboardPage() {
     <section>
       <h2>{copy.dashboardTitle}</h2>
       <p>{data?.scope === 'own' ? copy.dashboardOwn : copy.dashboardFirm}</p>
-      <h3>{copy.serviceTitle}</h3>
-      <p>{copy.serviceLead}</p>
-      <ul className="service-list">
-        {serviceError ? (
-          <li className="service-row">
-            <Mark ok={false} />
-            <span>{copy.serviceUnavailable}</span>
-          </li>
-        ) : (
-          services?.services.map((service) => (
-            <li key={service.code} className="service-row">
-              <Mark ok={service.status === 'ok'} />
-              <span>{lang === 'de' ? service.textDe : service.textEn}</span>
-            </li>
-          ))
-        )}
-      </ul>
+      {serviceAllowed ? (
+        <>
+          <h3>{copy.serviceTitle}</h3>
+          <p>{copy.serviceLead}</p>
+          <ul className="service-list">
+            {serviceError ? (
+              <li className="service-row">
+                <Mark ok={false} />
+                <span>{copy.serviceUnavailable}</span>
+              </li>
+            ) : (
+              services?.services.map((service) => (
+                <li key={service.code} className="service-row">
+                  <Mark ok={service.status === 'ok'} />
+                  <span>{lang === 'de' ? service.textDe : service.textEn}</span>
+                </li>
+              ))
+            )}
+          </ul>
+        </>
+      ) : null}
       <div className="form-actions" role="group" aria-label={copy.dashboardRange}>
         {dashboardRanges.map((entry) => (
           <button

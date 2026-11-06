@@ -305,7 +305,7 @@ describe.skipIf(!databaseUrl)('phase 2 against postgres', () => {
     const closed = await request(app.server)
       .post(`/api/v1/tickets/public/${number}`)
       .send({ action: 'close' });
-    expect(closed.body.status).toBe('closed');
+    expect(closed.body.status).toBe('open');
     const again = await request(app.server)
       .post(`/api/v1/tickets/public/${number}`)
       .send({ action: 'toggle' });
