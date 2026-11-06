@@ -1,0 +1,67 @@
+# Version
+
+Aktueller Stand: **V 0.1.1**
+
+| | |
+|---|---|
+| Datum | 06.11.2026 |
+| Commit | `e2cad45` |
+| Branch | `phase/11-app` |
+| Datei auf dem Server | `/opt/kmbhelp/version.md` |
+
+## Zählung
+
+Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und Patch.
+
+| Stelle | Name | Wann sie steigt |
+|---|---|---|
+| 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
+| 1 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. |
+| 1 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. |
+
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.1.2**. Die Minor-Stelle bleibt 1, bis Wolfgang eine Minor freigibt. Die erste Minor danach heißt **V 0.2.0**, der Patch beginnt wieder bei 0. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+
+Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
+
+## Änderungen
+
+### V 0.1.1 — 06.11.2026
+
+Erste geführte Fassung. Der Server läuft auf Commit `e2cad45`.
+
+Am 06.11.2026 schreibt jeder Graph-Zugriff auf `helpdesk@kmbcloud.at` eine Zeile nach `mail.log`: Posteingang, Gelesen, Entwurf, Versand und die Kalenderabfrage, mit Postfach, Dauer und Ergebnis. Betreff und Empfänger stehen bei Entwurf und Versand dabei. Jede Anfrage an das Modell schreibt nach `ki.log`: Host, Modell, Dauer, HTTP-Status, Antwort und den maskierten Auftrag. Die Protokollseite zeigt die vier Dateien Aktivität, Fehler, Mail und KI, jede mit CSV und PDF.
+
+Darin enthalten ist die bisherige Arbeit seit dem 26.10.2026:
+
+| Datum | Commit | Was dazukam |
+|---|---|---|
+| 26.10.2026 | `fbb170c` | Ticket-Schema, Katalog und Prioritätsregel |
+| 26.10.2026 | `783c0a5` | Öffentliche Ticketseiten und die Arbeitsliste |
+| 26.10.2026 | `0e005fb` | Öffentliche Seite an die Firmenliste angepasst |
+| 26.10.2026 | `1e3956b` | Sprache, Darstellung und Zurücksetzen in der Kopfzeile |
+| 26.10.2026 | `4ca2d99` | Mitarbeiter-Anmeldung, Startprüfung und Hinweise |
+| 27.10.2026 | `418879c` | Syslog in Ortszeit, inaktive Mitarbeiter bekommen keine neuen Tickets |
+| 27.10.2026 | `38291b0` | Geplanter Mailabruf und Kalendertermin |
+| 27.10.2026 | `7baeda2` | Regeln für Freeze, Beschaffung und Prüfungen |
+| 27.10.2026 | `4205f6c` | Prüfung der Support-Mail und Zugriffsprotokoll |
+| 27.10.2026 | `15d74c1` | Dashboard zeigt jedes Ticket einmal |
+| 28.10.2026 | `6cff376` | MCP-Dienst, Testreste entfernt |
+| 28.10.2026 | `21929c8` | Bearbeitung durch Mitarbeiter, Ausgang bleibt Entwurf |
+| 28.10.2026 | `d2fafe3` | Linux-Installation und Betriebsskizze |
+| 28.10.2026 | `44b6d9a` | Linux-Anleitung abgenommen |
+| 28.10.2026 | `a8d03c2` | Expo-App mit Gerätesperre vor dem Mitarbeiterdetail |
+| 28.10.2026 | `8396afc` | App wird aus dem App-Ordner geladen |
+| 28.10.2026 | `7db4a99` | App-Formular entspricht der Website |
+| 28.10.2026 | `9aece10` | Büro bearbeitet Kenntnisse und Kategorien |
+| 29.10.2026 | `3553512` | Mailprüfung über den lokalen Ollama-Server, Modell `qwen2.5:7b` |
+| 03.11.2026 | `ee26129` | Tagesmail der offenen Warnungen, Postfix in der Gesundheitsprüfung |
+| 03.11.2026 | `28e79fa` | Migration liest die Server-Umgebung |
+| 03.11.2026 | `a6eaec3` | Grund einer fehlgeschlagenen Anmeldung, API-Fehler im Protokoll |
+| 03.11.2026 | `936740e` | QR-Code für den Einmalcode, lokaler Admin im Büro ohne Einmalcode |
+| 03.11.2026 | `4631a93` | Neuer Domänencode sofort, lokaler Admin in der Verwaltung |
+| 03.11.2026 | `dedc119` | `install:helpdesk` ersetzt den vorhandenen lokalen Admin |
+| 03.11.2026 | `da0a5a1` | `activity.log`, `error.log` und `mail.log`, die Antwort wartet nicht |
+| 03.11.2026 | `5f7d4f3` | Dienststatus im Dashboard, Protokolltabellen, Katalogübertragung |
+| 03.11.2026 | `e8f4354` | Katalogimport nimmt den Dateipfad nach `--` an |
+| 04.11.2026 | `3ed5890` | Mitarbeiterliste nur noch mit Anmeldung, localhost oder Diensttoken |
+| 06.11.2026 | `e2cad45` | Postfachzugriff in `mail.log`, Modellanfrage ausführlich in `ki.log` |
