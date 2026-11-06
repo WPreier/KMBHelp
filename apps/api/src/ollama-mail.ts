@@ -1,5 +1,6 @@
 import { maskPersonalData } from '@kmbhelp/ai';
 import type { Priority } from '@kmbhelp/shared';
+import { enqueueFileLog } from './file-log.js';
 import type { InboundMail } from './graph.js';
 
 export const mailQueryLimitMs = 5 * 60 * 1000;
@@ -119,7 +120,14 @@ export async function askOllama(options: {
   const fetchImpl = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? mailQueryLimitMs;
   const model = options.model.trim() || defaultOllamaModel;
-  const first = await chat(fetchImpl, base, model, classificationPrompt(options.mail), timeoutMs);
+  const first = await chat(
+    fetchImpl,
+    base,
+    model,
+    classificationPrompt(options.mail),
+    timeoutMs,
+    'classify',
+  );
   if (first === 'timeout' || first === 'unreachable') return first;
   let parsed = parseMailAnswer(first);
   if (!parsed) {
@@ -129,6 +137,7 @@ export async function askOllama(options: {
       model,
       `${classificationPrompt(options.mail)}\n\nDie letzte Antwort war nicht lesbar. Antworte jetzt mit genau einem Wort: SUPPORT, ANTWORT, ABSCHLUSS, FREMD oder SPAM.`,
       timeoutMs,
+      'retry',
     );
     if (again === 'timeout' || again === 'unreachable') return again;
     parsed = parseMailAnswer(again);
@@ -141,6 +150,7 @@ export async function askOllama(options: {
       model,
       importancePrompt(options.mail),
       timeoutMs,
+      'importance',
     );
     if (importance === 'timeout' || importance === 'unreachable') return importance;
     parsed = { ...parsed, priority: importanceOf(importance) };
@@ -154,7 +164,9 @@ async function chat(
   model: string,
   prompt: string,
   timeoutMs: number,
+  kind: 'classify' | 'retry' | 'importance',
 ): Promise<string | 'timeout' | 'unreachable'> {
+  const started = Date.now();
   try {
     const response = await fetchImpl(`${baseUrl}/api/chat`, {
       method: 'POST',
@@ -166,7 +178,10 @@ async function chat(
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    if (!response.ok) return 'unreachable';
+    if (!response.ok) {
+      noteModel(baseUrl, model, kind, prompt, '', response.status, Date.now() - started);
+      return 'unreachable';
+    }
     const body: unknown = await response.json();
     const content =
       body &&
@@ -178,10 +193,45 @@ async function chat(
       typeof body.message.content === 'string'
         ? body.message.content
         : '';
-    return content.trim() === '' ? 'unreachable' : content;
+    const answer = content.trim();
+    noteModel(baseUrl, model, kind, prompt, answer, response.status, Date.now() - started);
+    return answer === '' ? 'unreachable' : content;
   } catch (error) {
     const name = error instanceof Error ? error.name : '';
-    if (name === 'TimeoutError' || name === 'AbortError') return 'timeout';
-    return 'unreachable';
+    const status = name === 'TimeoutError' || name === 'AbortError' ? 'timeout' : 'unreachable';
+    noteModel(baseUrl, model, kind, prompt, '', status, Date.now() - started);
+    return status;
   }
+}
+
+function noteModel(
+  baseUrl: string,
+  model: string,
+  kind: string,
+  prompt: string,
+  answer: string,
+  status: number | string,
+  ms: number,
+): void {
+  let host = baseUrl;
+  try {
+    host = new URL(baseUrl).hostname;
+  } catch {
+    host = baseUrl;
+  }
+  const name = host === '192.168.191.131' || host.toLowerCase() === 'kmblmt1' ? 'kmblmt1' : host;
+  enqueueFileLog(
+    'ki',
+    [
+      new Date().toISOString(),
+      'ollama',
+      kind,
+      name,
+      `${oneLine(model)} http=${status} ${ms}ms antwort=${oneLine(answer, 4000)} auftrag=${oneLine(prompt, 12000)}`,
+    ].join('\t'),
+  );
+}
+
+function oneLine(value: string, max = 180): string {
+  return value.replace(/[\r\n\t]/gu, ' ').slice(0, max);
 }

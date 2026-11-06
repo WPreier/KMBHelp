@@ -1,3 +1,5 @@
+import { enqueueFileLog } from './file-log.js';
+
 export type OutboundMail = {
   to: string;
   subject: string;
@@ -95,7 +97,15 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
     configured: config !== null,
     async send(mail) {
       if (!config) throw new Error('mail not configured');
-      const token = await accessToken(config, fetchImpl);
+      const started = Date.now();
+      const detail = `an=${oneLine(mail.to)} betreff=${oneLine(mail.subject)}`;
+      let token: string;
+      try {
+        token = await accessToken(config, fetchImpl);
+      } catch (error) {
+        mailboxAccess(config.mailbox, 'entwurf', 'fehler', detail, Date.now() - started);
+        throw error;
+      }
       const response = await fetchImpl(
         `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/drafts/messages`,
         {
@@ -119,6 +129,13 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
           }),
         },
       );
+      mailboxAccess(
+        config.mailbox,
+        'entwurf',
+        response.ok ? 'ok' : 'fehler',
+        `${detail} http=${response.status}`,
+        Date.now() - started,
+      );
       if (!response.ok) throw new Error('graph draft failed');
       const created: unknown = await response.json().catch(() => null);
       if (
@@ -132,7 +149,15 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
     },
     async deliver(mail) {
       if (!config) throw new Error('mail not configured');
-      const token = await accessToken(config, fetchImpl);
+      const started = Date.now();
+      const detail = `an=${oneLine(mail.to)} betreff=${oneLine(mail.subject)}`;
+      let token: string;
+      try {
+        token = await accessToken(config, fetchImpl);
+      } catch (error) {
+        mailboxAccess(config.mailbox, 'versand', 'fehler', detail, Date.now() - started);
+        throw error;
+      }
       const response = await fetchImpl(
         `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/sendMail`,
         {
@@ -148,6 +173,13 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
           }),
         },
       );
+      mailboxAccess(
+        config.mailbox,
+        'versand',
+        response.ok ? 'ok' : 'fehler',
+        `${detail} http=${response.status}`,
+        Date.now() - started,
+      );
       if (!response.ok) throw new Error('graph send failed');
     },
   };
@@ -162,7 +194,15 @@ export function calendarFromEnv(
     configured: config !== null,
     async availability(email, at) {
       if (!config) return [];
-      const token = await accessToken(config, fetchImpl);
+      const started = Date.now();
+      const detail = `kalender=${oneLine(email)}`;
+      let token: string;
+      try {
+        token = await accessToken(config, fetchImpl);
+      } catch (error) {
+        mailboxAccess(config.mailbox, 'kalender', 'fehler', detail, Date.now() - started);
+        throw error;
+      }
       const start = new Date(at.getTime() - (at.getTime() % 86_400_000));
       const end = new Date(start.getTime() + 7 * 86_400_000);
       const response = await fetchImpl(
@@ -177,6 +217,13 @@ export function calendarFromEnv(
             availabilityViewInterval: 30,
           }),
         },
+      );
+      mailboxAccess(
+        config.mailbox,
+        'kalender',
+        response.ok ? 'ok' : 'fehler',
+        `${detail} http=${response.status}`,
+        Date.now() - started,
       );
       if (!response.ok) throw new Error('graph calendar failed');
       const parsed: unknown = await response.json();
@@ -222,7 +269,14 @@ export function mailboxFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = f
     configured: config !== null,
     async listUnread(limit) {
       if (!config) return [];
-      const token = await accessToken(config, fetchImpl);
+      const started = Date.now();
+      let token: string;
+      try {
+        token = await accessToken(config, fetchImpl);
+      } catch (error) {
+        mailboxAccess(config.mailbox, 'posteingang', 'fehler', 'ungelesen', Date.now() - started);
+        throw error;
+      }
       const query = [
         '$filter=' + encodeURIComponent('isRead eq false'),
         `$top=${Math.min(Math.max(limit, 1), 25)}`,
@@ -235,12 +289,37 @@ export function mailboxFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = f
         `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/inbox/messages?${query}`,
         { headers: { authorization: `Bearer ${token}` } },
       );
-      if (!response.ok) throw new Error('graph list failed');
-      return parseInboundMessages(await response.json());
+      if (!response.ok) {
+        mailboxAccess(
+          config.mailbox,
+          'posteingang',
+          'fehler',
+          `ungelesen http=${response.status}`,
+          Date.now() - started,
+        );
+        throw new Error('graph list failed');
+      }
+      const mails = parseInboundMessages(await response.json());
+      mailboxAccess(
+        config.mailbox,
+        'posteingang',
+        'ok',
+        `ungelesen anzahl=${mails.length} http=${response.status}`,
+        Date.now() - started,
+      );
+      return mails;
     },
     async markRead(graphId) {
       if (!config) throw new Error('mail not configured');
-      const token = await accessToken(config, fetchImpl);
+      const started = Date.now();
+      const detail = `id=${oneLine(graphId)}`;
+      let token: string;
+      try {
+        token = await accessToken(config, fetchImpl);
+      } catch (error) {
+        mailboxAccess(config.mailbox, 'gelesen', 'fehler', detail, Date.now() - started);
+        throw error;
+      }
       const response = await fetchImpl(
         `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/messages/${encodeURIComponent(graphId)}`,
         {
@@ -249,9 +328,33 @@ export function mailboxFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = f
           body: JSON.stringify({ isRead: true }),
         },
       );
+      mailboxAccess(
+        config.mailbox,
+        'gelesen',
+        response.ok ? 'ok' : 'fehler',
+        `${detail} http=${response.status}`,
+        Date.now() - started,
+      );
       if (!response.ok) throw new Error('graph read failed');
     },
   };
+}
+
+function mailboxAccess(
+  mailbox: string,
+  action: string,
+  outcome: 'ok' | 'fehler',
+  detail: string,
+  ms: number,
+): void {
+  enqueueFileLog(
+    'mail',
+    `${new Date().toISOString()}\tgraph\t${action}\t${oneLine(mailbox)}\t${outcome} ${ms}ms ${oneLine(detail)}`,
+  );
+}
+
+function oneLine(value: string): string {
+  return value.replace(/[\r\n\t]/gu, ' ').slice(0, 180);
 }
 
 export function calendarWriterFromEnv(

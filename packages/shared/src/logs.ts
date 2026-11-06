@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const logNames = ['activity', 'error', 'mail'] as const;
+export const logNames = ['activity', 'error', 'mail', 'ki'] as const;
 
 export const logLineSchema = z.object({
   at: z.string(),

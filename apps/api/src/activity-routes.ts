@@ -229,6 +229,7 @@ const logTitle: Record<LogName, string> = {
   activity: 'Aktivität',
   error: 'Fehler',
   mail: 'Mail',
+  ki: 'KI',
 };
 
 function sendLogExport(

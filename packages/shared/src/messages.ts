@@ -166,7 +166,7 @@ export const messages = {
     valueMissing: 'fehlt',
     activityTitle: 'Protokoll',
     activityLead:
-      'Die drei Protokolldateien. Von steht sieben Tage vor heute, Bis auf heute. Die Dateien enthalten keinen Mailtext.',
+      'Vier Protokolldateien. Von steht sieben Tage vor heute, Bis auf heute. Aktivität, Fehler und Mail enthalten keinen Mailtext. Die KI-Datei enthält den maskierten Auftrag und die Antwort des Modells.',
     activityFrom: 'Von',
     activityTo: 'Bis',
     activitySearch: 'Suchtext',
@@ -182,6 +182,7 @@ export const messages = {
     logActivityTitle: 'Aktivität',
     logErrorTitle: 'Fehler',
     logMailTitle: 'Mail',
+    logKiTitle: 'KI',
     serviceTitle: 'Dienste',
     serviceLead:
       'Ein grünes Häkchen heißt, der Dienst antwortet. Ein rotes Kreuz heißt, er meldet einen Fehler oder ist nicht erreichbar.',
@@ -415,7 +416,7 @@ export const messages = {
     valueMissing: 'missing',
     activityTitle: 'Log',
     activityLead:
-      'The three log files. From is seven days before today and To is today. The files do not contain a mail body.',
+      'Four log files. From is seven days before today and To is today. Activity, errors and mail do not contain a mail body. The model file contains the masked request and the model answer.',
     activityFrom: 'From',
     activityTo: 'To',
     activitySearch: 'Search text',
@@ -431,6 +432,7 @@ export const messages = {
     logActivityTitle: 'Activity',
     logErrorTitle: 'Errors',
     logMailTitle: 'Mail',
+    logKiTitle: 'Model',
     serviceTitle: 'Services',
     serviceLead:
       'A green mark means the service answers. A red mark means it reports an error or cannot be reached.',

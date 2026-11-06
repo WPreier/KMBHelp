@@ -1,5 +1,9 @@
+import { mkdtemp, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import type { InboundMail } from './graph.js';
+import { flushFileLogs } from './file-log.js';
+import { mailboxFromEnv, type InboundMail } from './graph.js';
 import { askOllama, classificationPrompt, importanceOf, parseMailAnswer } from './ollama-mail.js';
 
 const mail: InboundMail = {
@@ -80,5 +84,56 @@ describe('local mail review', () => {
         }),
     });
     expect(timedOut).toBe('timeout');
+  });
+
+  it('writes the model exchange and the mailbox access', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'kmbhelp-ki-'));
+    const previous = process.env.ACTIVITY_LOG_FILE;
+    process.env.ACTIVITY_LOG_FILE = join(directory, 'activity.log');
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      if (url.includes('/oauth2/v2.0/token')) {
+        return Response.json({ access_token: 'token' });
+      }
+      if (url.includes('/api/chat')) {
+        return Response.json({ message: { content: 'SUPPORT' } });
+      }
+      return Response.json({ value: [] });
+    };
+    try {
+      await askOllama({
+        baseUrl: 'http://192.168.191.131:11434',
+        model: 'qwen2.5:7b',
+        mail,
+        fetchImpl,
+      });
+      await mailboxFromEnv(
+        {
+          GRAPH_TENANT_ID: 'tenant',
+          GRAPH_CLIENT_ID: 'client',
+          GRAPH_CLIENT_SECRET: 'contract-secret',
+          GRAPH_MAILBOX: 'helpdesk@kmbcloud.at',
+        },
+        fetchImpl,
+      ).listUnread(10);
+      await flushFileLogs();
+      const model = await readFile(join(directory, 'ki.log'), 'utf8');
+      const mailbox = await readFile(join(directory, 'mail.log'), 'utf8');
+      expect(model).toContain('kmblmt1');
+      expect(model).toContain('qwen2.5:7b');
+      expect(model).toContain('classify');
+      expect(model).toContain('importance');
+      expect(model).toContain('antwort=SUPPORT');
+      expect(model).not.toContain('1234');
+      expect(model).not.toContain('Bearer');
+      expect(mailbox).toContain('helpdesk@kmbcloud.at');
+      expect(mailbox).toContain('posteingang');
+      expect(mailbox).toContain('anzahl=0');
+      expect(mailbox).not.toContain('contract-secret');
+      expect(mailbox).not.toContain('access_token');
+    } finally {
+      if (previous === undefined) delete process.env.ACTIVITY_LOG_FILE;
+      else process.env.ACTIVITY_LOG_FILE = previous;
+    }
   });
 });

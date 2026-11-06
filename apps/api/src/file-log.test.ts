@@ -24,13 +24,16 @@ describe('file log', () => {
     enqueueFileLog('activity', 'page\t/anmelden', env);
     logError('directory.bind_failed: Das Dienstkonto kann nicht suchen.', env);
     enqueueFileLog('mail', 'worker\treply', env);
+    enqueueFileLog('ki', 'ollama\tclassify\tkmblmt1\tqwen2.5:7b', env);
     await flushFileLogs();
     const activity = await readFile(logFilePath('activity', env), 'utf8');
     const error = await readFile(logFilePath('error', env), 'utf8');
     const mail = await readFile(logFilePath('mail', env), 'utf8');
+    const model = await readFile(logFilePath('ki', env), 'utf8');
     expect(activity).toContain('page\t/anmelden');
     expect(error).toContain('Das Dienstkonto kann nicht suchen.');
     expect(mail).toContain('worker\treply');
+    expect(model).toContain('kmblmt1');
     expect(error).not.toContain('password=');
   });
 });

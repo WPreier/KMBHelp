@@ -73,7 +73,7 @@ Ein lokaler Admin entsteht nur durch `pnpm install:helpdesk`. Derselbe Befehl er
 
 Die öffentliche Seite und die App nennen keine Mitarbeiternamen und keinen Kalender. `GET /api/v1/staff/assignable` und `GET /api/v1/staff/:id/availability` antworten ohne fertige Sitzung mit 401. Ein Dienst sendet `Authorization: Bearer` und den Wert von `MCP_SERVICE_TOKEN`. Eine Verbindung aus `127.0.0.0/8` auf dem Server selbst bleibt ohne Anmeldung frei. Ein anonymes Ticket wird niemandem zugeordnet.
 
-Jede abgelehnte Anmeldung und jeder andere Fehler schreibt eine Zeile nach `/var/lib/kmbhelp/error.log`. Ein Seitenaufruf schreibt nach `/var/lib/kmbhelp/activity.log`, ein Mailvorgang nach `/var/lib/kmbhelp/mail.log`. Dieselben Zeilen der Seiten und Mails stehen in `activity_log`. Die Datei wird nach der Antwort geschrieben, die Anfrage wartet nicht auf die Festplatte. Passwort, Datenbank-URL, Zertifikatstext und Mailtext stehen nicht darin. Die Prüfung „Das Dienstkonto kann nicht suchen.“ steht in `error.log`.
+Jede abgelehnte Anmeldung und jeder andere Fehler schreibt eine Zeile nach `/var/lib/kmbhelp/error.log`. Ein Seitenaufruf schreibt nach `/var/lib/kmbhelp/activity.log`, ein Mailvorgang und jeder Zugriff auf `helpdesk@kmbcloud.at` nach `/var/lib/kmbhelp/mail.log`, jede Modellanfrage nach `/var/lib/kmbhelp/ki.log`. Dieselben Zeilen der Seiten und Mails stehen in `activity_log`. Die Datei wird nach der Antwort geschrieben, die Anfrage wartet nicht auf die Festplatte. Passwort, Datenbank-URL und Zertifikatstext stehen nicht darin. Der Mailtext steht nur maskiert in `ki.log`. Die Prüfung „Das Dienstkonto kann nicht suchen.“ steht in `error.log`.
 
 ## Konfiguration
 
@@ -148,7 +148,7 @@ Nach einer echten Erneuerung den Webserver neu laden: `sudo systemctl reload ngi
 journalctl -u kmbhelp-api -u kmbhelp-worker --since today
 ```
 
-Jede Aktion schreibt zusätzlich eine Zeile in die Tabelle `activity_log` und, je nach Art, nach `activity.log`, `error.log` oder `mail.log` im selben Verzeichnis. Die Seite `/verwaltung/protokoll` zeigt die drei Dateien getrennt, jede mit Titel und Tabelle. Von steht auf sieben Tage vor heute, Bis auf heute, beide nebeneinander, in der Form `dd.MM.yyyy`. Neben jeder Tabelle liegen `Als CSV` und `Als PDF` für genau diese Datei. In der Zeile steht der Meldungstext nicht. Die Tabelle `activity_log` bleibt über `GET /api/v1/staff/activity` erreichbar.
+Jede Aktion schreibt zusätzlich eine Zeile in die Tabelle `activity_log` und, je nach Art, nach `activity.log`, `error.log`, `mail.log` oder `ki.log` im selben Verzeichnis. `mail.log` nennt jeden Graph-Zugriff auf `helpdesk@kmbcloud.at`. `ki.log` nennt jede Anfrage an kmblmt1 mit Modell, Dauer, Status, Antwort und maskiertem Auftrag. Die Seite `/verwaltung/protokoll` zeigt die vier Dateien getrennt, jede mit Titel und Tabelle. Von steht auf sieben Tage vor heute, Bis auf heute, beide nebeneinander, in der Form `dd.MM.yyyy`. Neben jeder Tabelle liegen `Als CSV` und `Als PDF` für genau diese Datei. In Aktivität, Fehler und Mail steht der Meldungstext nicht. In `ki.log` steht der maskierte Auftrag. Die Tabelle `activity_log` bleibt über `GET /api/v1/staff/activity` erreichbar.
 
 Syslog geht an den Server aus der Konfiguration, Auslieferung `192.168.191.215` Port `514` UDP.
 

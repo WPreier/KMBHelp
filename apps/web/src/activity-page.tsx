@@ -15,6 +15,7 @@ const titles = {
   activity: 'logActivityTitle',
   error: 'logErrorTitle',
   mail: 'logMailTitle',
+  ki: 'logKiTitle',
 } as const;
 
 export function ActivityPage() {
@@ -27,6 +28,7 @@ export function ActivityPage() {
     activity: [],
     error: [],
     mail: [],
+    ki: [],
   });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -217,7 +219,7 @@ export function ActivityPage() {
 }
 
 function emptyLogs(): Record<LogName, LogLine[]> {
-  return { activity: [], error: [], mail: [] };
+  return { activity: [], error: [], mail: [], ki: [] };
 }
 
 function dayOffset(days: number): string {

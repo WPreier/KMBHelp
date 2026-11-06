@@ -1,7 +1,7 @@
 import { appendFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
-export type LogFile = 'activity' | 'error' | 'mail';
+export type LogFile = 'activity' | 'error' | 'mail' | 'ki';
 
 type Job = { file: LogFile; line: string; env: NodeJS.ProcessEnv };
 
@@ -31,7 +31,8 @@ export function enqueueFileLog(
 ): void {
   if (env.NODE_ENV === 'test' && !env.ACTIVITY_LOG_FILE?.trim()) return;
   if (!logDirectory(env)) return;
-  const clean = line.replace(/[\r\n]/gu, ' ').slice(0, 500);
+  const cap = file === 'ki' ? 20_000 : 500;
+  const clean = line.replace(/[\r\n]/gu, ' ').slice(0, cap);
   if (pending.length >= limit) {
     dropped += 1;
     return;
