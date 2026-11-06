@@ -34,6 +34,7 @@ export const createTicketSchema = z
     ),
     clientPriority: z.preprocess(emptyToUndefined, z.enum(priorities).optional()),
     assignedStaffId: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
+    assigneeEmail: z.preprocess(emptyToUndefined, z.string().trim().max(200).optional()),
     source: z.enum(['web', 'app']).default('web'),
   })
   .strict();
@@ -56,6 +57,7 @@ export const publicTicketSchema = z
     priority: z.enum(priorities),
     ageSeconds: z.number().int().nonnegative(),
     dueOn: z.string().nullable(),
+    assigneeEmail: z.string().min(3).max(200),
     staffMark: z.string().min(1).max(3).nullable(),
   })
   .strict();
@@ -162,6 +164,7 @@ export const closedTicketSchema = z
   .object({
     code: z.string(),
     subject: z.string(),
+    assigneeEmail: z.string().min(3).max(200),
     verdict: z.string(),
   })
   .strict();
@@ -189,6 +192,7 @@ export const ticketPageSchema = z
     status: z.enum(ticketStatuses),
     closeRequested: z.boolean(),
     frozen: z.boolean(),
+    assigneeEmail: z.string().min(3).max(200),
   })
   .strict();
 
@@ -221,6 +225,7 @@ export const ticketSavedSchema = z
   .object({
     updatedAt: z.string(),
     lastEditor: z.string(),
+    assigneeEmail: z.string().min(3).max(200),
   })
   .strict();
 
@@ -244,6 +249,7 @@ export const archiveIndexSchema = z
 export const ticketMarkdownSchema = z
   .object({
     markdown: z.string().max(100_000),
+    assigneeEmail: z.string().trim().max(200).optional(),
   })
   .strict();
 

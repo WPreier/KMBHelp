@@ -14,6 +14,7 @@ import {
   remoteSupportDetail,
   retentionLocation,
   securityIncidentDetail,
+  staff,
   supplier,
   ticket,
   ticketEvent,
@@ -42,7 +43,14 @@ import {
   securityIncidentInputSchema,
   supplierInputSchema,
 } from '@kmbhelp/shared';
-import { assertCsrf, localhostAdmin, requireStaff, serviceTokenMatches, staffFromSession } from './auth.js';
+import { emailForStaffId } from './assignee.js';
+import {
+  assertCsrf,
+  localhostAdmin,
+  requireStaff,
+  serviceTokenMatches,
+  staffFromSession,
+} from './auth.js';
 import {
   createSecretToken,
   databaseDown,
@@ -981,6 +989,7 @@ async function insertTicket(
       body: values.body,
       dueOn: values.dueOn,
       assignedStaffId: values.assignedStaffId ?? null,
+      assigneeEmail: await emailForStaffId(database.db, values.assignedStaffId ?? null),
       internetMessageId: values.internetMessageId,
     })
     .returning({ id: ticket.id, number: ticket.number });

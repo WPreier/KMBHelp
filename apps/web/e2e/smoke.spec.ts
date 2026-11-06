@@ -41,6 +41,7 @@ test('files a ticket, hides the description, and switches language and theme', a
               priority: 'p2',
               ageSeconds: 10,
               dueOn: null,
+              assigneeEmail: 'helpdesk@kmbcloud.at',
               staffMark: null,
             },
           ],

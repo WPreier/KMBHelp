@@ -18,6 +18,7 @@ export const staffTicketViewSchema = z.object({
   impact: z.enum(['filing', 'payroll', 'workplace', 'cosmetic']),
   dueOn: z.string().nullable(),
   assignedStaffId: z.string().uuid().nullable(),
+  assigneeEmail: z.string().min(3).max(200),
   assignedName: z.string().nullable(),
   fromMail: z.boolean(),
   createdAt: z.string(),
@@ -48,6 +49,7 @@ export const ticketPatchSchema = z
     requesterEmail: z.string().trim().max(200).nullable(),
     explanation: z.string().trim().max(4000),
     assignedStaffId: z.string().uuid().nullable(),
+    assigneeEmail: z.string().trim().max(200).optional(),
   })
   .strict();
 

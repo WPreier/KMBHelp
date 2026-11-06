@@ -1,4 +1,5 @@
 import {
+  helpdeskAssigneeEmail,
   categoryListSchema,
   createdTicketSchema,
   faqArticleSchema,
@@ -80,6 +81,7 @@ export function HomePage() {
           subject: String(data.get('subject') ?? ''),
           body: String(data.get('body') ?? ''),
           requesterName: String(data.get('requesterName') ?? ''),
+          assigneeEmail: String(data.get('assigneeEmail') ?? ''),
           dueOn: isoDateToDisplay(String(data.get('dueOn') ?? '')),
           clientPriority: String(data.get('clientPriority') ?? ''),
           source: 'web',
@@ -142,6 +144,16 @@ export function HomePage() {
           <input name="dueOn" type="date" />
         </label>
         <label>
+          {copy.assignedStaff}
+          <input
+            name="assigneeEmail"
+            type="email"
+            maxLength={200}
+            defaultValue={helpdeskAssigneeEmail}
+            autoComplete="email"
+          />
+        </label>
+        <label>
           {copy.name}
           <input name="requesterName" maxLength={200} autoComplete="name" />
         </label>
@@ -174,7 +186,7 @@ export function HomePage() {
                     field instanceof HTMLTextAreaElement ||
                     field instanceof HTMLSelectElement
                   ) {
-                    field.value = '';
+                    field.value = field.name === 'assigneeEmail' ? helpdeskAssigneeEmail : '';
                   }
                 }
               }}
@@ -294,6 +306,7 @@ export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
                 <thead>
                   <tr>
                     <th scope="col">{copy.ticketId}</th>
+                    <th scope="col">{copy.assignedStaff}</th>
                     <th scope="col">{copy.ticketText}</th>
                     <th scope="col">{copy.age}</th>
                     <th scope="col">{copy.dueUntil}</th>
@@ -318,6 +331,7 @@ export function OpenTicketList({ refreshToken }: { refreshToken: number }) {
                         <td>
                           <Link to={`/ticket/${entry.code}`}>{entry.code}</Link>
                         </td>
+                        <td>{entry.assigneeEmail}</td>
                         <td className="ticket-text">
                           <Hint text={entry.subject}>{entry.subject}</Hint>
                         </td>

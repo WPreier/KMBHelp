@@ -35,10 +35,12 @@ import {
   staffTicketListSchema,
   staffTicketSchema,
   ticketStatuses,
+  helpdeskAssigneeEmail,
   type PublicTicket,
   type SearchHit,
   type StaffTicket,
 } from '@kmbhelp/shared';
+import { assigneeFromEmail } from './assignee.js';
 import { registerTicketPages } from './ticket-pages.js';
 import {
   localhostAdmin,
@@ -122,16 +124,16 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         serviceTokenMatches(request) ||
         localhostAdmin(request) ||
         (await optionalStaff(database, request, options.testAuthEnabled, now())) !== null;
-      let assignedStaffId: string | null = null;
-      if (mayNameStaff && input.assignedStaffId) {
+      let chosen = await assigneeFromEmail(tx, input.assigneeEmail ?? helpdeskAssigneeEmail);
+      if (!input.assigneeEmail && mayNameStaff && input.assignedStaffId) {
         const people = await tx
-          .select({ id: staff.id, active: staff.active })
+          .select({ id: staff.id, active: staff.active, email: staff.email })
           .from(staff)
           .where(eq(staff.id, input.assignedStaffId));
         if (!people[0]?.active) {
           throw new PublicError(400, 'inactive_staff', publicErrors.inactiveStaff);
         }
-        assignedStaffId = people[0].id;
+        chosen = { email: people[0].email.trim() || helpdeskAssigneeEmail, staffId: people[0].id };
       }
       const rows = await tx
         .insert(ticket)
@@ -147,7 +149,8 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
           body: input.body,
           requesterName: input.requesterName ?? null,
           dueOn: input.dueOn ?? null,
-          assignedStaffId,
+          assignedStaffId: chosen.staffId,
+          assigneeEmail: chosen.email,
         })
         .returning({ id: ticket.id, number: ticket.number, code: ticket.code });
       const row = rows[0];
@@ -186,11 +189,10 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         priority: ticket.priority,
         dueOn: ticket.dueOn,
         createdAt: ticket.createdAt,
-        staffEmail: staff.email,
+        assigneeEmail: ticket.assigneeEmail,
       })
       .from(ticket)
       .innerJoin(category, eq(ticket.categoryCode, category.code))
-      .leftJoin(staff, eq(ticket.assignedStaffId, staff.id))
       .where(ne(ticket.status, 'closed'))
       .orderBy(asc(category.groupCode), asc(ticket.priority), asc(ticket.createdAt));
     await writeAccessLog(database, request);
@@ -245,10 +247,9 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
           id: ticket.id,
           subject: ticket.subject,
           status: ticket.status,
-          email: staff.email,
+          email: ticket.assigneeEmail,
         })
         .from(ticket)
-        .leftJoin(staff, eq(ticket.assignedStaffId, staff.id))
         .where(eq(ticket.number, number));
       const row = rows[0];
       if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
@@ -508,7 +509,7 @@ function publicFields(
     priority: string;
     dueOn: string | null;
     createdAt: Date;
-    staffEmail: string | null;
+    assigneeEmail: string;
   },
   current: Date,
 ): PublicTicket {
@@ -528,7 +529,8 @@ function publicFields(
     priority: enumValue(priorities, row.priority),
     ageSeconds: elapsedSeconds(row.createdAt, current),
     dueOn: row.dueOn,
-    staffMark: row.staffEmail ? row.staffEmail.slice(0, 3) : null,
+    assigneeEmail: row.assigneeEmail,
+    staffMark: row.assigneeEmail.slice(0, 3),
   });
 }
 

@@ -1,6 +1,6 @@
 import {
-  assignableStaffSchema,
   categoryListSchema,
+  helpdeskAssigneeEmail,
   staffTicketViewSchema,
   unreadMailListSchema,
   type StaffTicketView,
@@ -11,7 +11,6 @@ import { getJson, postJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
 
 type Category = { code: string; labelDe: string; labelEn: string };
-type Person = { id: string; displayName: string };
 type UnreadMail = { graphId: string; subject: string; fromEmail: string; fromName: string };
 
 export function TicketPage() {
@@ -19,7 +18,6 @@ export function TicketPage() {
   const { lang, copy } = useLocale();
   const [data, setData] = useState<StaffTicketView | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [people, setPeople] = useState<Person[]>([]);
   const [mails, setMails] = useState<UnreadMail[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
@@ -28,11 +26,16 @@ export function TicketPage() {
 
   function fail(caught: unknown) {
     setNotice('');
-    setError(caught instanceof RequestFailed ? (caught.text?.[lang] ?? copy.loadFailed) : copy.loadFailed);
+    setError(
+      caught instanceof RequestFailed ? (caught.text?.[lang] ?? copy.loadFailed) : copy.loadFailed,
+    );
   }
 
   async function reload() {
-    const loaded = await getJson(`/api/v1/staff/tickets/${number ?? ''}`, staffTicketViewSchema.parse);
+    const loaded = await getJson(
+      `/api/v1/staff/tickets/${number ?? ''}`,
+      staffTicketViewSchema.parse,
+    );
     setData(loaded);
     setError(null);
   }
@@ -44,14 +47,12 @@ export function TicketPage() {
     Promise.all([
       getJson(`/api/v1/staff/tickets/${number ?? ''}`, staffTicketViewSchema.parse),
       getJson('/api/v1/categories', categoryListSchema.parse),
-      getJson('/api/v1/staff/assignable', assignableStaffSchema.parse),
       getJson('/api/v1/staff/mailbox', unreadMailListSchema.parse).catch(() => ({ mails: [] })),
     ])
-      .then(([loaded, catalog, staffList, mailbox]) => {
+      .then(([loaded, catalog, mailbox]) => {
         if (cancelled) return;
         setData(loaded);
         setCategories(catalog.categories);
-        setPeople(staffList.staff.filter((person) => person.active));
         setMails(mailbox.mails);
       })
       .catch((caught: unknown) => {
@@ -65,7 +66,7 @@ export function TicketPage() {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const assigned = String(form.get('assignedStaffId') ?? '');
+    const assigned = String(form.get('assigneeEmail') ?? '');
     try {
       const saved = await postJson(
         `/api/v1/staff/tickets/${number ?? ''}`,
@@ -80,7 +81,8 @@ export function TicketPage() {
           requesterName: String(form.get('requesterName') ?? '') || null,
           requesterEmail: String(form.get('requesterEmail') ?? '') || null,
           explanation: String(form.get('explanation') ?? ''),
-          assignedStaffId: assigned || null,
+          assignedStaffId: null,
+          assigneeEmail: assigned || helpdeskAssigneeEmail,
         },
         staffTicketViewSchema.parse,
         'PATCH',
@@ -112,7 +114,11 @@ export function TicketPage() {
 
   async function accept(graphId: string, text: string) {
     try {
-      await postJson(`/api/v1/staff/mailbox/${encodeURIComponent(graphId)}/accept`, { reason: text }, (value) => value);
+      await postJson(
+        `/api/v1/staff/mailbox/${encodeURIComponent(graphId)}/accept`,
+        { reason: text },
+        (value) => value,
+      );
       setMails((current) => current.filter((mail) => mail.graphId !== graphId));
       setReasons((current) => {
         const next = { ...current };
@@ -192,14 +198,12 @@ export function TicketPage() {
               </label>
               <label>
                 {copy.assignedStaff}
-                <select name="assignedStaffId" defaultValue={data.assignedStaffId ?? ''}>
-                  <option value="">{copy.priorityUnset}</option>
-                  {people.map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.displayName}
-                    </option>
-                  ))}
-                </select>
+                <input
+                  name="assigneeEmail"
+                  type="email"
+                  maxLength={200}
+                  defaultValue={data.assigneeEmail || helpdeskAssigneeEmail}
+                />
               </label>
               <label>
                 {copy.ticketBody}
@@ -240,7 +244,11 @@ export function TicketPage() {
             >
               <label>
                 {copy.askUser}
-                <textarea value={question} onChange={(event) => setQuestion(event.target.value)} required />
+                <textarea
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  required
+                />
               </label>
               <button type="submit">{copy.sendQuestion}</button>
             </form>
@@ -279,7 +287,10 @@ export function TicketPage() {
                 }
               />
             </label>
-            <button type="button" onClick={() => void accept(mail.graphId, reasons[mail.graphId] ?? '')}>
+            <button
+              type="button"
+              onClick={() => void accept(mail.graphId, reasons[mail.graphId] ?? '')}
+            >
               {copy.acceptMail}
             </button>
           </li>
@@ -316,10 +327,23 @@ function SatisfactionMark({
       : state === 'dissatisfied'
         ? 'M8 20c2-3 6-3 8 0'
         : 'M8 18h8';
-  const color = state === 'satisfied' ? '#e6c200' : state === 'neutral' ? '#1d6b45' : state === 'dissatisfied' ? '#d86b1a' : '#5c6570';
+  const color =
+    state === 'satisfied'
+      ? '#e6c200'
+      : state === 'neutral'
+        ? '#1d6b45'
+        : state === 'dissatisfied'
+          ? '#d86b1a'
+          : '#5c6570';
   return (
     <p className="satisfaction">
-      <svg viewBox="0 0 24 24" width="28" height="28" role="img" aria-label={`${copy.satisfaction}: ${label}`}>
+      <svg
+        viewBox="0 0 24 24"
+        width="28"
+        height="28"
+        role="img"
+        aria-label={`${copy.satisfaction}: ${label}`}
+      >
         <circle cx="12" cy="12" r="10" fill={color} />
         <circle cx="9" cy="10" r="1" fill="#1c2430" />
         <circle cx="15" cy="10" r="1" fill="#1c2430" />

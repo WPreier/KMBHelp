@@ -127,6 +127,7 @@ export const ticket = pgTable(
     requesterName: text('requester_name'),
     dueOn: date('due_on', { mode: 'string' }),
     assignedStaffId: uuid('assigned_staff_id').references(() => staff.id),
+    assigneeEmail: text('assignee_email').notNull().default('helpdesk@kmbcloud.at'),
     internetMessageId: text('internet_message_id').unique(),
     secretToken: text('secret_token').unique(),
     effortMinutes: integer('effort_minutes'),

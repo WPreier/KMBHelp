@@ -20,6 +20,7 @@ import {
   ticketUploadSchema,
   ticketWorkSchema,
 } from '@kmbhelp/shared';
+import { assigneeFromEmail } from './assignee.js';
 import { localhostAdmin, serviceTokenMatches, staffFromSession } from './auth.js';
 import { PublicError } from './http.js';
 import {
@@ -41,6 +42,7 @@ export function registerTicketPages(
       .db.select({
         code: ticket.code,
         subject: ticket.subject,
+        assigneeEmail: ticket.assigneeEmail,
         verdict: ticket.verdict,
       })
       .from(ticket)
@@ -50,6 +52,7 @@ export function registerTicketPages(
       tickets: rows.map((row) => ({
         code: row.code,
         subject: row.subject,
+        assigneeEmail: row.assigneeEmail,
         verdict: row.verdict ?? '',
       })),
     });
@@ -81,6 +84,7 @@ export function registerTicketPages(
       status: ticketStatuses.find((value) => value === row.status) ?? 'open',
       closeRequested: row.closeRequestedAt !== null,
       frozen: row.status === 'closed' || row.closeRequestedAt !== null,
+      assigneeEmail: row.assigneeEmail,
     });
   });
 
@@ -149,10 +153,18 @@ export function registerTicketPages(
     const parsed = ticketMarkdownSchema.safeParse(request.body);
     if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
     const row = await openRow(options.db(), request.params.code);
+    const chosen =
+      parsed.data.assigneeEmail === undefined
+        ? null
+        : await assigneeFromEmail(options.db().db, parsed.data.assigneeEmail);
     const stamp = await touchTicket(options.db(), request, row.id, options.now(), {
       workingMarkdown: parsed.data.markdown,
+      ...(chosen ? { assigneeEmail: chosen.email, assignedStaffId: chosen.staffId } : {}),
     });
-    return ticketSavedSchema.parse(stamp);
+    return ticketSavedSchema.parse({
+      ...stamp,
+      assigneeEmail: chosen?.email ?? row.assigneeEmail,
+    });
   });
 
   app.post<{ Params: { code: string } }>(
@@ -266,7 +278,7 @@ async function touchTicket(
   request: FastifyRequest,
   ticketId: string,
   now: Date,
-  extra: { workingMarkdown?: string } = {},
+  extra: { workingMarkdown?: string; assigneeEmail?: string; assignedStaffId?: string | null } = {},
 ): Promise<{ updatedAt: string; lastEditor: string }> {
   const lastEditor = await editorLabel(database, request, now);
   await database.db
@@ -338,6 +350,7 @@ async function one(database: Database, code: string) {
       body: ticket.body,
       workingMarkdown: ticket.workingMarkdown,
       requesterName: ticket.requesterName,
+      assigneeEmail: ticket.assigneeEmail,
       updatedAt: ticket.updatedAt,
       lastEditor: ticket.lastEditor,
       summary: ticket.summary,

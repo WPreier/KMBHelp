@@ -23,6 +23,7 @@ import {
   ticketSources,
   unreadMailListSchema,
 } from '@kmbhelp/shared';
+import { assigneeFromEmail, emailForStaffId } from './assignee.js';
 import {
   requireStaff,
   serviceTokenMatches,
@@ -125,13 +126,20 @@ export function registerStaffTicket(
     if (rank[parsed.data.priority] > rank[ruled.priority] && !parsed.data.priorityReason?.trim()) {
       throw new PublicError(422, 'invalid_input', publicErrors.invalidInput);
     }
-    if (parsed.data.assignedStaffId) {
+    let assignedStaffId = parsed.data.assignedStaffId;
+    let assigneeEmail: string | undefined;
+    if (parsed.data.assigneeEmail !== undefined) {
+      const chosen = await assigneeFromEmail(database.db, parsed.data.assigneeEmail);
+      assignedStaffId = chosen.staffId;
+      assigneeEmail = chosen.email;
+    } else if (parsed.data.assignedStaffId) {
       const people = await database.db
         .select({ id: staff.id })
         .from(staff)
         .where(and(eq(staff.id, parsed.data.assignedStaffId), eq(staff.active, true)))
         .limit(1);
       if (!people[0]) throw new PublicError(422, 'inactive_staff', publicErrors.inactiveStaff);
+      assigneeEmail = await emailForStaffId(database.db, parsed.data.assignedStaffId);
     }
     await database.db
       .update(ticket)
@@ -146,7 +154,8 @@ export function registerStaffTicket(
         requesterName: parsed.data.requesterName,
         requesterEmail: email || null,
         explanation: parsed.data.explanation,
-        assignedStaffId: parsed.data.assignedStaffId,
+        assignedStaffId,
+        ...(assigneeEmail ? { assigneeEmail } : {}),
         updatedAt: now(),
       })
       .where(eq(ticket.id, current.id));
@@ -368,6 +377,7 @@ async function loadTicket(database: Database, number: number) {
       impact: ticket.impact,
       dueOn: ticket.dueOn,
       assignedStaffId: ticket.assignedStaffId,
+      assigneeEmail: ticket.assigneeEmail,
       assignedName: staff.displayName,
       internetMessageId: ticket.internetMessageId,
       createdAt: ticket.createdAt,
@@ -422,6 +432,7 @@ async function loadTicket(database: Database, number: number) {
     impact,
     dueOn: row.dueOn ? isoDateToDisplay(row.dueOn) : null,
     assignedStaffId: row.assignedStaffId,
+    assigneeEmail: row.assigneeEmail,
     assignedName: row.assignedName,
     fromMail: Boolean(row.internetMessageId),
     createdAt: row.createdAt.toISOString(),

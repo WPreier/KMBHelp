@@ -2,6 +2,7 @@ import {
   archiveIndexSchema,
   closedTicketListSchema,
   closedTicketPageSchema,
+  helpdeskAssigneeEmail,
   defaultTicketFileBytes,
   defaultTicketFileTypes,
   isoDateToDisplay,
@@ -32,7 +33,9 @@ type StoredFile = { id: string; name: string; bytes: number; createdAt: string }
 
 export function ClosedTicketsPage() {
   const { copy } = useLocale();
-  const [rows, setRows] = useState<Array<{ code: string; subject: string; verdict: string }>>([]);
+  const [rows, setRows] = useState<
+    Array<{ code: string; subject: string; assigneeEmail: string; verdict: string }>
+  >([]);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -59,6 +62,7 @@ export function ClosedTicketsPage() {
           <thead>
             <tr>
               <th scope="col">{copy.ticketId}</th>
+              <th scope="col">{copy.assignedStaff}</th>
               <th scope="col">{copy.subject}</th>
               <th scope="col">{copy.verdictTitle}</th>
             </tr>
@@ -71,6 +75,7 @@ export function ClosedTicketsPage() {
                     {row.code}
                   </a>
                 </td>
+                <td>{row.assigneeEmail}</td>
                 <td>{row.subject}</td>
                 <td>
                   <a href={`/abgeschlossen/${row.code}`} target="_blank" rel="noopener noreferrer">
@@ -200,6 +205,7 @@ export function TicketWikiPage() {
   const { lang, copy } = useLocale();
   const { code = '' } = useParams();
   const [header, setHeader] = useState<TicketPage | null>(null);
+  const [assigneeEmail, setAssigneeEmail] = useState(helpdeskAssigneeEmail);
   const [staff, setStaff] = useState(false);
   const [markdown, setMarkdown] = useState('');
   const [first, setFirst] = useState('');
@@ -227,7 +233,10 @@ export function TicketWikiPage() {
     setLoaded(false);
     getJson(`/api/v1/tickets/page/${code}`, (value) => ticketPageSchema.parse(value))
       .then((body) => {
-        if (!cancelled) setHeader(body);
+        if (!cancelled) {
+          setHeader(body);
+          setAssigneeEmail(body.assigneeEmail);
+        }
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
@@ -296,12 +305,13 @@ export function TicketWikiPage() {
       const next = htmlToMarkdown(surface.current?.innerHTML ?? '');
       const result = await postJson(
         `/api/v1/staff/tickets/work/${code}`,
-        { markdown: next },
+        { markdown: next, assigneeEmail },
         (value) => ticketSavedSchema.parse(value),
       );
       setMarkdown(next);
       setUpdatedAt(result.updatedAt);
       setLastEditor(result.lastEditor);
+      setAssigneeEmail(result.assigneeEmail);
       setNotice(copy.saved);
       setFileError('');
     } catch (error) {
@@ -406,6 +416,21 @@ export function TicketWikiPage() {
           <div>
             <dt>{copy.subject}</dt>
             <dd>{header.subject}</dd>
+          </div>
+          <div>
+            <dt>{copy.assignedStaff}</dt>
+            <dd>
+              {staff && !frozen ? (
+                <input
+                  type="email"
+                  maxLength={200}
+                  value={assigneeEmail}
+                  onChange={(event) => setAssigneeEmail(event.target.value)}
+                />
+              ) : (
+                header.assigneeEmail
+              )}
+            </dd>
           </div>
           {staff ? (
             <div>

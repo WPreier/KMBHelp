@@ -122,7 +122,7 @@ export function drizzleMailStore(database: Database): MailStore {
           number: ticket.number,
           internetMessageId: ticket.internetMessageId,
           assignedStaffId: ticket.assignedStaffId,
-          assigneeEmail: staff.email,
+          assigneeEmail: ticket.assigneeEmail,
           requesterEmail: ticket.requesterEmail,
           requesterName: ticket.requesterName,
           subject: ticket.subject,
@@ -131,7 +131,6 @@ export function drizzleMailStore(database: Database): MailStore {
         })
         .from(ticket)
         .innerJoin(category, eq(ticket.categoryCode, category.code))
-        .leftJoin(staff, eq(ticket.assignedStaffId, staff.id))
         .where(eq(ticket.internetMessageId, internetMessageId));
       const row = rows[0];
       if (!row?.internetMessageId) return null;
@@ -158,9 +157,19 @@ export function drizzleMailStore(database: Database): MailStore {
       return this.byMessageId(values.internetMessageId);
     },
     async assign(ticketId, staffId) {
+      const people = await database.db
+        .select({ email: staff.email })
+        .from(staff)
+        .where(eq(staff.id, staffId))
+        .limit(1);
+      const address = people[0]?.email?.trim();
       await database.db
         .update(ticket)
-        .set({ assignedStaffId: staffId, updatedAt: new Date() })
+        .set({
+          assignedStaffId: staffId,
+          assigneeEmail: address && address.includes('@') ? address : 'helpdesk@kmbcloud.at',
+          updatedAt: new Date(),
+        })
         .where(eq(ticket.id, ticketId));
     },
     async addEvent(ticketId, kind, payload) {

@@ -15,6 +15,7 @@ export {
   type TicketStatus,
   type TicketType,
 } from './domain.js';
+export { assigneeEmailOrDefault, helpdeskAssigneeEmail } from './assignee.js';
 export { allowedTicketFile, formatTicketCode, isTicketCode } from './ticket-code.js';
 export {
   absoluteTicketFileBytes,
