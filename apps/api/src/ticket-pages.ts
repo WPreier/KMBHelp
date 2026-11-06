@@ -5,10 +5,14 @@ import {
   archiveIndexSchema,
   closedTicketListSchema,
   closedTicketPageSchema,
+  helpdeskAssigneeEmail,
   impacts,
+  isoDateToDisplay,
   isTicketCode,
   priorities,
   publicErrors,
+  ticketAssigneeResultSchema,
+  ticketAssigneeSchema,
   ticketFileViewSchema,
   ticketMarkdownSchema,
   ticketPageSchema,
@@ -22,12 +26,16 @@ import {
 } from '@kmbhelp/shared';
 import { assigneeFromEmail } from './assignee.js';
 import { localhostAdmin, serviceTokenMatches, staffFromSession } from './auth.js';
+import { mailerFromEnv } from './graph.js';
 import { PublicError } from './http.js';
+import { publicOriginFromEnv } from './mail-rules.js';
+import { renderTextPdf } from './text-pdf.js';
 import {
   readArchiveDocument,
   readArchiveFile,
   readArchiveTicket,
   safeTicketFileName,
+  ticketTexts,
 } from './ticket-archive.js';
 
 type Gate = (request: FastifyRequest) => Promise<void>;
@@ -85,6 +93,7 @@ export function registerTicketPages(
       closeRequested: row.closeRequestedAt !== null,
       frozen: row.status === 'closed' || row.closeRequestedAt !== null,
       assigneeEmail: row.assigneeEmail,
+      number: row.number,
     });
   });
 
@@ -148,22 +157,85 @@ export function registerTicketPages(
     },
   );
 
+  app.post<{ Params: { code: string } }>(
+    '/api/v1/staff/tickets/work/:code/assignee',
+    async (request) => {
+      await options.reader(request);
+      const parsed = ticketAssigneeSchema.safeParse(request.body);
+      if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+      const database = options.db();
+      const row = await openRow(database, request.params.code);
+      const chosen = await assigneeFromEmail(database.db, parsed.data.assigneeEmail);
+      const allowed = await database.db
+        .select({ email: staff.email })
+        .from(staff)
+        .where(and(eq(staff.active, true), eq(staff.isLocalAdmin, false)));
+      const known = new Set(allowed.map((person) => person.email.toLowerCase()));
+      known.add(helpdeskAssigneeEmail);
+      if (!known.has(chosen.email.toLowerCase())) {
+        throw new PublicError(400, 'inactive_staff', publicErrors.inactiveStaff);
+      }
+      const changed = chosen.email.toLowerCase() !== row.assigneeEmail.toLowerCase();
+      if (changed) {
+        await database.db
+          .update(ticket)
+          .set({
+            assigneeEmail: chosen.email,
+            assignedStaffId: chosen.staffId,
+            updatedAt: options.now(),
+          })
+          .where(eq(ticket.id, row.id));
+        await database.db.insert(ticketEvent).values({
+          ticketId: row.id,
+          kind: 'assigned',
+          payload: { email: chosen.email },
+        });
+      }
+      const mailed = changed
+        ? await sendTransferMail(database, row, chosen.email, options.now())
+        : false;
+      return ticketAssigneeResultSchema.parse({ assigneeEmail: chosen.email, mailed });
+    },
+  );
+
+  app.get<{ Params: { code: string } }>(
+    '/api/v1/staff/tickets/work/:code/pdf',
+    async (request, reply) => {
+      await options.reader(request);
+      const row = await one(options.db(), request.params.code);
+      if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
+      const files = await fileViews(options.db(), row.id);
+      const text = ticketTexts({
+        code: row.code,
+        subject: row.subject,
+        category: row.categoryLabelDe,
+        impact: row.impact,
+        priority: row.priority,
+        dueOn: row.dueOn,
+        requesterName: row.requesterName,
+        body: row.body,
+        workingMarkdown: row.workingMarkdown,
+        files: files.map((file) => file.name),
+      });
+      const pdf = renderTextPdf(`Ticket ${row.code}`, text.markdown.split('\n'));
+      return reply
+        .header('content-type', 'application/pdf')
+        .header('content-disposition', `attachment; filename="${row.code}.pdf"`)
+        .send(pdf);
+    },
+  );
+
   app.post<{ Params: { code: string } }>('/api/v1/staff/tickets/work/:code', async (request) => {
     await options.reader(request);
     const parsed = ticketMarkdownSchema.safeParse(request.body);
     if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
     const row = await openRow(options.db(), request.params.code);
-    const chosen =
-      parsed.data.assigneeEmail === undefined
-        ? null
-        : await assigneeFromEmail(options.db().db, parsed.data.assigneeEmail);
     const stamp = await touchTicket(options.db(), request, row.id, options.now(), {
       workingMarkdown: parsed.data.markdown,
-      ...(chosen ? { assigneeEmail: chosen.email, assignedStaffId: chosen.staffId } : {}),
     });
     return ticketSavedSchema.parse({
       ...stamp,
-      assigneeEmail: chosen?.email ?? row.assigneeEmail,
+      assigneeEmail: row.assigneeEmail,
     });
   });
 
@@ -268,6 +340,74 @@ export function registerTicketPages(
   );
 }
 
+async function sendTransferMail(
+  database: Database,
+  row: {
+    code: string;
+    subject: string;
+    body: string;
+    workingMarkdown: string | null;
+    priority: string;
+    dueOn: string | null;
+    createdAt: Date;
+  },
+  email: string,
+  now: Date,
+): Promise<boolean> {
+  const mailer = mailerFromEnv(process.env);
+  if (!mailer.configured) return false;
+  const people = await database.db
+    .select({ displayName: staff.displayName })
+    .from(staff)
+    .where(sql`lower(${staff.email}) = ${email.toLowerCase()}`)
+    .limit(1);
+  const name = people[0]?.displayName.trim() || email;
+  const text = row.body.trim() || row.workingMarkdown?.trim() || '';
+  const priority =
+    row.priority === 'p1'
+      ? 'Sehr wichtig'
+      : row.priority === 'p2'
+        ? 'bitte heute noch'
+        : 'bei Gelegenheit';
+  const created = new Intl.DateTimeFormat('de-AT', {
+    timeZone: 'Europe/Vienna',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(row.createdAt);
+  const age = ageLabel(Math.max(0, Math.floor((now.getTime() - row.createdAt.getTime()) / 1000)));
+  const due = row.dueOn ? isoDateToDisplay(row.dueOn) : 'kein Datum';
+  const origin = publicOriginFromEnv(process.env);
+  try {
+    await mailer.send({
+      to: email,
+      subject: `Ticket ${row.code}`,
+      text: [
+        `Ticket an ${name} übertragen.`,
+        '',
+        `Ticket-ID: ${row.code}`,
+        `Betreff: ${row.subject}`,
+        `Text: ${text}`,
+        `Anlagedatum: ${created}`,
+        `Priorität: ${priority}`,
+        `Ablauf bis: ${due}`,
+        `Alter: ${age}`,
+        `Link: ${origin}/ticket/${row.code}`,
+      ].join('\n'),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function ageLabel(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} Minuten`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours} Stunden`;
+  return `${Math.floor(hours / 24)} Tage`;
+}
+
 function filePolicy(): { fileTypes: string[]; maxFileBytes: number } {
   const policy = ticketFilePolicy(process.env);
   return { fileTypes: [...policy.extensions], maxFileBytes: policy.maxBytes };
@@ -342,6 +482,8 @@ async function one(database: Database, code: string) {
     .select({
       id: ticket.id,
       code: ticket.code,
+      number: ticket.number,
+      createdAt: ticket.createdAt,
       subject: ticket.subject,
       impact: ticket.impact,
       priority: ticket.priority,

@@ -158,7 +158,8 @@ p {
   color: var(--muted);
 }
 
-label {
+label,
+.field {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -235,8 +236,32 @@ header .search select {
 }
 
 .format-bar button,
-.wiki-head button {
+.wiki-head button,
+.wiki-head a.text-button {
   min-height: 2rem;
+}
+
+.assignee-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.assignee-line select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+a.text-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink);
+  text-decoration: none;
 }
 
 .wiki {
@@ -246,7 +271,7 @@ header .search select {
 }
 
 .wysiwyg {
-  font-family: "Segoe UI", sans-serif;
+  font-family: 'Segoe UI', sans-serif;
   padding: 0.6rem 0.8rem;
   overflow: auto;
 }

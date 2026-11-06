@@ -19,6 +19,7 @@ import {
   categoryOptionSchema,
   createTicketSchema,
   createdTicketSchema,
+  helpdeskRosterSchema,
   departmentLabel,
   faqArticleSchema,
   faqSummarySchema,
@@ -270,6 +271,22 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
       return { ok: true };
     },
   );
+
+  app.get('/api/v1/tickets/assignees', async () => {
+    const rows = await db()
+      .db.select({ displayName: staff.displayName, email: staff.email })
+      .from(staff)
+      .where(and(eq(staff.active, true), eq(staff.isLocalAdmin, false)))
+      .orderBy(asc(staff.displayName));
+    return helpdeskRosterSchema.parse({
+      staff: rows
+        .filter((row) => row.email.includes('@'))
+        .map((row) => ({
+          displayName: row.displayName.trim() || row.email,
+          email: row.email,
+        })),
+    });
+  });
 
   app.get('/api/v1/staff/assignable', async (request) => {
     await requireStaffReader(request);

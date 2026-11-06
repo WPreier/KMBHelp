@@ -3,6 +3,8 @@ import {
   closedTicketListSchema,
   closedTicketPageSchema,
   helpdeskAssigneeEmail,
+  helpdeskRosterSchema,
+  ticketAssigneeResultSchema,
   defaultTicketFileBytes,
   defaultTicketFileTypes,
   isoDateToDisplay,
@@ -206,6 +208,8 @@ export function TicketWikiPage() {
   const { code = '' } = useParams();
   const [header, setHeader] = useState<TicketPage | null>(null);
   const [assigneeEmail, setAssigneeEmail] = useState(helpdeskAssigneeEmail);
+  const [roster, setRoster] = useState<Array<{ displayName: string; email: string }>>([]);
+  const [reloadToken, setReloadToken] = useState(0);
   const [staff, setStaff] = useState(false);
   const [markdown, setMarkdown] = useState('');
   const [first, setFirst] = useState('');
@@ -218,7 +222,7 @@ export function TicketWikiPage() {
   const [fileError, setFileError] = useState('');
   const [fileTypes, setFileTypes] = useState(() => defaultTicketFileTypes.split(', '));
   const [maxFileBytes, setMaxFileBytes] = useState(defaultTicketFileBytes);
-  const [confirming, setConfirming] = useState<'text' | 'file' | 'delete' | null>(null);
+  const [confirming, setConfirming] = useState<'text' | 'file' | 'delete' | 'ask' | null>(null);
   const [loaded, setLoaded] = useState(false);
   const draft = useRef('');
   const pendingFile = useRef<File | null>(null);
@@ -241,6 +245,11 @@ export function TicketWikiPage() {
       .catch(() => {
         if (!cancelled) setFailed(true);
       });
+    getJson('/api/v1/tickets/assignees', (value) => helpdeskRosterSchema.parse(value))
+      .then((body) => {
+        if (!cancelled) setRoster(body.staff);
+      })
+      .catch(() => undefined);
     getJson('/api/v1/auth/session', (value) => sessionViewSchema.parse(value))
       .then(async (session) => {
         const allowed = session.signedIn || session.internalAdmin;
@@ -267,12 +276,12 @@ export function TicketWikiPage() {
     return () => {
       cancelled = true;
     };
-  }, [code]);
+  }, [code, reloadToken]);
 
   useEffect(() => {
     if (!loaded || !surface.current) return;
     surface.current.innerHTML = renderMarkdownHtml(draft.current);
-  }, [loaded, code]);
+  }, [loaded, code, reloadToken]);
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
@@ -305,19 +314,54 @@ export function TicketWikiPage() {
       const next = htmlToMarkdown(surface.current?.innerHTML ?? '');
       const result = await postJson(
         `/api/v1/staff/tickets/work/${code}`,
-        { markdown: next, assigneeEmail },
+        { markdown: next },
         (value) => ticketSavedSchema.parse(value),
       );
       setMarkdown(next);
       setUpdatedAt(result.updatedAt);
       setLastEditor(result.lastEditor);
-      setAssigneeEmail(result.assigneeEmail);
       setNotice(copy.saved);
       setFileError('');
     } catch (error) {
       setNotice('');
       const text = error instanceof RequestFailed ? error.text : null;
       setFileError(text ? text[lang] : copy.saveFailed);
+    }
+  }
+
+  async function changeAssignee(email: string) {
+    const previous = assigneeEmail;
+    setAssigneeEmail(email);
+    try {
+      const result = await postJson(
+        `/api/v1/staff/tickets/work/${code}/assignee`,
+        { assigneeEmail: email },
+        (value) => ticketAssigneeResultSchema.parse(value),
+      );
+      setAssigneeEmail(result.assigneeEmail);
+      setHeader((current) =>
+        current ? { ...current, assigneeEmail: result.assigneeEmail } : current,
+      );
+      setNotice(result.mailed ? copy.assigneeSaved : copy.assigneeMailFailed);
+      setFileError('');
+    } catch (error) {
+      setAssigneeEmail(previous);
+      setNotice('');
+      const text = error instanceof RequestFailed ? error.text : null;
+      setFileError(text ? text[lang] : copy.saveFailed);
+    }
+  }
+
+  async function askAssignee() {
+    if (!header) return;
+    try {
+      await postJson(`/api/v1/tickets/public/${header.number}/ask`, {}, (value) => value);
+      setNotice(copy.mailSent);
+      setFileError('');
+    } catch (error) {
+      setNotice('');
+      const text = error instanceof RequestFailed ? error.text : null;
+      setFileError(text ? text[lang] : copy.sendFailed);
     }
   }
 
@@ -421,12 +465,29 @@ export function TicketWikiPage() {
             <dt>{copy.assignedStaff}</dt>
             <dd>
               {staff && !frozen ? (
-                <input
-                  type="email"
-                  maxLength={200}
-                  value={assigneeEmail}
-                  onChange={(event) => setAssigneeEmail(event.target.value)}
-                />
+                <span className="assignee-line">
+                  <select
+                    aria-label={copy.assignedStaff}
+                    value={assigneeEmail}
+                    onChange={(event) => void changeAssignee(event.target.value)}
+                  >
+                    {assigneeChoices(roster, assigneeEmail).map((person) => (
+                      <option key={person.email} value={person.email}>
+                        {person.displayName} ({person.email})
+                      </option>
+                    ))}
+                  </select>
+                  <Hint text={copy.askStaffTitle}>
+                    <button
+                      type="button"
+                      aria-label={copy.askStaffTitle}
+                      disabled={header.status !== 'open'}
+                      onClick={() => setConfirming('ask')}
+                    >
+                      {copy.askStaff}
+                    </button>
+                  </Hint>
+                </span>
               ) : (
                 header.assigneeEmail
               )}
@@ -472,52 +533,85 @@ export function TicketWikiPage() {
           <div className="wiki-head">
             <strong>{copy.ticketHeading}</strong>
             <span>
-              <Link to={`/archiv/${code}`}>{copy.archiveIndex}</Link>
-              <button type="button" disabled={frozen} onClick={() => setConfirming('text')}>
-                {copy.saveText}
-              </button>
+              <Hint text={copy.archiveIndexTitle}>
+                <Link to={`/archiv/${code}`}>{copy.archiveIndex}</Link>
+              </Hint>
+              <Hint text={copy.createPdfTitle}>
+                <a className="text-button" href={`/api/v1/staff/tickets/work/${code}/pdf`}>
+                  {copy.createPdf}
+                </a>
+              </Hint>
+              <Hint text={copy.saveTextTitle}>
+                <button type="button" disabled={frozen} onClick={() => setConfirming('text')}>
+                  {copy.saveText}
+                </button>
+              </Hint>
+              <Hint text={copy.discardTitle}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotice(copy.discarded);
+                    setFileError('');
+                    setReloadToken((value) => value + 1);
+                  }}
+                >
+                  {copy.discard}
+                </button>
+              </Hint>
             </span>
           </div>
           {notice ? <p>{notice}</p> : null}
           <div className="format-bar">
-            <button
-              type="button"
-              disabled={frozen}
-              onMouseDown={keepSelection}
-              onClick={() => format('formatBlock', 'h2')}
-            >
-              {copy.formatHeading}
-            </button>
-            <button
-              type="button"
-              disabled={frozen}
-              onMouseDown={keepSelection}
-              onClick={() => format('bold')}
-            >
-              {copy.formatBold}
-            </button>
-            <button
-              type="button"
-              disabled={frozen}
-              onMouseDown={keepSelection}
-              onClick={() => format('italic')}
-            >
-              {copy.formatItalic}
-            </button>
-            <button
-              type="button"
-              disabled={frozen}
-              onMouseDown={keepSelection}
-              onClick={() => format('insertUnorderedList')}
-            >
-              {copy.formatList}
-            </button>
-            <button type="button" disabled={frozen} onMouseDown={keepSelection} onClick={addLink}>
-              {copy.formatLink}
-            </button>
-            <button type="button" disabled={frozen} onMouseDown={keepSelection} onClick={addCode}>
-              {copy.formatCode}
-            </button>
+            <Hint text={copy.formatHeadingTitle}>
+              <button
+                type="button"
+                disabled={frozen}
+                onMouseDown={keepSelection}
+                onClick={() => format('formatBlock', 'h2')}
+              >
+                {copy.formatHeading}
+              </button>
+            </Hint>
+            <Hint text={copy.formatBoldTitle}>
+              <button
+                type="button"
+                disabled={frozen}
+                onMouseDown={keepSelection}
+                onClick={() => format('bold')}
+              >
+                {copy.formatBold}
+              </button>
+            </Hint>
+            <Hint text={copy.formatItalicTitle}>
+              <button
+                type="button"
+                disabled={frozen}
+                onMouseDown={keepSelection}
+                onClick={() => format('italic')}
+              >
+                {copy.formatItalic}
+              </button>
+            </Hint>
+            <Hint text={copy.formatListTitle}>
+              <button
+                type="button"
+                disabled={frozen}
+                onMouseDown={keepSelection}
+                onClick={() => format('insertUnorderedList')}
+              >
+                {copy.formatList}
+              </button>
+            </Hint>
+            <Hint text={copy.formatLinkTitle}>
+              <button type="button" disabled={frozen} onMouseDown={keepSelection} onClick={addLink}>
+                {copy.formatLink}
+              </button>
+            </Hint>
+            <Hint text={copy.formatCodeTitle}>
+              <button type="button" disabled={frozen} onMouseDown={keepSelection} onClick={addCode}>
+                {copy.formatCode}
+              </button>
+            </Hint>
           </div>
           <div
             ref={surface}
@@ -582,7 +676,9 @@ export function TicketWikiPage() {
           <p>
             {confirming === 'delete'
               ? copy.confirmDelete
-              : `${confirming === 'text' ? copy.saveText : copy.addFile}?`}
+              : confirming === 'ask'
+                ? copy.confirmAsk
+                : `${confirming === 'text' ? copy.saveText : copy.addFile}?`}
           </p>
           <button
             type="button"
@@ -592,6 +688,7 @@ export function TicketWikiPage() {
               if (kind === 'text') void saveText();
               if (kind === 'file') void storeFile();
               if (kind === 'delete') void removeFile();
+              if (kind === 'ask') void askAssignee();
             }}
           >
             {copy.confirmYes}
@@ -647,6 +744,21 @@ function FileTable({
       </table>
     </div>
   );
+}
+
+function assigneeChoices(
+  roster: Array<{ displayName: string; email: string }>,
+  current: string,
+): Array<{ displayName: string; email: string }> {
+  const rows = [...roster];
+  const known = () => new Set(rows.map((person) => person.email.toLowerCase()));
+  if (!known().has(helpdeskAssigneeEmail)) {
+    rows.unshift({ displayName: helpdeskAssigneeEmail, email: helpdeskAssigneeEmail });
+  }
+  if (current && !known().has(current.toLowerCase())) {
+    rows.push({ displayName: current, email: current });
+  }
+  return rows;
 }
 
 function formatBytes(bytes: number): string {

@@ -1,5 +1,6 @@
 import {
   helpdeskAssigneeEmail,
+  helpdeskRosterSchema,
   categoryListSchema,
   createdTicketSchema,
   faqArticleSchema,
@@ -36,6 +37,10 @@ export function HomePage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedTicket | null>(null);
   const [pending, setPending] = useState(false);
+  const [assigneeEmail, setAssigneeEmail] = useState(helpdeskAssigneeEmail);
+  const [roster, setRoster] = useState<Array<{ displayName: string; email: string }>>([]);
+  const [askNotice, setAskNotice] = useState<string | null>(null);
+  const [askConfirm, setAskConfirm] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<{
     message: string;
     run: () => void;
@@ -52,6 +57,11 @@ export function HomePage() {
       .catch(() => {
         if (!cancelled) setLoadError(true);
       });
+    getJson('/api/v1/tickets/assignees', (value) => helpdeskRosterSchema.parse(value))
+      .then((body) => {
+        if (!cancelled) setRoster(body.staff);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -81,7 +91,7 @@ export function HomePage() {
           subject: String(data.get('subject') ?? ''),
           body: String(data.get('body') ?? ''),
           requesterName: String(data.get('requesterName') ?? ''),
-          assigneeEmail: String(data.get('assigneeEmail') ?? ''),
+          assigneeEmail,
           dueOn: isoDateToDisplay(String(data.get('dueOn') ?? '')),
           clientPriority: String(data.get('clientPriority') ?? ''),
           source: 'web',
@@ -90,11 +100,25 @@ export function HomePage() {
       );
       setCreated(result);
       form.reset();
+      setAssigneeEmail(helpdeskAssigneeEmail);
     } catch (error) {
       const text = error instanceof RequestFailed ? error.text : null;
       setFormError(text ? text[lang] : copy.sendFailed);
     } finally {
       setPending(false);
+    }
+  }
+
+  async function askCreated() {
+    if (!created) return;
+    setAskNotice(null);
+    setFormError(null);
+    try {
+      await postJson(`/api/v1/tickets/public/${created.number}/ask`, {}, (value) => value);
+      setAskNotice(copy.mailSent);
+    } catch (error) {
+      const text = error instanceof RequestFailed ? error.text : null;
+      setFormError(text ? text[lang] : copy.sendFailed);
     }
   }
 
@@ -143,16 +167,33 @@ export function HomePage() {
           {copy.dueOn}
           <input name="dueOn" type="date" />
         </label>
-        <label>
-          {copy.assignedStaff}
-          <input
-            name="assigneeEmail"
-            type="email"
-            maxLength={200}
-            defaultValue={helpdeskAssigneeEmail}
-            autoComplete="email"
-          />
-        </label>
+        <div className="field">
+          <span>{copy.assignedStaff}</span>
+          <span className="assignee-line">
+            <select
+              name="assigneeEmail"
+              aria-label={copy.assignedStaff}
+              value={assigneeEmail}
+              onChange={(event) => setAssigneeEmail(event.target.value)}
+            >
+              {assigneeChoices(roster, assigneeEmail).map((person) => (
+                <option key={person.email} value={person.email}>
+                  {person.displayName} ({person.email})
+                </option>
+              ))}
+            </select>
+            <Hint text={created ? copy.askStaffTitle : copy.askNeedsTicket}>
+              <button
+                type="button"
+                aria-label={copy.askStaffTitle}
+                disabled={!created}
+                onClick={() => setAskConfirm(true)}
+              >
+                {copy.askStaff}
+              </button>
+            </Hint>
+          </span>
+        </div>
         <label>
           {copy.name}
           <input name="requesterName" maxLength={200} autoComplete="name" />
@@ -168,6 +209,7 @@ export function HomePage() {
         </label>
         <p>{copy.priorityHint}</p>
         {formError ? <p role="alert">{formError}</p> : null}
+        {askNotice ? <p role="status">{askNotice}</p> : null}
         <div className="form-actions">
           <Hint text={copy.submitTitle}>
             <button type="submit" disabled={pending}>
@@ -180,13 +222,15 @@ export function HomePage() {
               onClick={(event) => {
                 const form = event.currentTarget.form;
                 if (!form) return;
+                setAssigneeEmail(helpdeskAssigneeEmail);
                 for (const field of form.elements) {
                   if (
                     field instanceof HTMLInputElement ||
                     field instanceof HTMLTextAreaElement ||
                     field instanceof HTMLSelectElement
                   ) {
-                    field.value = field.name === 'assigneeEmail' ? helpdeskAssigneeEmail : '';
+                    if (field.name === 'assigneeEmail') continue;
+                    field.value = '';
                   }
                 }
               }}
@@ -209,6 +253,18 @@ export function HomePage() {
       ) : null}
       {loadError ? <p role="alert">{copy.loadFailed}</p> : null}
       <OpenTicketList refreshToken={created?.number ?? 0} />
+      {askConfirm ? (
+        <ConfirmDialog
+          message={copy.confirmAsk}
+          yesLabel={copy.confirmYes}
+          noLabel={copy.confirmNo}
+          onYes={() => {
+            setAskConfirm(false);
+            void askCreated();
+          }}
+          onNo={() => setAskConfirm(false)}
+        />
+      ) : null}
       {pendingConfirm ? (
         <ConfirmDialog
           message={pendingConfirm.message}
@@ -606,6 +662,21 @@ export function SearchPage() {
       </ul>
     </>
   );
+}
+
+function assigneeChoices(
+  roster: Array<{ displayName: string; email: string }>,
+  current: string,
+): Array<{ displayName: string; email: string }> {
+  const rows = [...roster];
+  const known = () => new Set(rows.map((person) => person.email.toLowerCase()));
+  if (!known().has(helpdeskAssigneeEmail)) {
+    rows.unshift({ displayName: helpdeskAssigneeEmail, email: helpdeskAssigneeEmail });
+  }
+  if (current && !known().has(current.toLowerCase())) {
+    rows.push({ displayName: current, email: current });
+  }
+  return rows;
 }
 
 function ConfirmDialog({

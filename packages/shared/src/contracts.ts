@@ -193,6 +193,7 @@ export const ticketPageSchema = z
     closeRequested: z.boolean(),
     frozen: z.boolean(),
     assigneeEmail: z.string().min(3).max(200),
+    number: z.number().int().positive(),
   })
   .strict();
 
@@ -243,6 +244,32 @@ export const archiveIndexSchema = z
         })
         .strict(),
     ),
+  })
+  .strict();
+
+export const helpdeskRosterSchema = z
+  .object({
+    staff: z.array(
+      z
+        .object({
+          displayName: z.string().min(1).max(200),
+          email: z.string().min(3).max(200),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
+export const ticketAssigneeSchema = z
+  .object({
+    assigneeEmail: z.string().trim().min(3).max(200),
+  })
+  .strict();
+
+export const ticketAssigneeResultSchema = z
+  .object({
+    assigneeEmail: z.string().min(3).max(200),
+    mailed: z.boolean(),
   })
   .strict();
 
