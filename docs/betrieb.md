@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.10`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.11`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 
@@ -122,6 +122,8 @@ In der zentralen Datei `/etc/kmbhelp/kmbhelp.env` können alle übrigen Einträg
 `VITE_PUBLIC_URL_WWW`, `VITE_PUBLIC_URL_HOME` und `VITE_PUBLIC_URL_WIKI` liest nur der Bau der Webseite aus der `.env` im Projektordner. Auf dem Server ist das `/opt/kmbhelp/.env`. Die zentrale Datei liefert sie dem Bau nicht.
 
 `ALLOW_TEST_AUTH` bleibt auf dem Server leer. `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGIN`, `LDAPS_CA_FILE`, `ACTIVITY_LOG_FILE` und `TICKET_ARCHIVE_DIR` nennen Pfade oder Namen dieses Rechners. Der Arbeitsplatz behält dafür eigene Werte. `ACTIVITY_LOG_FILE` ist kein Feld der Konfigurationsseite. Leer heißt lokal `%LOCALAPPDATA%\kmbhelp` und auf dem Server `/var/lib/kmbhelp`.
+
+Die vollständige Vorlage für den Arbeitsplatz ist `.env.example` im Projektordner. Auf dem Server liegt dieselbe Datei unter `/opt/kmbhelp/.env.example`. Die Vorlage für die zentrale Datei ist `infra/kmbhelp.env.example`, auf dem Server `/opt/kmbhelp/infra/kmbhelp.env.example`. Beide nennen dieselben Schlüssel. Geheimnisse sind leer. Ein Update ersetzt `.env` und `/etc/kmbhelp/kmbhelp.env` nicht.
 
 Das Domänencontroller-Zertifikat liegt als PEM-Datei unter `/etc/kmbhelp/madc1.crt`, mit `BEGIN CERTIFICATE`, `END CERTIFICATE` und echten Zeilenumbrüchen. `LDAPS_CA_FILE` nennt diesen Pfad. `LDAPS_CA_PEM` bleibt leer. `certificate.missing: Das Zertifikat lässt sich nicht lesen.` heißt, dass ein Wert gesetzt ist, die Datei aber fehlt oder der Text keine Zeilenumbrüche mehr hat. Danach `sudo systemctl restart kmbhelp-api`.
 
