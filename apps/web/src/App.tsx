@@ -17,6 +17,7 @@ import { LocaleProvider, useLocale } from './locale.js';
 import { getJson, postJson } from './api.js';
 import { AdminPage, QrSignInPage, SignInPage } from './auth-pages.js';
 import { AdminLinks, ConfigurationPage, NoticesPage } from './operations-pages.js';
+import { MailboxAdminPage, MailTestPage, TestsPage } from './admin-test-pages.js';
 import { TermPage } from './vocabulary-pages.js';
 import {
   ArticlePage,
@@ -238,7 +239,11 @@ function Shell({
             <Link to="/abgeschlossen">{copy.guides}</Link>
           </nav>
         ) : null}
-        {session?.signedIn ? <AdminLinks /> : null}
+        {session?.signedIn ? (
+          <AdminLinks
+            administrator={session.audience === 'administrator' || Boolean(session.internalAdmin)}
+          />
+        ) : null}
         {session && !admitted && !onLogin ? (
           <SignInPage />
         ) : (
@@ -262,6 +267,9 @@ function Shell({
             <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
             <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
             <Route path="/verwaltung/protokoll" element={<ActivityPage />} />
+            <Route path="/verwaltung/tests" element={<TestsPage />} />
+            <Route path="/verwaltung/ki-mailtest" element={<MailTestPage />} />
+            <Route path="/verwaltung/mailbox" element={<MailboxAdminPage />} />
             <Route path="/mitarbeit/dashboard" element={<DashboardPage />} />
             <Route path="/mitarbeit/ticket/:number" element={<TicketPage />} />
             <Route path="/beschaffung/:token" element={<ProcurementDecisionPage />} />

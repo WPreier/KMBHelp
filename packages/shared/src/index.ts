@@ -185,6 +185,17 @@ export {
   type ServiceStatus,
 } from './services.js';
 export {
+  mailboxListSchema,
+  mailboxMessageSchema,
+  mailboxReadSchema,
+  mailExchangeSchema,
+  mailTestPromptSchema,
+  mailTestRequestSchema,
+  mailTestResultSchema,
+  type MailboxMessage,
+  type MailTestResult,
+} from './admin-test.js';
+export {
   staffTicketViewSchema,
   ticketPatchSchema,
   ticketQuestionSchema,

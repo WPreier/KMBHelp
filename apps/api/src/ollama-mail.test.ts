@@ -4,7 +4,14 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { flushFileLogs } from './file-log.js';
 import { mailboxFromEnv, type InboundMail } from './graph.js';
-import { askOllama, classificationPrompt, importanceOf, parseMailAnswer } from './ollama-mail.js';
+import {
+  askOllama,
+  classificationPrompt,
+  formatMailSource,
+  importanceOf,
+  parseMailAnswer,
+  parsePastedMail,
+} from './ollama-mail.js';
 
 const mail: InboundMail = {
   graphId: '1',
@@ -45,6 +52,10 @@ describe('local mail review', () => {
     expect(prompt).toContain('Message-ID: <once@example.com>');
     expect(prompt).not.toContain('1234');
     expect(prompt).not.toContain('Received:');
+    const again = parsePastedMail(formatMailSource(mail));
+    expect(classificationPrompt(again)).toBe(prompt);
+    expect(again.fromEmail).toBe('sender@example.com');
+    expect(again.subject).toBe('Drucker klemmt');
   });
 
   it('asks again when the importance is missing and stops at five minutes', async () => {

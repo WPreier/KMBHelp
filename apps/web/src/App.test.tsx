@@ -6,7 +6,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { App } from './App';
 import { SignInPage } from './auth-pages';
 import { DashboardPage } from './dashboard-page';
-import { ServiceChecks } from './operations-pages';
+import { MailTestPage } from './admin-test-pages';
+import { AdminLinks, ConfigurationPage, ServiceChecks } from './operations-pages';
 import { LocaleProvider } from './locale';
 
 function json(body: unknown) {
@@ -343,9 +344,7 @@ describe('placeholder page', () => {
         </LocaleProvider>
       </MemoryRouter>,
     );
-    expect(
-      await screen.findByText('Angemeldet als Benutzer mit ada@example.com'),
-    ).toBeTruthy();
+    expect(await screen.findByText('Angemeldet als Benutzer mit ada@example.com')).toBeTruthy();
     expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
     expect(
       await screen.findByRole('img', { name: 'Mit der Authenticator-App scannen.' }),
@@ -428,6 +427,79 @@ describe('placeholder page', () => {
     expect(await screen.findByText('Postfix ist nicht erreichbar.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Test jetzt durchführen und prüfen' }));
     expect(await screen.findByText('Postfix nimmt Verbindungen an.')).toBeTruthy();
+  });
+
+  it('keeps the service check off the configuration page', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: false, status: 401, json: async () => null })),
+    );
+    render(
+      <LocaleProvider lang="de">
+        <ConfigurationPage />
+      </LocaleProvider>,
+    );
+    expect(await screen.findByRole('heading', { name: 'Konfiguration' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Dienste' })).toBeNull();
+  });
+
+  it('shows the test pages only to an administrator', () => {
+    const { unmount } = render(
+      <MemoryRouter>
+        <LocaleProvider lang="de">
+          <AdminLinks administrator={false} />
+        </LocaleProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.queryByRole('link', { name: 'Tests' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'KI-Mailtest' })).toBeNull();
+    unmount();
+    render(
+      <MemoryRouter>
+        <LocaleProvider lang="de">
+          <AdminLinks administrator />
+        </LocaleProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'Tests' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'KI-Mailtest' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Helpdesk-Mailbox' })).toBeTruthy();
+  });
+
+  it('shows the model text, the answer and the seconds', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith('/api/v1/admin/mail-test') && init?.method !== 'POST') {
+          return json({ prompt: 'Lies diese E-Mail.' });
+        }
+        if (url.endsWith('/api/v1/admin/mail-test')) {
+          return json({
+            seconds: 1.5,
+            exchanges: [
+              { kind: 'classify', prompt: 'Lies diese E-Mail.\n\nFrom: a', answer: 'SPAM' },
+            ],
+            textDe: 'Ergebnis: spam.',
+            textEn: 'Result: spam.',
+          });
+        }
+        return { ok: false, status: 404, json: async () => null };
+      }),
+    );
+    render(
+      <MemoryRouter>
+        <LocaleProvider lang="de">
+          <MailTestPage />
+        </LocaleProvider>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByDisplayValue('Lies diese E-Mail.')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'Hallo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Testen' }));
+    expect(await screen.findByText('An die KI geschickt')).toBeTruthy();
+    expect(screen.getByText('SPAM')).toBeTruthy();
+    expect(screen.getByText('Der Test hat 1.5 Sekunden gedauert.')).toBeTruthy();
   });
 
   it('boots from the browser before the module loads', () => {

@@ -26,7 +26,7 @@ curl -fsS https://helpdesk.kmbcloud.at/api/health
 
 `worker` steht auf `up`, `down` oder `not_configured`. `smtp` steht auf `up`, wenn Postfix auf `MAIL_SMTP_SERVER` und `MAIL_SMTP_PORT` eine Verbindung annimmt, sonst auf `down`. `down` bei Worker oder Postfix macht die Webseite nicht unerreichbar. Die Antwort bleibt 200, solange die Datenbank antwortet. `not_configured` heißt: die Graph-Werte fehlen, der Worker stürzt nicht ab. Das Ergebnis für Postfix wird 30 Sekunden gehalten, damit jede Abfrage nicht neu verbindet.
 
-Das Dashboard unter `/mitarbeit/dashboard` zeigt die Ticketzahlen. Die Dienste stehen am Anfang der Konfiguration unter `/verwaltung/konfiguration`: Datenbank, Mail-Worker, Postfix, Verzeichnis, Helpdesk-Mailbox, Ollama und Syslog. Links neben jedem Dienst steht der Knopf T. Er prüft nur diesen Dienst und setzt danach das grüne Häkchen oder das rote Kreuz. Grün heißt, der Dienst antwortet. Rot heißt, er meldet einen Fehler oder ist nicht erreichbar. Beim Verzeichnis zählen ein lesbares, nicht abgelaufenes Zertifikat, eine offene LDAPS-Verbindung und eine Suche mit dem Dienstkonto. Die Mailbox gilt als in Ordnung, wenn die Graph-Anmeldung angenommen wird. Syslog ist grün, sobald ein Ziel gesetzt ist. UDP bestätigt den Empfang nicht.
+Das Dashboard unter `/mitarbeit/dashboard` zeigt die Ticketzahlen. Die Dienste stehen unter `/verwaltung/tests`, nur für Administratoren: Datenbank, Mail-Worker, Postfix, Verzeichnis, Helpdesk-Mailbox, Ollama und Syslog. Links neben jedem Dienst steht der Knopf T. Er prüft nur diesen Dienst und setzt danach das grüne Häkchen oder das rote Kreuz. Grün heißt, der Dienst antwortet. Rot heißt, er meldet einen Fehler oder ist nicht erreichbar. Beim Verzeichnis zählen ein lesbares, nicht abgelaufenes Zertifikat, eine offene LDAPS-Verbindung und eine Suche mit dem Dienstkonto. Die Mailbox gilt als in Ordnung, wenn die Graph-Anmeldung angenommen wird. Syslog ist grün, sobald ein Ziel gesetzt ist. UDP bestätigt den Empfang nicht.
 
 ## Aktualisieren
 
@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.11`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.2.12`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 

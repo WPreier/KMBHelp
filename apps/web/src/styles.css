@@ -861,6 +861,44 @@ button[aria-pressed='true'] {
   padding: 0;
 }
 
+.mail-test-mail {
+  min-height: 18rem;
+}
+
+.exchange {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mail-box {
+  overflow-x: auto;
+}
+
+.mail-box table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+.mail-box th,
+.mail-box td {
+  border-bottom: 1px solid var(--line);
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.mailbox-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.read-toggle {
+  width: auto;
+  min-width: 3.25rem;
+  padding: 0 6px;
+}
+
 @media (max-width: 640px) {
   header {
     flex-direction: column;

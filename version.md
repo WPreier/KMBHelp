@@ -1,12 +1,12 @@
 # Version
 
-Aktueller Stand: **V 0.1.11**
+Aktueller Stand: **V 0.2.12**
 
 | | |
 |---|---|
-| Datum | 06.11.2026 |
-| Commit | dieser Stand, Branch `phase/11-app` |
-| Branch | `phase/11-app` |
+| Datum | 07.11.2026 |
+| Commit | dieser Stand, Branch `phase/12-haerten` |
+| Branch | `phase/12-haerten` |
 | Datei auf dem Server | `/opt/kmbhelp/version.md` |
 
 ## Zählung
@@ -16,14 +16,18 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 | Stelle | Name | Wann sie steigt |
 |---|---|---|
 | 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
-| 1 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. |
-| 1 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. |
+| 2 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. Am 07.11.2026 hat er die Minor 2 freigegeben. |
+| 12 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.1.12**. Die Minor-Stelle bleibt 1, bis Wolfgang eine Minor freigibt. Die erste Minor danach heißt **V 0.2.0**, der Patch beginnt wieder bei 0. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.13**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.2.12 — 07.11.2026
+
+Phase 11 ist abgeschlossen. Phase 12 härtet die App und prüft sie im Betrieb. Die Dienste stehen auf der Seite Tests. KI-Mailtest prüft eine E-Mail mit derselben Ollama-Schnittstelle wie der Worker und nennt die Dauer in Sekunden. Die Helpdesk-Mailbox zeigt ungelesene Nachrichten mit den Feldern der KI-Prüfung. T öffnet den Mailtest, U/G setzt gelesen oder ungelesen. Beides ist nur für Administratoren.
 
 ### V 0.1.11 — 07.11.2026
 

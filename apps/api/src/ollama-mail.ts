@@ -17,6 +17,12 @@ export type LocalMailResult = {
 
 export type MailAsk = LocalMailResult | 'timeout' | 'unreachable' | 'unclear';
 
+export type MailExchange = {
+  kind: 'classify' | 'retry' | 'importance';
+  prompt: string;
+  answer: string;
+};
+
 const classWord: Record<string, LocalMailResult['kind']> = {
   support: 'support',
   antwort: 'reply',
@@ -41,7 +47,7 @@ export function mailExcerpt(mail: InboundMail): string {
   return lines.filter((line, index) => line !== '' || index === lines.length - 2).join('\n');
 }
 
-export function classificationPrompt(mail: InboundMail): string {
+export function classificationInstructions(): string {
   return [
     'Lies diese E-Mail. Antworte mit genau einer ersten Zeile und einem dieser Wörter:',
     'SUPPORT',
@@ -61,9 +67,12 @@ export function classificationPrompt(mail: InboundMail): string {
     'WICHTIGKEIT: P1 oder P2 oder P3, und nur wenn die Wichtigkeit eindeutig ist.',
     'P1 ist sehr wichtig. P2 heißt bitte heute noch. P3 heißt bei Gelegenheit.',
     'Wenn die Wichtigkeit nicht eindeutig ist, lasse die Zeile WICHTIGKEIT weg.',
-    '',
-    mailExcerpt(mail),
   ].join('\n');
+}
+
+export function classificationPrompt(mail: InboundMail, instructions?: string): string {
+  const head = (instructions ?? classificationInstructions()).replace(/\s+$/u, '');
+  return `${head}\n\n${mailExcerpt(mail)}`;
 }
 
 export function importancePrompt(mail: InboundMail): string {
@@ -112,6 +121,8 @@ export async function askOllama(options: {
   baseUrl: string;
   model: string;
   mail: InboundMail;
+  instructions?: string | undefined;
+  trace?: MailExchange[] | undefined;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
 }): Promise<MailAsk> {
@@ -120,42 +131,31 @@ export async function askOllama(options: {
   const fetchImpl = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? mailQueryLimitMs;
   const model = options.model.trim() || defaultOllamaModel;
-  const first = await chat(
-    fetchImpl,
-    base,
-    model,
-    classificationPrompt(options.mail),
-    timeoutMs,
-    'classify',
-  );
+  const classify = classificationPrompt(options.mail, options.instructions);
+  const first = await chat(fetchImpl, base, model, classify, timeoutMs, 'classify');
+  options.trace?.push({ kind: 'classify', prompt: classify, answer: shown(first) });
   if (first === 'timeout' || first === 'unreachable') return first;
   let parsed = parseMailAnswer(first);
   if (!parsed) {
-    const again = await chat(
-      fetchImpl,
-      base,
-      model,
-      `${classificationPrompt(options.mail)}\n\nDie letzte Antwort war nicht lesbar. Antworte jetzt mit genau einem Wort: SUPPORT, ANTWORT, ABSCHLUSS, FREMD oder SPAM.`,
-      timeoutMs,
-      'retry',
-    );
+    const retry = `${classify}\n\nDie letzte Antwort war nicht lesbar. Antworte jetzt mit genau einem Wort: SUPPORT, ANTWORT, ABSCHLUSS, FREMD oder SPAM.`;
+    const again = await chat(fetchImpl, base, model, retry, timeoutMs, 'retry');
+    options.trace?.push({ kind: 'retry', prompt: retry, answer: shown(again) });
     if (again === 'timeout' || again === 'unreachable') return again;
     parsed = parseMailAnswer(again);
   }
   if (!parsed) return 'unclear';
   if (parsed.kind === 'support' && !parsed.priority) {
-    const importance = await chat(
-      fetchImpl,
-      base,
-      model,
-      importancePrompt(options.mail),
-      timeoutMs,
-      'importance',
-    );
+    const importanceText = importancePrompt(options.mail);
+    const importance = await chat(fetchImpl, base, model, importanceText, timeoutMs, 'importance');
+    options.trace?.push({ kind: 'importance', prompt: importanceText, answer: shown(importance) });
     if (importance === 'timeout' || importance === 'unreachable') return importance;
     parsed = { ...parsed, priority: importanceOf(importance) };
   }
   return { ...parsed, model };
+}
+
+function shown(value: string | 'timeout' | 'unreachable'): string {
+  return value;
 }
 
 async function chat(
@@ -236,4 +236,88 @@ function noteModel(
 
 function oneLine(value: string, max = 180): string {
   return value.replace(/[\r\n\t]/gu, ' ').slice(0, max);
+}
+
+export function formatMailSource(mail: InboundMail): string {
+  const from = mail.fromName.trim()
+    ? `From: ${mail.fromName.trim()} <${mail.fromEmail.trim()}>`
+    : `From: ${mail.fromEmail.trim()}`;
+  return [
+    from,
+    `To: ${mail.to ?? ''}`,
+    `Cc: ${mail.cc ?? ''}`,
+    `Date: ${mail.sentAt ?? ''}`,
+    `Subject: ${mail.subject}`,
+    `Message-ID: ${mail.internetMessageId}`,
+    `In-Reply-To: ${mail.inReplyTo ?? ''}`,
+    `References: ${mail.references ?? ''}`,
+    '',
+    mail.body,
+  ].join('\n');
+}
+
+export function parsePastedMail(text: string): InboundMail {
+  const normalized = text.replace(/\r\n/gu, '\n').replace(/\r/gu, '\n');
+  const breakAt = normalized.indexOf('\n\n');
+  const head = breakAt === -1 ? normalized : normalized.slice(0, breakAt);
+  const rest = breakAt === -1 ? '' : normalized.slice(breakAt + 2);
+  const first = head.split('\n').find((line) => line.trim() !== '') ?? '';
+  if (!/^(from|to|cc|date|subject|message-id|in-reply-to|references)\s*:/iu.test(first)) {
+    return pastedMail(normalized.trim());
+  }
+  const headers = new Map<string, string>();
+  let name = '';
+  let value = '';
+  const flush = () => {
+    if (name !== '') headers.set(name, value.trim());
+  };
+  for (const line of head.split('\n')) {
+    if (/^[ \t]/u.test(line) && name !== '') {
+      value = `${value} ${line.trim()}`;
+      continue;
+    }
+    const match = /^([A-Za-z-]+)\s*:\s*(.*)$/u.exec(line);
+    if (!match?.[1]) continue;
+    flush();
+    name = match[1].toLowerCase();
+    value = match[2] ?? '';
+  }
+  flush();
+  const from = parseAddress(headers.get('from') ?? '');
+  return pastedMail(rest.trim(), {
+    internetMessageId: headers.get('message-id') ?? '',
+    subject: headers.get('subject') ?? '',
+    fromEmail: from.email,
+    fromName: from.name,
+    to: headers.get('to') ?? '',
+    cc: headers.get('cc') ?? '',
+    sentAt: headers.get('date') ?? '',
+    inReplyTo: headers.get('in-reply-to') ?? '',
+    references: headers.get('references') ?? '',
+  });
+}
+
+function pastedMail(body: string, fields: Partial<InboundMail> = {}): InboundMail {
+  return {
+    graphId: 'pasted',
+    internetMessageId: (fields.internetMessageId ?? '').slice(0, 500),
+    subject: (fields.subject ?? '').slice(0, 500),
+    body: body.slice(0, 20_000),
+    fromEmail: (fields.fromEmail ?? '').slice(0, 200),
+    fromName: (fields.fromName ?? '').slice(0, 200),
+    to: (fields.to ?? '').slice(0, 500),
+    cc: (fields.cc ?? '').slice(0, 500),
+    sentAt: (fields.sentAt ?? '').slice(0, 40),
+    inReplyTo: (fields.inReplyTo ?? '').slice(0, 500),
+    references: (fields.references ?? '').slice(0, 500),
+  };
+}
+
+function parseAddress(value: string): { name: string; email: string } {
+  const match = /^(.*)<([^<>]+)>\s*$/u.exec(value.trim());
+  if (!match) return { name: '', email: value.trim().toLowerCase() };
+  return {
+    name: (match[1] ?? '').trim().replace(/^"|"$/gu, ''),
+    email: (match[2] ?? '').trim().toLowerCase(),
+  };
 }

@@ -14,7 +14,7 @@ import { Link } from 'react-router-dom';
 import { getJson, postJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
 
-export function AdminLinks() {
+export function AdminLinks({ administrator }: { administrator: boolean }) {
   const { copy } = useLocale();
   return (
     <nav className="content-nav" aria-label={copy.adminTitle}>
@@ -24,6 +24,9 @@ export function AdminLinks() {
       <Link to="/verwaltung/meldungen">{copy.noticesTitle}</Link>
       <Link to="/verwaltung/konfiguration">{copy.configurationTitle}</Link>
       <Link to="/verwaltung/protokoll">{copy.activityTitle}</Link>
+      {administrator ? <Link to="/verwaltung/tests">{copy.testsTitle}</Link> : null}
+      {administrator ? <Link to="/verwaltung/ki-mailtest">{copy.mailTestTitle}</Link> : null}
+      {administrator ? <Link to="/verwaltung/mailbox">{copy.mailboxAdminTitle}</Link> : null}
     </nav>
   );
 }
@@ -242,7 +245,6 @@ export function ConfigurationPage() {
   return (
     <section>
       <h2>{copy.configurationTitle}</h2>
-      <ServiceChecks />
       <p>{copy.configurationLead}</p>
       <p>{copy.configurationSource}</p>
       <p>{copy.graphSetup}</p>
@@ -323,14 +325,12 @@ export function ServiceChecks() {
   const shown =
     rows ??
     (failed
-      ? serviceCodes.map(
-          (code): ServiceRow => ({
-            code,
-            status: 'error',
-            textDe: copy.serviceUnavailable,
-            textEn: copy.serviceUnavailable,
-          }),
-        )
+      ? serviceCodes.map((code): ServiceRow => ({
+          code,
+          status: 'error',
+          textDe: copy.serviceUnavailable,
+          textEn: copy.serviceUnavailable,
+        }))
       : []);
 
   return (

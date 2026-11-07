@@ -38,6 +38,7 @@ export type Mailbox = {
   readonly configured: boolean;
   listUnread(limit: number): Promise<InboundMail[]>;
   markRead(graphId: string): Promise<void>;
+  setRead(graphId: string, isRead: boolean): Promise<void>;
 };
 
 export type CalendarDraft = {
@@ -277,67 +278,93 @@ export function mailboxFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = f
         mailboxAccess(config.mailbox, 'posteingang', 'fehler', 'ungelesen', Date.now() - started);
         throw error;
       }
+      const cap = Math.min(Math.max(limit, 1), 200);
       const query = [
         '$filter=' + encodeURIComponent('isRead eq false'),
-        `$top=${Math.min(Math.max(limit, 1), 25)}`,
+        `$top=${Math.min(cap, 50)}`,
         '$select=' +
           encodeURIComponent(
             'id,internetMessageId,subject,body,from,toRecipients,ccRecipients,receivedDateTime,internetMessageHeaders',
           ),
       ].join('&');
-      const response = await fetchImpl(
-        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/inbox/messages?${query}`,
-        { headers: { authorization: `Bearer ${token}` } },
-      );
-      if (!response.ok) {
-        mailboxAccess(
-          config.mailbox,
-          'posteingang',
-          'fehler',
-          `ungelesen http=${response.status}`,
-          Date.now() - started,
-        );
-        throw new Error('graph list failed');
+      let next = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/inbox/messages?${query}`;
+      const mails: InboundMail[] = [];
+      let status = 0;
+      while (next !== '' && mails.length < cap) {
+        const response = await fetchImpl(next, { headers: { authorization: `Bearer ${token}` } });
+        status = response.status;
+        if (!response.ok) {
+          mailboxAccess(
+            config.mailbox,
+            'posteingang',
+            'fehler',
+            `ungelesen http=${response.status}`,
+            Date.now() - started,
+          );
+          throw new Error('graph list failed');
+        }
+        const body: unknown = await response.json();
+        mails.push(...parseInboundMessages(body));
+        next = nextPage(body);
       }
-      const mails = parseInboundMessages(await response.json());
+      const shown = mails.slice(0, cap);
       mailboxAccess(
         config.mailbox,
         'posteingang',
         'ok',
-        `ungelesen anzahl=${mails.length} http=${response.status}`,
+        `ungelesen anzahl=${shown.length} http=${status}`,
         Date.now() - started,
       );
-      return mails;
+      return shown;
     },
-    async markRead(graphId) {
-      if (!config) throw new Error('mail not configured');
-      const started = Date.now();
-      const detail = `id=${oneLine(graphId)}`;
-      let token: string;
-      try {
-        token = await accessToken(config, fetchImpl);
-      } catch (error) {
-        mailboxAccess(config.mailbox, 'gelesen', 'fehler', detail, Date.now() - started);
-        throw error;
-      }
-      const response = await fetchImpl(
-        `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/messages/${encodeURIComponent(graphId)}`,
-        {
-          method: 'PATCH',
-          headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-          body: JSON.stringify({ isRead: true }),
-        },
-      );
-      mailboxAccess(
-        config.mailbox,
-        'gelesen',
-        response.ok ? 'ok' : 'fehler',
-        `${detail} http=${response.status}`,
-        Date.now() - started,
-      );
-      if (!response.ok) throw new Error('graph read failed');
+    markRead(graphId) {
+      return changeRead(config, fetchImpl, graphId, true);
+    },
+    setRead(graphId, isRead) {
+      return changeRead(config, fetchImpl, graphId, isRead);
     },
   };
+}
+
+async function changeRead(
+  config: GraphEnv | null,
+  fetchImpl: GraphFetch,
+  graphId: string,
+  isRead: boolean,
+): Promise<void> {
+  if (!config) throw new Error('mail not configured');
+  const started = Date.now();
+  const action = isRead ? 'gelesen' : 'ungelesen';
+  const detail = `id=${oneLine(graphId)}`;
+  let token: string;
+  try {
+    token = await accessToken(config, fetchImpl);
+  } catch (error) {
+    mailboxAccess(config.mailbox, action, 'fehler', detail, Date.now() - started);
+    throw error;
+  }
+  const response = await fetchImpl(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/messages/${encodeURIComponent(graphId)}`,
+    {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ isRead }),
+    },
+  );
+  mailboxAccess(
+    config.mailbox,
+    action,
+    response.ok ? 'ok' : 'fehler',
+    `${detail} http=${response.status}`,
+    Date.now() - started,
+  );
+  if (!response.ok) throw new Error('graph read failed');
+}
+
+function nextPage(body: unknown): string {
+  if (!body || typeof body !== 'object' || !('@odata.nextLink' in body)) return '';
+  const link = body['@odata.nextLink'];
+  return typeof link === 'string' && link.startsWith('https://graph.microsoft.com/') ? link : '';
 }
 
 function mailboxAccess(

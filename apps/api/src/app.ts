@@ -19,6 +19,7 @@ import { registerPhase5 } from './phase5.js';
 import { registerActivity } from './activity-routes.js';
 import { registerDashboard } from './dashboard-routes.js';
 import { registerStaffTicket } from './ticket-view-routes.js';
+import { registerAdminTests } from './admin-test-routes.js';
 import type { Mailbox, Mailer } from './graph.js';
 
 export type BuildAppOptions = {
@@ -57,6 +58,8 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
             'req.body.newPassword',
             'req.body.code',
             'req.body.token',
+            'req.body.email',
+            'req.body.prompt',
             'req.query',
           ],
           serializers: {
@@ -186,6 +189,12 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     testAuthEnabled: options.testAuthEnabled ?? false,
     now: options.now,
     mailer: options.mailer,
+    mailbox: options.mailbox,
+  });
+  registerAdminTests(app, {
+    database,
+    adminAllowlist,
+    now: options.now,
     mailbox: options.mailbox,
   });
 

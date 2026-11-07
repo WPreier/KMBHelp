@@ -3,7 +3,7 @@ import type { FastifyRequest } from 'fastify';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { grantIsStale, grantSeconds, publicErrors } from '@kmbhelp/shared';
 import { session, staff, type Database } from '@kmbhelp/db';
-import { clientAddress, PublicError } from './http.js';
+import { clientAddress, databaseDown, PublicError } from './http.js';
 import { ipAllowed } from './network.js';
 
 export const TEST_STAFF_HEADER = 'x-kmbhelp-test-staff';
@@ -206,6 +206,39 @@ export function assertCsrf(current: StaffSession, request: FastifyRequest): void
   if (typeof header !== 'string' || header === '' || header !== current.csrfToken) {
     throw new PublicError(403, 'csrf_invalid', publicErrors.csrfInvalid);
   }
+}
+
+export async function requireAdministrator(
+  database: Database | undefined,
+  request: FastifyRequest,
+  allowlist: string,
+  now: Date,
+  writing: boolean,
+): Promise<StaffSession> {
+  const local = localhostAdmin(request);
+  if (local) return local;
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      id: 'test',
+      staffId: 'test',
+      email: 'test@example.com',
+      displayName: 'Test',
+      isLocalAdmin: true,
+      helpdesk: true,
+      mfaPending: false,
+      csrfToken: 'localhost',
+    };
+  }
+  if (!database) throw databaseDown();
+  if (!ipAllowed(clientAddress(request), allowlist)) {
+    throw new PublicError(403, 'network_denied', publicErrors.networkDenied);
+  }
+  const current = await staffFromSession(database, request, now);
+  if (!current || current.mfaPending || !(current.isLocalAdmin || current.helpdesk)) {
+    throw new PublicError(401, 'unauthorized', publicErrors.unauthorized);
+  }
+  if (writing) assertCsrf(current, request);
+  return current;
 }
 
 export async function requireStaff(
