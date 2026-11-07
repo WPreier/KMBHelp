@@ -13,6 +13,7 @@ type StaffRow = {
   email: string;
   displayName: string;
   isLocalAdmin: boolean;
+  helpdesk: boolean;
   active: boolean;
   adObjectId: string | null;
 };
@@ -24,6 +25,7 @@ async function readStaff(database: Database): Promise<StaffRow[]> {
       email: staff.email,
       displayName: staff.displayName,
       isLocalAdmin: staff.isLocalAdmin,
+      helpdesk: staff.helpdesk,
       active: staff.active,
       adObjectId: staff.adObjectId,
     })
@@ -57,6 +59,7 @@ export async function reconcileHelpdesk(
         email: member.email,
         displayName: cn,
         role: 'agent',
+        helpdesk: true,
         active: member.active,
         isLocalAdmin: false,
         adObjectId: member.adObjectId || null,
@@ -69,6 +72,7 @@ export async function reconcileHelpdesk(
       .update(staff)
       .set({
         displayName: cn,
+        helpdesk: true,
         active: member.active,
         adObjectId: member.adObjectId || existing.adObjectId,
       })
@@ -77,7 +81,11 @@ export async function reconcileHelpdesk(
   const current = await readStaff(database);
   const missing = current
     .filter(
-      (person) => !person.isLocalAdmin && person.active && !present.has(person.email.toLowerCase()),
+      (person) =>
+        person.helpdesk &&
+        !person.isLocalAdmin &&
+        person.active &&
+        !present.has(person.email.toLowerCase()),
     )
     .map((person) => ({
       id: person.id,
@@ -98,7 +106,7 @@ export async function deactivateMissing(
   const wanted = new Set(ids);
   let count = 0;
   for (const person of people) {
-    if (!wanted.has(person.id) || person.isLocalAdmin) continue;
+    if (!wanted.has(person.id) || person.isLocalAdmin || !person.helpdesk) continue;
     if (present.has(person.email.toLowerCase())) continue;
     await database.db.update(staff).set({ active: false }).where(eq(staff.id, person.id));
     count += 1;

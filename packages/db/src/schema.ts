@@ -45,6 +45,7 @@ export const staff = pgTable(
     role: text('role').notNull().default('agent'),
     active: boolean('active').notNull().default(true),
     isLocalAdmin: boolean('is_local_admin').notNull().default(false),
+    helpdesk: boolean('helpdesk').notNull().default(false),
     // Argon2id hash of the break-glass admin only. Active Directory passwords are never stored.
     passwordHash: text('password_hash'),
     adObjectId: text('ad_object_id'),
@@ -373,8 +374,16 @@ export const session = pgTable('session', {
   mfaPending: boolean('mfa_pending').notNull().default(false),
   csrfToken: text('csrf_token').notNull().default(''),
   createdAt: createdAtColumn(),
+  renewedAt: timestamp('renewed_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true, mode: 'date' }),
+});
+
+export const qrLogin = pgTable('qr_login', {
+  token: text('token').primaryKey(),
+  expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }).notNull(),
+  sessionId: uuid('session_id').references(() => session.id, { onDelete: 'set null' }),
+  createdAt: createdAtColumn(),
 });
 
 export const webauthnCredential = pgTable('webauthn_credential', {

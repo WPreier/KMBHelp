@@ -27,6 +27,7 @@ export type DirectoryMember = {
 export type Directory = {
   readonly configured: boolean;
   verifyPassword(email: string, password: string): Promise<DirectoryAccount | null>;
+  lookup(email: string): Promise<DirectoryAccount | null>;
   assertMembership(email: string): Promise<'member' | 'absent'>;
   listHelpdeskAdmins(): Promise<DirectoryMember[]>;
 };
@@ -39,6 +40,9 @@ export function unconfiguredDirectory(): Directory {
     verifyPassword(): Promise<DirectoryAccount | null> {
       throw new DirectoryUnavailable();
     },
+    lookup(): Promise<DirectoryAccount | null> {
+      throw new DirectoryUnavailable();
+    },
     assertMembership(): Promise<'member' | 'absent'> {
       throw new DirectoryUnavailable();
     },
@@ -48,19 +52,27 @@ export function unconfiguredDirectory(): Directory {
   };
 }
 
+function accountView(found: MemoryDirectoryAccount): DirectoryAccount {
+  return {
+    email: found.email,
+    displayName: found.displayName,
+    adObjectId: found.adObjectId,
+    active: found.active,
+    inHelpdeskGroup: found.inHelpdeskGroup,
+  };
+}
+
 export function memoryDirectory(accounts: MemoryDirectoryAccount[]): Directory {
   return {
     configured: true,
     async verifyPassword(email, password) {
       const found = accounts.find((account) => account.email.toLowerCase() === email.toLowerCase());
       if (!found || found.password !== password) return null;
-      return {
-        email: found.email,
-        displayName: found.displayName,
-        adObjectId: found.adObjectId,
-        active: found.active,
-        inHelpdeskGroup: found.inHelpdeskGroup,
-      };
+      return accountView(found);
+    },
+    async lookup(email) {
+      const found = accounts.find((account) => account.email.toLowerCase() === email.toLowerCase());
+      return found ? accountView(found) : null;
     },
     async assertMembership(email) {
       const found = accounts.find((account) => account.email.toLowerCase() === email.toLowerCase());
@@ -135,10 +147,22 @@ function disabled(value: unknown): boolean {
   return (Number(first(value) ?? 0) & 2) === 2;
 }
 
-function memberOfGroup(value: unknown, groupDn: string): boolean {
+function memberEntries(value: unknown): string[] {
   const entries = Array.isArray(value) ? value : value == null ? [] : [value];
+  return entries.map((entry) => text(entry)).filter((entry) => entry !== '');
+}
+
+function memberOfGroup(value: unknown, groupDn: string): boolean {
   const wanted = groupDn.toLowerCase();
-  return entries.some((entry) => text(entry).toLowerCase() === wanted);
+  return memberEntries(value).some((entry) => entry.toLowerCase() === wanted);
+}
+
+export function inAdministratorGroup(value: unknown, groupDn: string): boolean {
+  if (memberOfGroup(value, groupDn)) return true;
+  return memberEntries(value).some((entry) => {
+    const cn = /^cn=([^,]+)/iu.exec(entry)?.[1]?.toLowerCase() ?? '';
+    return cn === 'helpdesk' || cn === 'helpdeskadmins';
+  });
 }
 
 function objectId(value: unknown): string {
@@ -249,7 +273,18 @@ export function ldapDirectory(config: LdapsConfig): Directory {
         displayName: text(entry['displayName']) || text(entry['cn']) || email,
         adObjectId: objectId(entry['objectGUID']),
         active,
-        inHelpdeskGroup: memberOfGroup(entry['memberOf'], config.groupDn),
+        inHelpdeskGroup: inAdministratorGroup(entry['memberOf'], config.groupDn),
+      };
+    },
+    async lookup(email) {
+      const entry = await serviceSearch(email);
+      if (!entry) return null;
+      return {
+        email,
+        displayName: text(entry['displayName']) || text(entry['cn']) || email,
+        adObjectId: objectId(entry['objectGUID']),
+        active: !disabled(entry['userAccountControl']),
+        inHelpdeskGroup: inAdministratorGroup(entry['memberOf'], config.groupDn),
       };
     },
     async assertMembership(email) {

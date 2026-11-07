@@ -11,8 +11,10 @@ import {
 } from '@simplewebauthn/server';
 import { unconfiguredModel, type ModelProvider } from '@kmbhelp/ai';
 import {
+  appSetting,
   category,
   loginAudit,
+  qrLogin,
   session,
   skill,
   staff,
@@ -25,10 +27,15 @@ import {
 import {
   adminAccessSchema,
   adminStaffSchema,
+  authDomains,
+  emailDomainAllowed,
+  grantSeconds,
   categoryTermPrompt,
   deactivateStaffSchema,
   loginRequestSchema,
   loginResultSchema,
+  qrPollSchema,
+  qrStartSchema,
   publicErrors,
   sessionViewSchema,
   skillTermPrompt,
@@ -41,6 +48,7 @@ import {
   assertCsrf,
   CSRF_COOKIE,
   localhostAdmin,
+  renewGrant,
   SESSION_COOKIE,
   staffFromSession,
   type StaffSession,
@@ -60,7 +68,7 @@ import { verifyLocalPassword } from './passwords.js';
 import { encodeBase32, openSecret, randomTotpSecret, sealSecret, totpMatches } from './totp.js';
 
 const pendingSeconds = 15 * 60;
-const sessionSeconds = 12 * 60 * 60;
+const sessionSeconds = grantSeconds;
 
 export type Phase3Options = {
   database: Database | undefined;
@@ -96,6 +104,16 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
 
   const model = options.model ?? unconfiguredModel;
 
+  app.addHook('onRequest', async (request, reply) => {
+    if (!options.database || localhostAdmin(request)) return;
+    try {
+      const renewed = await renewGrant(options.database, request, now());
+      if (renewed) setSessionCookies(reply, request, renewed.id, renewed.csrf, sessionSeconds);
+    } catch {
+      return;
+    }
+  });
+
   app.get('/api/v1/auth/session', async (request) => {
     if (localhostAdmin(request)) {
       return sessionViewSchema.parse({
@@ -104,6 +122,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
         displayName: null,
         internalAdmin: true,
         email: null,
+        audience: 'administrator',
       });
     }
     const anonymous = {
@@ -112,6 +131,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
       displayName: null,
       internalAdmin: false,
       email: null,
+      audience: null,
     };
     if (!options.database) return sessionViewSchema.parse(anonymous);
     const current = await staffFromSession(options.database, request, now());
@@ -128,6 +148,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
       displayName: loginName || row?.displayName || current.email,
       internalAdmin: false,
       email: current.email,
+      audience: current.isLocalAdmin || current.helpdesk ? 'administrator' : 'user',
     });
   });
 
@@ -159,6 +180,30 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
       );
       return loginResultSchema.parse({ step: 'staff', isLocalAdmin: true });
     }
+    if (password && !local) {
+      if (!emailDomainAllowed(email, await readAuthDomains(database))) {
+        await writeAudit(database, request, person?.id ?? null, email, 'ad_password', 'denied');
+        throw denied();
+      }
+      let account: DirectoryAccount | null;
+      try {
+        account = await options.directory.verifyPassword(email, password);
+      } catch (error) {
+        if (error instanceof DirectoryUnavailable) {
+          throw new PublicError(503, 'directory_unavailable', publicErrors.directoryUnavailable);
+        }
+        throw error;
+      }
+      if (!account || !account.active) {
+        await writeAudit(database, request, person?.id ?? null, email, 'ad_password', 'denied');
+        throw denied();
+      }
+      const saved = await saveDirectoryAccount(database, account);
+      const opened = await replaceSession(database, saved.id, false, now());
+      setSessionCookies(reply, request, opened.id, opened.csrf, sessionSeconds);
+      await writeAudit(database, request, saved.id, email, 'ad_password', 'ok');
+      return loginResultSchema.parse({ step: 'staff', isLocalAdmin: false });
+    }
     if (person?.mfaEnrolledAt) {
       if (!code) {
         return loginResultSchema.parse({
@@ -171,8 +216,9 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
         await writeAudit(database, request, person.id, email, 'totp', 'denied');
         throw denied();
       }
-      if (!local)
-        await requireMember(options.directory, database, request, person.id, person.email, 'totp');
+      if (!local) {
+        await assertAccount(options.directory, database, request, person.id, person.email, 'totp');
+      }
       const opened = await replaceSession(database, person.id, false, now());
       setSessionCookies(reply, request, opened.id, opened.csrf, sessionSeconds);
       await writeAudit(database, request, person.id, email, 'totp', 'ok');
@@ -189,31 +235,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
       await writeAudit(database, request, local.id, email, 'local_password', 'ok');
       return loginResultSchema.parse({ step: 'enroll', presentTotp: false });
     }
-    let account: DirectoryAccount | null;
-    try {
-      account = await options.directory.verifyPassword(email, password);
-    } catch (error) {
-      if (error instanceof DirectoryUnavailable) {
-        throw new PublicError(503, 'directory_unavailable', publicErrors.directoryUnavailable);
-      }
-      throw error;
-    }
-    if (!account || !account.active || !account.inHelpdeskGroup) {
-      await writeAudit(
-        database,
-        request,
-        null,
-        email,
-        'ad_password',
-        account ? 'not_member' : 'denied',
-      );
-      throw denied();
-    }
-    const saved = await saveDirectoryAccount(database, account);
-    const opened = await replaceSession(database, saved.id, true, now());
-    setSessionCookies(reply, request, opened.id, opened.csrf, pendingSeconds);
-    await writeAudit(database, request, saved.id, email, 'ad_password', 'ok');
-    return loginResultSchema.parse({ step: 'enroll', presentTotp: true });
+    throw denied();
   });
 
   app.post('/api/v1/auth/totp/setup', async (request) => {
@@ -262,7 +284,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
 
   app.post('/api/v1/auth/webauthn/register/options', async (request) => {
     const database = db();
-    const current = await pending(database, request, now());
+    const current = await signedSession(database, request, now());
     assertCsrf(current, request);
     const existing = await credentialsFor(database, current.staffId);
     const registration = await generateRegistrationOptions({
@@ -275,7 +297,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
         id: item.credentialId,
         type: 'public-key' as const,
       })),
-      authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+      authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
     });
     await storeChallenge(database, current.staffId, registration.challenge, 'registration', now());
     return registration;
@@ -283,7 +305,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
 
   app.post('/api/v1/auth/webauthn/register/verify', async (request, reply) => {
     const database = db();
-    const current = await pending(database, request, now());
+    const current = await signedSession(database, request, now());
     assertCsrf(current, request);
     const response = request.body as RegistrationResponseJSON | null;
     if (!response || typeof response !== 'object') throw denied();
@@ -322,7 +344,9 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
       .update(staff)
       .set({ mfaEnrolledAt: now() })
       .where(eq(staff.id, current.staffId));
-    const csrf = await promoteSession(database, current.id, now());
+    const csrf = current.mfaPending
+      ? await promoteSession(database, current.id, now())
+      : current.csrfToken;
     setSessionCookies(reply, request, current.id, csrf, sessionSeconds);
     await writeAudit(database, request, current.staffId, current.email, 'webauthn', 'ok');
     return loginResultSchema.parse({ step: 'staff', isLocalAdmin: current.isLocalAdmin });
@@ -410,7 +434,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
       throw denied();
     }
     if (!owner.isLocalAdmin) {
-      await requireMember(options.directory, database, request, owner.id, owner.email, 'webauthn');
+      await assertAccount(options.directory, database, request, owner.id, owner.email, 'webauthn');
     }
     await database.db
       .update(webauthnCredential)
@@ -432,6 +456,129 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     clearSessionCookies(reply, request);
     return { ok: true };
   });
+
+  app.post('/api/v1/auth/qr/start', async () => {
+    if (!limiter.allow('qr')) throw rateLimited();
+    const database = db();
+    const token = randomBytes(18).toString('base64url');
+    await database.db.insert(qrLogin).values({
+      token,
+      expiresAt: new Date(now().getTime() + 2 * 60 * 1000),
+    });
+    return qrStartSchema.parse({ token });
+  });
+
+  app.get<{ Params: { token: string } }>('/api/v1/auth/qr/:token', async (request, reply) => {
+    const database = db();
+    const rows = await database.db
+      .select({
+        sessionId: qrLogin.sessionId,
+        expiresAt: qrLogin.expiresAt,
+      })
+      .from(qrLogin)
+      .where(eq(qrLogin.token, request.params.token));
+    const row = rows[0];
+    if (!row || row.expiresAt <= now() || !row.sessionId) {
+      return qrPollSchema.parse({ step: 'wait' });
+    }
+    const opened = await database.db
+      .select({ csrf: session.csrfToken, local: staff.isLocalAdmin })
+      .from(session)
+      .innerJoin(staff, eq(session.staffId, staff.id))
+      .where(and(eq(session.id, row.sessionId), isNull(session.revokedAt)));
+    const found = opened[0];
+    if (!found) return qrPollSchema.parse({ step: 'wait' });
+    setSessionCookies(reply, request, row.sessionId, found.csrf, sessionSeconds);
+    return qrPollSchema.parse({ step: 'staff', isLocalAdmin: found.local });
+  });
+
+  app.post<{ Params: { token: string } }>('/api/v1/auth/qr/:token/options', async (request) => {
+    const database = db();
+    const tokenRow = await openQr(database, request.params.token, now());
+    if (!tokenRow) throw denied();
+    const authentication = await generateAuthenticationOptions({
+      rpID: options.rpId,
+      userVerification: 'preferred',
+    });
+    await storeChallenge(database, null, authentication.challenge, 'authentication', now());
+    return authentication;
+  });
+
+  app.post<{ Params: { token: string } }>(
+    '/api/v1/auth/qr/:token/verify',
+    async (request, reply) => {
+      const database = db();
+      const tokenRow = await openQr(database, request.params.token, now());
+      if (!tokenRow) throw denied();
+      const response = request.body as AuthenticationResponseJSON | null;
+      if (!response || typeof response !== 'object') throw denied();
+      const challengeValue = readChallenge(response);
+      if (!challengeValue) throw denied();
+      const stored = await database.db
+        .select()
+        .from(webauthnChallenge)
+        .where(
+          and(
+            eq(webauthnChallenge.challenge, challengeValue),
+            eq(webauthnChallenge.kind, 'authentication'),
+            isNull(webauthnChallenge.consumedAt),
+          ),
+        );
+      const challenge = stored[0];
+      if (!challenge || challenge.expiresAt <= now()) throw denied();
+      await database.db
+        .update(webauthnChallenge)
+        .set({ consumedAt: now() })
+        .where(eq(webauthnChallenge.id, challenge.id));
+      const credential = await database.db
+        .select()
+        .from(webauthnCredential)
+        .where(eq(webauthnCredential.credentialId, response.id));
+      const found = credential[0];
+      const person = found
+        ? await database.db.select().from(staff).where(eq(staff.id, found.staffId))
+        : [];
+      const owner = person[0];
+      if (!found || !owner?.active) throw denied();
+      let verified = false;
+      let nextCounter = found.counter;
+      try {
+        const result = await verifyAuthenticationResponse({
+          response,
+          expectedChallenge: challenge.challenge,
+          expectedOrigin: options.origin,
+          expectedRPID: options.rpId,
+          requireUserVerification: false,
+          credential: {
+            id: found.credentialId,
+            publicKey: new Uint8Array(Buffer.from(found.publicKey, 'base64url')),
+            counter: found.counter,
+          },
+        });
+        verified = result.verified;
+        if (result.verified) nextCounter = result.authenticationInfo.newCounter;
+      } catch {
+        verified = false;
+      }
+      if (!verified) {
+        await writeAudit(database, request, owner.id, owner.email, 'webauthn', 'denied');
+        throw denied();
+      }
+      await assertAccount(options.directory, database, request, owner.id, owner.email, 'webauthn');
+      await database.db
+        .update(webauthnCredential)
+        .set({ counter: nextCounter })
+        .where(eq(webauthnCredential.id, found.id));
+      const opened = await replaceSession(database, owner.id, false, now());
+      await database.db
+        .update(qrLogin)
+        .set({ sessionId: opened.id })
+        .where(eq(qrLogin.token, request.params.token));
+      setSessionCookies(reply, request, opened.id, opened.csrf, sessionSeconds);
+      await writeAudit(database, request, owner.id, owner.email, 'webauthn', 'ok');
+      return loginResultSchema.parse({ step: 'staff', isLocalAdmin: owner.isLocalAdmin });
+    },
+  );
 
   async function databaseStaffView() {
     return adminStaffSchema.parse({
@@ -618,6 +765,7 @@ async function saveDirectoryAccount(
       .set({
         displayName: account.displayName,
         adObjectId: account.adObjectId || null,
+        helpdesk: account.inHelpdeskGroup,
         active: true,
       })
       .where(eq(staff.id, existing.id));
@@ -629,6 +777,7 @@ async function saveDirectoryAccount(
       email,
       displayName: account.displayName,
       adObjectId: account.adObjectId || null,
+      helpdesk: account.inHelpdeskGroup,
       role: 'agent',
       active: true,
     })
@@ -659,6 +808,62 @@ function totpCodeMatches(secret: string, cipher: string | null, code: string, at
   } catch {
     return false;
   }
+}
+
+async function readAuthDomains(database: Database): Promise<string[]> {
+  const rows = await database.db
+    .select({ value: appSetting.value })
+    .from(appSetting)
+    .where(eq(appSetting.key, 'config.EMAIL_AUTH_DOMAINS'));
+  return authDomains(rows[0]?.value || process.env.EMAIL_AUTH_DOMAINS);
+}
+
+async function openQr(database: Database, token: string, at: Date) {
+  const rows = await database.db.select().from(qrLogin).where(eq(qrLogin.token, token));
+  const row = rows[0];
+  if (!row || row.expiresAt <= at) return null;
+  return row;
+}
+
+async function signedSession(
+  database: Database,
+  request: FastifyRequest,
+  at: Date,
+): Promise<StaffSession> {
+  const current = await staffFromSession(database, request, at);
+  if (!current) throw new PublicError(401, 'unauthorized', publicErrors.unauthorized);
+  return current;
+}
+
+async function assertAccount(
+  directory: Directory,
+  database: Database,
+  request: FastifyRequest,
+  staffId: string,
+  email: string,
+  method: 'totp' | 'webauthn',
+): Promise<void> {
+  if (!emailDomainAllowed(email, await readAuthDomains(database))) {
+    await writeAudit(database, request, staffId, email, method, 'denied');
+    throw denied();
+  }
+  let account: DirectoryAccount | null;
+  try {
+    account = await directory.lookup(email);
+  } catch (error) {
+    if (error instanceof DirectoryUnavailable) {
+      throw new PublicError(503, 'directory_unavailable', publicErrors.directoryUnavailable);
+    }
+    throw error;
+  }
+  if (!account || !account.active) {
+    await writeAudit(database, request, staffId, email, method, 'denied');
+    throw denied();
+  }
+  await database.db
+    .update(staff)
+    .set({ helpdesk: account.inHelpdeskGroup, displayName: account.displayName, active: true })
+    .where(eq(staff.id, staffId));
 }
 
 async function requireMember(
@@ -701,6 +906,7 @@ async function replaceSession(
       staffId,
       mfaPending,
       csrfToken,
+      renewedAt: at,
       expiresAt: new Date(at.getTime() + (mfaPending ? pendingSeconds : sessionSeconds) * 1000),
     })
     .returning({ id: session.id });
@@ -800,7 +1006,7 @@ async function credentialsFor(database: Database, staffId: string) {
 
 async function storeChallenge(
   database: Database,
-  staffId: string,
+  staffId: string | null,
   challenge: string,
   kind: 'registration' | 'authentication',
   at: Date,

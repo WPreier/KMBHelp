@@ -2,6 +2,8 @@ import {
   adminStaffSchema,
   loginResultSchema,
   messages,
+  qrPollSchema,
+  qrStartSchema,
   totpSetupSchema,
   type AdminStaffList,
   type LoginResult,
@@ -9,7 +11,7 @@ import {
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import QRCode from 'qrcode';
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { getJson, postJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
 
@@ -28,6 +30,7 @@ export function SignInPage() {
   const [secret, setSecret] = useState<string | null>(null);
   const [otpauth, setOtpauth] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
+  const [passQr, setPassQr] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
   const [error, setError] = useState<CopyText | null>(null);
   const [pending, setPending] = useState(false);
@@ -63,6 +66,35 @@ export function SignInPage() {
     window.dispatchEvent(new Event('kmbhelp-session'));
     if (result.isLocalAdmin) navigate('/verwaltung');
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    let token = '';
+    void postJson('/api/v1/auth/qr/start', {}, qrStartSchema.parse)
+      .then(async (started) => {
+        token = started.token;
+        const image = await QRCode.toDataURL(`${window.location.origin}/anmelden/qr/${token}`, {
+          width: 220,
+          margin: 1,
+          errorCorrectionLevel: 'M',
+        });
+        if (!cancelled) setPassQr(image);
+      })
+      .catch(() => undefined);
+    const timer = window.setInterval(() => {
+      if (!token || cancelled) return;
+      void getJson(`/api/v1/auth/qr/${token}`, qrPollSchema.parse)
+        .then((result) => {
+          if (result.step !== 'staff') return;
+          finish({ step: 'staff', isLocalAdmin: Boolean(result.isLocalAdmin) });
+        })
+        .catch(() => undefined);
+    }, 2000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -178,12 +210,25 @@ export function SignInPage() {
     <section>
       <h2>{copy.signIn}</h2>
       <p>{copy.signInLead}</p>
+      {passQr && step !== 'enroll' ? (
+        <>
+          <p>{copy.passkeyQrLead}</p>
+          <img className="totp-qr" src={passQr} width={220} height={220} alt={copy.passkeyQrLead} />
+        </>
+      ) : null}
       {error ? (
         <p className="form-error" role="alert">
           {error[lang]}
         </p>
       ) : null}
-      {step === 'staff' ? <p role="status">{copy.signedIn}</p> : null}
+      {step === 'staff' ? (
+        <>
+          <p role="status">{copy.signedIn}</p>
+          <button type="button" onClick={() => void onPasskeyRegister()} disabled={pending}>
+            {copy.passkeyRegister}
+          </button>
+        </>
+      ) : null}
       {step === 'enroll' ? (
         <>
           <p>{copy.enrollLead}</p>
@@ -249,6 +294,41 @@ export function SignInPage() {
           </div>
         </form>
       ) : null}
+    </section>
+  );
+}
+
+export function QrSignInPage() {
+  const { token = '' } = useParams();
+  const navigate = useNavigate();
+  const { copy } = useLocale();
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        const options = await postJson(`/api/v1/auth/qr/${token}/options`, {}, (value) => value);
+        const credential = await startAuthentication({ optionsJSON: options as never });
+        await postJson(`/api/v1/auth/qr/${token}/verify`, credential, loginResultSchema.parse);
+        if (cancelled) return;
+        window.dispatchEvent(new Event('kmbhelp-session'));
+        navigate('/');
+      } catch {
+        if (!cancelled) setFailed(true);
+      }
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate, token]);
+
+  return (
+    <section>
+      <h2>{copy.signIn}</h2>
+      <p>{copy.passkeyQrLead}</p>
+      {failed ? <p role="alert">{copy.passkeyQrFailed}</p> : null}
     </section>
   );
 }

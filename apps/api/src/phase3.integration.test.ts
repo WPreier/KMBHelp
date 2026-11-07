@@ -82,50 +82,31 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
 
     const first = await agent.post('/api/v1/auth/login').send({ email, password });
     expect(first.status).toBe(200);
-    expect(first.body.step).toBe('enroll');
-    expect(first.body.presentTotp).toBe(true);
-    const stored = await database.pool.query<{ password_hash: string | null }>(
-      `select password_hash from staff where lower(email) = $1`,
+    expect(first.body.step).toBe('staff');
+    expect(JSON.stringify(first.headers['set-cookie'])).toContain('Max-Age=2592000');
+    const stored = await database.pool.query<{ password_hash: string | null; helpdesk: boolean }>(
+      `select password_hash, helpdesk from staff where lower(email) = $1`,
       [email],
     );
     expect(stored.rows[0]?.password_hash).toBeNull();
-    const pendingList = await agent.get('/api/v1/staff/tickets');
-    expect(pendingList.status).toBe(401);
-
-    const setup = await agent
-      .post('/api/v1/auth/totp/setup')
-      .set('x-kmbhelp-csrf', csrfFrom(first))
-      .send({});
-    expect(setup.status).toBe(200);
-    const code = totpCode(decodeBase32(setup.body.secret as string));
-    const confirmed = await agent
-      .post('/api/v1/auth/totp/confirm')
-      .set('x-kmbhelp-csrf', csrfFrom(first))
-      .send({ code });
-    expect(confirmed.status).toBe(200);
-    expect(confirmed.body.step).toBe('staff');
+    expect(stored.rows[0]?.helpdesk).toBe(true);
     const staffList = await agent.get('/api/v1/staff/tickets');
     expect(staffList.status).toBe(200);
+    const outside = await agent.post('/api/v1/auth/login').send({
+      email: 'person@example.com',
+      password,
+    });
+    expect(outside.status).toBe(401);
 
-    const again = await agent.post('/api/v1/auth/login').send({ email, password });
-    expect(again.status).toBe(200);
-    expect(again.body.step).toBe('mfa');
     accounts[0]!.inHelpdeskGroup = false;
-    const removed = await request(app.server).post('/api/v1/auth/login').send({ email, code });
-    expect(removed.status).toBe(401);
-    const membership = await database.pool.query<{ outcome: string }>(
-      `select outcome from login_audit where email = $1 and outcome = 'not_member'`,
-      [email],
-    );
-    expect(membership.rows.length).toBeGreaterThan(0);
+    const user = await agent.post('/api/v1/auth/login').send({ email, password });
+    expect(user.status).toBe(200);
+    const view = await agent.get('/api/v1/auth/session');
+    expect(view.body.audience).toBe('user');
     await expect(
       database.pool.query(`update login_audit set outcome = 'ok' where email = $1`, [email]),
     ).rejects.toThrow(/append-only/);
 
-    const staffId = await database.pool.query<{ id: string }>(
-      `select id from staff where lower(email) = $1`,
-      [email],
-    );
     await removeTestPeople(database);
   });
 

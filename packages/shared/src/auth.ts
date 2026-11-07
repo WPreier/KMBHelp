@@ -6,6 +6,15 @@ export const loginRequestSchema = z.object({
   code: z.string().trim().max(12).optional(),
 });
 
+export const qrStartSchema = z.object({
+  token: z.string().min(8),
+});
+
+export const qrPollSchema = z.object({
+  step: z.enum(['wait', 'staff']),
+  isLocalAdmin: z.boolean().optional(),
+});
+
 export const loginResultSchema = z.discriminatedUnion('step', [
   z.object({ step: z.literal('enroll'), presentTotp: z.boolean() }),
   z.object({

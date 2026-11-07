@@ -16,6 +16,13 @@ export {
   type TicketType,
 } from './domain.js';
 export { assigneeEmailOrDefault, helpdeskAssigneeEmail } from './assignee.js';
+export {
+  authDomains,
+  defaultAuthDomains,
+  emailDomainAllowed,
+  grantIsStale,
+  grantSeconds,
+} from './auth-grant.js';
 export { allowedTicketFile, formatTicketCode, isTicketCode } from './ticket-code.js';
 export {
   absoluteTicketFileBytes,
@@ -205,6 +212,8 @@ export {
   categoryTermPrompt,
   loginRequestSchema,
   loginResultSchema,
+  qrPollSchema,
+  qrStartSchema,
   skillTermPrompt,
   termTextSchema,
   totpConfirmSchema,

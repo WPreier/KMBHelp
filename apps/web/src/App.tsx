@@ -14,8 +14,8 @@ import kmbLight from '../../../brand/kmb-logo--light.png';
 import malamaDark from '../../../brand/malama-logo-dark.svg';
 import malamaLight from '../../../brand/malama-logo-light.svg';
 import { LocaleProvider, useLocale } from './locale.js';
-import { getJson } from './api.js';
-import { AdminPage, SignInPage } from './auth-pages.js';
+import { getJson, postJson } from './api.js';
+import { AdminPage, QrSignInPage, SignInPage } from './auth-pages.js';
 import { AdminLinks, ConfigurationPage, NoticesPage } from './operations-pages.js';
 import { TermPage } from './vocabulary-pages.js';
 import {
@@ -117,6 +117,11 @@ function Shell({
       body: JSON.stringify({ path }),
     }).catch(() => undefined);
   }, [location.pathname]);
+  const admitted = Boolean(session?.signedIn || session?.internalAdmin);
+  const onLogin = location.pathname === '/anmelden' || location.pathname.startsWith('/anmelden/');
+  useEffect(() => {
+    if (session && !admitted && !onLogin) navigate('/anmelden', { replace: true });
+  }, [admitted, navigate, onLogin, session]);
   useEffect(() => {
     document.title = copy.documentTitle;
     document.documentElement.lang = lang;
@@ -142,8 +147,28 @@ function Shell({
         </div>
         <div className="header-end">
           <p className="who">{identityLabel(session, copy)}</p>
-          <button type="button" className="header-signin" onClick={() => navigate('/anmelden')}>
-            {copy.signIn}
+          <button
+            type="button"
+            className="header-signin"
+            onClick={() => {
+              if (session?.signedIn && !session.internalAdmin) {
+                void postJson('/api/v1/auth/logout', {}, () => ({ ok: true })).finally(() => {
+                  setSession({
+                    signedIn: false,
+                    isLocalAdmin: false,
+                    displayName: null,
+                    internalAdmin: false,
+                    email: null,
+                    audience: null,
+                  });
+                  navigate('/anmelden');
+                });
+                return;
+              }
+              navigate('/anmelden');
+            }}
+          >
+            {session?.signedIn && !session.internalAdmin ? copy.signOut : copy.signIn}
           </button>
           <div className="header-tools" role="group" aria-label={copy.language}>
             <button
@@ -204,38 +229,45 @@ function Shell({
         <p>{copy.lead}</p>
       </div>
       <main id="content">
-        <nav className="content-nav" aria-label={copy.contentNav}>
-          <Link to="/mitarbeit/dashboard">{copy.dashboardTitle}</Link>
-          <Link to="/">{copy.fileTicket}</Link>
-          <Link to="/meine">{copy.myOpenTickets}</Link>
-          <Link to="/offen">{copy.openTickets}</Link>
-          <Link to="/abgeschlossen">{copy.guides}</Link>
-        </nav>
+        {admitted ? (
+          <nav className="content-nav" aria-label={copy.contentNav}>
+            <Link to="/mitarbeit/dashboard">{copy.dashboardTitle}</Link>
+            <Link to="/">{copy.fileTicket}</Link>
+            <Link to="/meine">{copy.myOpenTickets}</Link>
+            <Link to="/offen">{copy.openTickets}</Link>
+            <Link to="/abgeschlossen">{copy.guides}</Link>
+          </nav>
+        ) : null}
         {session?.signedIn ? <AdminLinks /> : null}
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/offen" element={<OpenTicketsPage />} />
-          <Route path="/meine" element={<MyOpenTicketsPage />} />
-          <Route path="/abgeschlossen" element={<ClosedTicketsPage />} />
-          <Route path="/abgeschlossen/:code" element={<ClosedSummaryPage />} />
-          <Route path="/ticket/:code" element={<TicketWikiPage />} />
-          <Route path="/archiv/:code" element={<ArchiveIndexPage />} />
-          <Route path="/faq" element={<FaqListPage />} />
-          <Route path="/faq/:slug" element={<FaqPage />} />
-          <Route path="/wissen/:id" element={<ArticlePage />} />
-          <Route path="/suche" element={<SearchPage />} />
-          <Route path="/anmelden" element={<SignInPage />} />
-          <Route path="/verwaltung" element={<AdminPage />} />
-          <Route path="/verwaltung/kenntnisse" element={<TermPage kind="skill" />} />
-          <Route path="/verwaltung/kategorien" element={<TermPage kind="category" />} />
-          <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
-          <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
-          <Route path="/verwaltung/protokoll" element={<ActivityPage />} />
-          <Route path="/mitarbeit/dashboard" element={<DashboardPage />} />
-          <Route path="/mitarbeit/ticket/:number" element={<TicketPage />} />
-          <Route path="/beschaffung/:token" element={<ProcurementDecisionPage />} />
-          <Route path="*" element={<MissingPage />} />
-        </Routes>
+        {session && !admitted && !onLogin ? (
+          <SignInPage />
+        ) : (
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/offen" element={<OpenTicketsPage />} />
+            <Route path="/meine" element={<MyOpenTicketsPage />} />
+            <Route path="/abgeschlossen" element={<ClosedTicketsPage />} />
+            <Route path="/abgeschlossen/:code" element={<ClosedSummaryPage />} />
+            <Route path="/ticket/:code" element={<TicketWikiPage />} />
+            <Route path="/archiv/:code" element={<ArchiveIndexPage />} />
+            <Route path="/faq" element={<FaqListPage />} />
+            <Route path="/faq/:slug" element={<FaqPage />} />
+            <Route path="/wissen/:id" element={<ArticlePage />} />
+            <Route path="/suche" element={<SearchPage />} />
+            <Route path="/anmelden" element={<SignInPage />} />
+            <Route path="/anmelden/qr/:token" element={<QrSignInPage />} />
+            <Route path="/verwaltung" element={<AdminPage />} />
+            <Route path="/verwaltung/kenntnisse" element={<TermPage kind="skill" />} />
+            <Route path="/verwaltung/kategorien" element={<TermPage kind="category" />} />
+            <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
+            <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
+            <Route path="/verwaltung/protokoll" element={<ActivityPage />} />
+            <Route path="/mitarbeit/dashboard" element={<DashboardPage />} />
+            <Route path="/mitarbeit/ticket/:number" element={<TicketPage />} />
+            <Route path="/beschaffung/:token" element={<ProcurementDecisionPage />} />
+            <Route path="*" element={<MissingPage />} />
+          </Routes>
+        )}
       </main>
     </>
   );
@@ -243,10 +275,14 @@ function Shell({
 
 function identityLabel(
   session: SessionView | null,
-  copy: { internalAdmin: string; notSignedIn: string },
+  copy: { roleAdministrator: string; roleUser: string; notSignedIn: string },
 ): string {
-  if (session?.internalAdmin) return copy.internalAdmin;
-  if (session?.signedIn && session.displayName) return session.displayName;
+  if (session?.internalAdmin) return copy.roleAdministrator;
+  if (session?.signedIn) {
+    const role = session.audience === 'user' ? copy.roleUser : copy.roleAdministrator;
+    const who = session.email || session.displayName;
+    return who ? `${role}, ${who}` : role;
+  }
   return copy.notSignedIn;
 }
 

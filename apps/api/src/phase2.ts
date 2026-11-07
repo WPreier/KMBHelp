@@ -50,6 +50,7 @@ import {
   requireStaff,
   serviceTokenMatches,
   SESSION_COOKIE,
+  ticketViewer,
 } from './auth.js';
 import { calendarFromEnv, mailerFromEnv, type CalendarReader, type Mailer } from './graph.js';
 import { deliverReopen } from './mail-cycle.js';
@@ -108,6 +109,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     if (!ticketLimiter.allow(request.ip || 'unknown')) throw rateLimited();
     const input = parsed.data;
     const database = db();
+    const viewer = await ticketViewer(database, request, now(), options.testAuthEnabled);
     const today = calendarDate(now());
     const decision = resolvePriority({
       impact: input.impact,
@@ -148,7 +150,8 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
           source: input.source,
           subject: input.subject,
           body: input.body,
-          requesterName: input.requesterName ?? null,
+          requesterName: input.requesterName ?? (viewer.audience === 'user' ? viewer.name : null),
+          requesterEmail: viewer.audience === 'user' ? viewer.email : null,
           dueOn: input.dueOn ?? null,
           assignedStaffId: chosen.staffId,
           assigneeEmail: chosen.email,
@@ -176,6 +179,8 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     const database = db();
     const current = now();
     await expireDueTickets(database, calendarDate(current));
+    const viewer = await ticketViewer(database, request, current, options.testAuthEnabled);
+    if (viewer.audience === 'anonymous') return { tickets: [] };
     const rows = await database.db
       .select({
         number: ticket.number,
@@ -194,7 +199,14 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
       })
       .from(ticket)
       .innerJoin(category, eq(ticket.categoryCode, category.code))
-      .where(ne(ticket.status, 'closed'))
+      .where(
+        viewer.audience === 'user' && viewer.email
+          ? and(
+              ne(ticket.status, 'closed'),
+              sql`lower(coalesce(${ticket.requesterEmail}, '')) = ${viewer.email.toLowerCase()}`,
+            )
+          : ne(ticket.status, 'closed'),
+      )
       .orderBy(asc(category.groupCode), asc(ticket.priority), asc(ticket.createdAt));
     await writeAccessLog(database, request);
     return {
@@ -220,11 +232,22 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         status: ticket.status,
         priority: ticket.priority,
         closeRequestedAt: ticket.closeRequestedAt,
+        requesterEmail: ticket.requesterEmail,
       })
       .from(ticket)
       .where(eq(ticket.number, number));
     const row = rows[0];
     if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
+    const viewer = await ticketViewer(database, request, current, options.testAuthEnabled);
+    if (
+      viewer.audience === 'user' &&
+      (row.requesterEmail ?? '').toLowerCase() !== (viewer.email ?? '')
+    ) {
+      throw new PublicError(404, 'not_found', publicErrors.notFound);
+    }
+    if (parsed.data.action === 'close' && viewer.audience !== 'administrator') {
+      throw new PublicError(403, 'unauthorized', publicErrors.unauthorized);
+    }
     const next = await applyPublicAction(database, row, parsed.data, current, {
       mailer,
       origin: publicOrigin(request.headers.origin),
@@ -249,6 +272,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
           subject: ticket.subject,
           status: ticket.status,
           email: ticket.assigneeEmail,
+          requesterEmail: ticket.requesterEmail,
         })
         .from(ticket)
         .where(eq(ticket.number, number));
@@ -258,14 +282,22 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         throw new PublicError(400, 'ticket_not_open', publicErrors.ticketNotOpen);
       }
       if (!row.email) throw new PublicError(400, 'no_assignee', publicErrors.noAssignee);
+      const viewer = await ticketViewer(database, request, now(), options.testAuthEnabled);
+      if (
+        viewer.audience === 'user' &&
+        (row.requesterEmail ?? '').toLowerCase() !== (viewer.email ?? '')
+      ) {
+        throw new PublicError(404, 'not_found', publicErrors.notFound);
+      }
       if (!mailer.configured) {
         throw new PublicError(503, 'mail_not_configured', publicErrors.mailNotConfigured);
       }
       const origin = publicOrigin(request.headers.origin);
+      const actor = viewer.name ? `\nAusgelöst durch ${viewer.name}\n` : '';
       await mailer.send({
         to: row.email,
         subject: `Ticket ${number}`,
-        text: `Benutzer fragt wann das gelöst ist.\n\nText: ${row.subject}\nLink: ${origin}/mitarbeit/ticket/${number}\n`,
+        text: `Benutzer fragt wann das gelöst ist.${actor}\nText: ${row.subject}\nLink: ${origin}/mitarbeit/ticket/${number}\n`,
       });
       await writeAccessLog(database, request, row.id);
       return { ok: true };
@@ -276,7 +308,7 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
     const rows = await db()
       .db.select({ displayName: staff.displayName, email: staff.email })
       .from(staff)
-      .where(and(eq(staff.active, true), eq(staff.isLocalAdmin, false)))
+      .where(and(eq(staff.active, true), eq(staff.isLocalAdmin, false), eq(staff.helpdesk, true)))
       .orderBy(asc(staff.displayName));
     return helpdeskRosterSchema.parse({
       staff: rows

@@ -25,7 +25,7 @@ import {
   ticketWorkSchema,
 } from '@kmbhelp/shared';
 import { assigneeFromEmail } from './assignee.js';
-import { localhostAdmin, serviceTokenMatches, staffFromSession } from './auth.js';
+import { localhostAdmin, serviceTokenMatches, staffFromSession, ticketViewer } from './auth.js';
 import { mailerFromEnv } from './graph.js';
 import { PublicError } from './http.js';
 import { publicOriginFromEnv } from './mail-rules.js';
@@ -44,7 +44,9 @@ export function registerTicketPages(
   app: FastifyInstance,
   options: { db: () => Database; reader: Gate; now: () => Date },
 ): void {
-  app.get('/api/v1/tickets/closed', async () => {
+  app.get('/api/v1/tickets/closed', async (request) => {
+    const viewer = await ticketViewer(options.db(), request, options.now(), false);
+    if (viewer.audience === 'anonymous') return closedTicketListSchema.parse({ tickets: [] });
     const rows = await options
       .db()
       .db.select({
@@ -52,12 +54,18 @@ export function registerTicketPages(
         subject: ticket.subject,
         assigneeEmail: ticket.assigneeEmail,
         verdict: ticket.verdict,
+        requesterEmail: ticket.requesterEmail,
       })
       .from(ticket)
       .where(eq(ticket.status, 'closed'))
       .orderBy(desc(ticket.closedAt));
+    const visible = rows.filter(
+      (row) =>
+        viewer.audience !== 'user' ||
+        (row.requesterEmail ?? '').toLowerCase() === (viewer.email ?? ''),
+    );
     return closedTicketListSchema.parse({
-      tickets: rows.map((row) => ({
+      tickets: visible.map((row) => ({
         code: row.code,
         subject: row.subject,
         assigneeEmail: row.assigneeEmail,
@@ -68,7 +76,7 @@ export function registerTicketPages(
 
   app.get<{ Params: { code: string } }>('/api/v1/tickets/closed/:code', async (request) => {
     const row = await one(options.db(), request.params.code);
-    if (!row || row.status !== 'closed')
+    if (!row || row.status !== 'closed' || !(await owns(options, request, row.requesterEmail)))
       throw new PublicError(404, 'not_found', publicErrors.notFound);
     return closedTicketPageSchema.parse({
       code: row.code,
@@ -80,7 +88,9 @@ export function registerTicketPages(
 
   app.get<{ Params: { code: string } }>('/api/v1/tickets/page/:code', async (request) => {
     const row = await one(options.db(), request.params.code);
-    if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
+    if (!row || !(await owns(options, request, row.requesterEmail))) {
+      throw new PublicError(404, 'not_found', publicErrors.notFound);
+    }
     return ticketPageSchema.parse({
       code: row.code,
       categoryLabelDe: row.categoryLabelDe,
@@ -476,6 +486,17 @@ async function fileViews(database: Database, ticketId: string) {
   );
 }
 
+async function owns(
+  options: { db: () => Database; now: () => Date },
+  request: FastifyRequest,
+  requesterEmail: string | null,
+): Promise<boolean> {
+  const viewer = await ticketViewer(options.db(), request, options.now(), false);
+  if (viewer.audience === 'administrator') return true;
+  if (viewer.audience !== 'user') return false;
+  return (requesterEmail ?? '').toLowerCase() === (viewer.email ?? '');
+}
+
 async function one(database: Database, code: string) {
   if (!isTicketCode(code)) return null;
   const rows = await database.db
@@ -492,6 +513,7 @@ async function one(database: Database, code: string) {
       body: ticket.body,
       workingMarkdown: ticket.workingMarkdown,
       requesterName: ticket.requesterName,
+      requesterEmail: ticket.requesterEmail,
       assigneeEmail: ticket.assigneeEmail,
       updatedAt: ticket.updatedAt,
       lastEditor: ticket.lastEditor,

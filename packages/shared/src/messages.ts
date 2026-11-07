@@ -158,8 +158,14 @@ export const messages = {
     reasonWorkplace: 'Ein einzelner Arbeitsplatz, daher P2.',
     reasonCosmetic: 'Keine Frist, daher P3.',
     signIn: 'Anmeldung',
+    signOut: 'Abmeldung',
+    roleAdministrator: 'Administrator',
+    roleUser: 'Benutzer',
+    passkeyQrLead:
+      'Nach der ersten Anmeldung mit dem Kanzleikonto kann ein Passkey hinterlegt werden. Danach öffnet dieser Code die Anmeldung auf dem Gerät mit dem Passkey.',
+    passkeyQrFailed: 'Der Passkey konnte nicht bestätigt werden.',
     signInLead:
-      'Helpdesk-Mitarbeiter melden sich mit dem Kanzleikonto an. Das Passwort wird nur bei der ersten Anmeldung geprüft. Der lokale Admin aus dem freigegebenen Netz meldet sich mit Benutzername und Passwort an.',
+      'Jedes Konto aus den freigegebenen Domänen meldet sich mit dem Active-Directory-Passwort an. Die Gruppe helpdesk sieht alle Tickets. Alle anderen sehen nur ihre eigenen und können sie nicht schließen.',
     identifier: 'E-Mail oder Benutzername',
     password: 'Passwort',
     oneTimeCode: 'Einmalcode',
@@ -490,8 +496,14 @@ export const messages = {
     reasonWorkplace: 'A single workplace, so P2.',
     reasonCosmetic: 'No deadline, so P3.',
     signIn: 'Sign in',
+    signOut: 'Sign out',
+    roleAdministrator: 'Administrator',
+    roleUser: 'User',
+    passkeyQrLead:
+      'After the first sign-in with the firm account a passkey can be stored. This code then opens sign-in on the device that holds the passkey.',
+    passkeyQrFailed: 'The passkey could not be confirmed.',
     signInLead:
-      'Helpdesk staff sign in with the firm account. The password is checked only on the first sign-in. The local admin from the allowed network signs in with username and password.',
+      'Every account from the allowed domains signs in with the Active Directory password. The helpdesk group sees every ticket. Everyone else sees only their own tickets and cannot close them.',
     identifier: 'Email or username',
     password: 'Password',
     oneTimeCode: 'One-time code',

@@ -17,6 +17,7 @@ export {
   mailLesson,
   portal,
   procurement,
+  qrLogin,
   procurementPolicy,
   remoteSupportDetail,
   retentionLocation,

@@ -50,6 +50,16 @@ describe('placeholder page', () => {
             ],
           });
         }
+        if (url.includes('/api/v1/auth/session')) {
+          return json({
+            signedIn: true,
+            isLocalAdmin: true,
+            displayName: null,
+            internalAdmin: true,
+            email: null,
+            audience: 'administrator',
+          });
+        }
         if (url.includes('/api/v1/tickets/public')) {
           return json({
             tickets: [
@@ -80,6 +90,7 @@ describe('placeholder page', () => {
   });
 
   afterEach(() => {
+    window.history.pushState({}, '', '/');
     cleanup();
     vi.unstubAllGlobals();
   });
@@ -127,8 +138,8 @@ describe('placeholder page', () => {
     expect(screen.getByText('26.10.2026')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reset' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in' }).closest('header')).toBeTruthy();
-    expect(screen.getByText('Not signed in')).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Log' })).toBeNull();
+    expect(screen.getByText('Administrator')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Log' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Deutsch' }).closest('header')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Light' }).closest('header')).toBeTruthy();
     expect(screen.getAllByRole('option', { name: 'Very important' }).length).toBeGreaterThan(0);
@@ -145,6 +156,30 @@ describe('placeholder page', () => {
     ).toContain('cannot be opened');
     expect(screen.getByLabelText('Due on').getAttribute('type')).toBe('date');
     expect(document.body.textContent).not.toContain('secret subject');
+  });
+
+  it('shows only the sign-in page when nobody is signed in', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes('/api/v1/auth/session')) {
+          return json({
+            signedIn: false,
+            isLocalAdmin: false,
+            displayName: null,
+            internalAdmin: false,
+            email: null,
+            audience: null,
+          });
+        }
+        return json({ articles: [], hits: [], token: 'qr-token', step: 'wait' });
+      }),
+    );
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: 'Sign in' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'File a ticket' })).toBeNull();
   });
 
   it('stores the language and theme choices', () => {
@@ -209,7 +244,7 @@ describe('placeholder page', () => {
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a-long-password' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[1]!);
     expect(await screen.findByRole('heading', { name: 'IT staff' })).toBeTruthy();
-    expect(screen.getByText('office-admin')).toBeTruthy();
+    expect(screen.getByText('Administrator, office-admin')).toBeTruthy();
     expect(screen.queryByText('Not signed in')).toBeNull();
   });
 

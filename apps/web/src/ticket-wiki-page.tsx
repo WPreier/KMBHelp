@@ -212,6 +212,7 @@ export function TicketWikiPage() {
   const [roster, setRoster] = useState<Array<{ displayName: string; email: string }>>([]);
   const [reloadToken, setReloadToken] = useState(0);
   const [staff, setStaff] = useState(false);
+  const [mayClose, setMayClose] = useState(true);
   const [markdown, setMarkdown] = useState('');
   const [first, setFirst] = useState('');
   const [requester, setRequester] = useState('');
@@ -256,6 +257,7 @@ export function TicketWikiPage() {
     getJson('/api/v1/auth/session', (value) => sessionViewSchema.parse(value))
       .then(async (session) => {
         const allowed = session.signedIn || session.internalAdmin;
+        if (!cancelled) setMayClose(session.audience !== 'user');
         if (!allowed || cancelled) return;
         setStaff(true);
         const work = await getJson(`/api/v1/staff/tickets/work/${code}`, (value) =>
@@ -590,11 +592,13 @@ export function TicketWikiPage() {
                   {copy.createPdf}
                 </a>
               </Hint>
-              <Hint text={copy.confirmFinish}>
-                <button type="button" disabled={frozen} onClick={() => setConfirming('close')}>
-                  {copy.closeTicket}
-                </button>
-              </Hint>
+              {mayClose ? (
+                <Hint text={copy.confirmFinish}>
+                  <button type="button" disabled={frozen} onClick={() => setConfirming('close')}>
+                    {copy.closeTicket}
+                  </button>
+                </Hint>
+              ) : null}
               <Hint text={copy.saveTextTitle}>
                 <button type="button" disabled={frozen} onClick={() => setConfirming('text')}>
                   {copy.saveText}

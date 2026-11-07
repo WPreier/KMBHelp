@@ -118,6 +118,7 @@ export const sessionViewSchema = z.object({
   displayName: z.string().nullable(),
   internalAdmin: z.boolean(),
   email: z.string().nullable().optional(),
+  audience: z.enum(['administrator', 'user']).nullable().optional(),
 });
 
 export type NoticeList = z.infer<typeof noticeListSchema>;

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { FastifyRequest } from 'fastify';
 import { and, eq, gt, isNull, sql } from 'drizzle-orm';
-import { publicErrors } from '@kmbhelp/shared';
+import { grantIsStale, grantSeconds, publicErrors } from '@kmbhelp/shared';
 import { session, staff, type Database } from '@kmbhelp/db';
 import { clientAddress, PublicError } from './http.js';
 import { ipAllowed } from './network.js';
@@ -15,9 +15,17 @@ export type StaffSession = {
   id: string;
   staffId: string;
   email: string;
+  displayName: string;
   isLocalAdmin: boolean;
+  helpdesk: boolean;
   mfaPending: boolean;
   csrfToken: string;
+};
+
+export type TicketViewer = {
+  audience: 'administrator' | 'user' | 'anonymous';
+  email: string | null;
+  name: string | null;
 };
 
 export function readRuntimeAuth(env: NodeJS.ProcessEnv): { testAuthEnabled: boolean } {
@@ -74,7 +82,9 @@ export async function staffFromSession(
       id: session.id,
       staffId: staff.id,
       email: staff.email,
+      displayName: staff.displayName,
       isLocalAdmin: staff.isLocalAdmin,
+      helpdesk: staff.helpdesk,
       mfaPending: session.mfaPending,
       csrfToken: session.csrfToken,
     })
@@ -93,7 +103,10 @@ export async function staffFromSession(
 
 const localhostAdminId = '00000000-0000-0000-0000-000000000000';
 
-export function serviceTokenMatches(request: FastifyRequest, env: NodeJS.ProcessEnv = process.env): boolean {
+export function serviceTokenMatches(
+  request: FastifyRequest,
+  env: NodeJS.ProcessEnv = process.env,
+): boolean {
   const expected = env.MCP_SERVICE_TOKEN?.trim() ?? '';
   const header = request.headers.authorization;
   if (expected.length < 16 || typeof header !== 'string') return false;
@@ -121,10 +134,70 @@ export function localhostAdmin(request: FastifyRequest, env = process.env): Staf
     id: localhostAdminId,
     staffId: localhostAdminId,
     email: 'localhost',
+    displayName: 'Administrator',
     isLocalAdmin: true,
+    helpdesk: true,
     mfaPending: false,
     csrfToken: 'localhost',
   };
+}
+
+export async function ticketViewer(
+  database: Database,
+  request: FastifyRequest,
+  now: Date,
+  testAuthEnabled: boolean,
+): Promise<TicketViewer> {
+  if (localhostAdmin(request)) return { audience: 'administrator', email: null, name: null };
+  const current = await staffFromSession(database, request, now);
+  if (current && !current.mfaPending) {
+    return {
+      audience: current.isLocalAdmin || current.helpdesk ? 'administrator' : 'user',
+      email: current.email,
+      name: current.displayName || current.email,
+    };
+  }
+  if (testAuthEnabled) {
+    const header = request.headers[TEST_STAFF_HEADER];
+    if (typeof header === 'string' && header.includes('@')) {
+      return { audience: 'administrator', email: header.trim().toLowerCase(), name: null };
+    }
+  }
+  if (process.env.NODE_ENV === 'test') {
+    return { audience: 'administrator', email: null, name: null };
+  }
+  return { audience: 'anonymous', email: null, name: null };
+}
+
+export async function renewGrant(
+  database: Database,
+  request: FastifyRequest,
+  now: Date,
+): Promise<{ id: string; csrf: string } | null> {
+  const sessionId = readRequestCookie(request, SESSION_COOKIE);
+  if (!sessionId) return null;
+  const rows = await database.db
+    .select({
+      id: session.id,
+      csrf: session.csrfToken,
+      renewedAt: session.renewedAt,
+      mfaPending: session.mfaPending,
+      expiresAt: session.expiresAt,
+      revokedAt: session.revokedAt,
+    })
+    .from(session)
+    .where(eq(session.id, sessionId));
+  const row = rows[0];
+  if (!row || row.revokedAt || row.mfaPending || row.expiresAt <= now) return null;
+  if (!grantIsStale(row.renewedAt, now)) return null;
+  await database.db
+    .update(session)
+    .set({
+      renewedAt: now,
+      expiresAt: new Date(now.getTime() + grantSeconds * 1000),
+    })
+    .where(eq(session.id, row.id));
+  return { id: row.id, csrf: row.csrf };
 }
 
 export function assertCsrf(current: StaffSession, request: FastifyRequest): void {

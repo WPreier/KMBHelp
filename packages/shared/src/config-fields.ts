@@ -82,6 +82,14 @@ export const configFields: readonly ConfigField[] = [
       'Allows the staff test header. Only outside production, and only when the value is 1. In production the field stays empty.',
   },
   {
+    key: 'EMAIL_AUTH_DOMAINS',
+    secret: false,
+    textDe:
+      'Kommagetrennte Mail-Domänen, deren Konten sich anmelden dürfen. Auslieferung kmbcloud.at,kmb-steuerberatung.at,krottendorfer.com,ght.at. Das Passwort oder der Passkey wird immer am Active Directory geprüft. Mitglieder der Gruppe helpdesk oder HelpdeskAdmins sind Administratoren.',
+    textEn:
+      'Comma-separated mail domains whose accounts may sign in. The delivered value is kmbcloud.at,kmb-steuerberatung.at,krottendorfer.com,ght.at. The password or the passkey is always checked against Active Directory. Members of the helpdesk or HelpdeskAdmins group are administrators.',
+  },
+  {
     key: 'ADMIN_IP_ALLOWLIST',
     secret: false,
     textDe:

@@ -31,8 +31,19 @@ const firmLinks = publicLinkTargets({
 });
 const firmLinksMissing = !firmLinks.www || !firmLinks.home || !firmLinks.wiki;
 
+function useMayClose(): boolean {
+  const [mayClose, setMayClose] = useState(true);
+  useEffect(() => {
+    getJson('/api/v1/auth/session', sessionViewSchema.parse)
+      .then((session) => setMayClose(session.audience !== 'user'))
+      .catch(() => setMayClose(true));
+  }, []);
+  return mayClose;
+}
+
 export function HomePage() {
   const { lang, copy } = useLocale();
+  const mayClose = useMayClose();
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -233,24 +244,26 @@ export function HomePage() {
               {copy.submit}
             </button>
           </Hint>
-          <Hint text={copy.confirmFinish}>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={(event) => {
-                const form = event.currentTarget.form;
-                if (!form) return;
-                setPendingConfirm({
-                  message: copy.confirmFinish,
-                  run: () => {
-                    void createAndClose(form);
-                  },
-                });
-              }}
-            >
-              {copy.closeTicket}
-            </button>
-          </Hint>
+          {mayClose ? (
+            <Hint text={copy.confirmFinish}>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={(event) => {
+                  const form = event.currentTarget.form;
+                  if (!form) return;
+                  setPendingConfirm({
+                    message: copy.confirmFinish,
+                    run: () => {
+                      void createAndClose(form);
+                    },
+                  });
+                }}
+              >
+                {copy.closeTicket}
+              </button>
+            </Hint>
+          ) : null}
           <Hint text={copy.resetTitle}>
             <button
               type="button"
@@ -333,6 +346,7 @@ export function OpenTicketList({
   mine?: boolean;
 }) {
   const { lang, copy } = useLocale();
+  const mayClose = useMayClose();
   const [tickets, setTickets] = useState<PublicTicket[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -443,7 +457,7 @@ export function OpenTicketList({
                     <th scope="col">{copy.dueUntil}</th>
                     <th scope="col">{copy.ticketOpen}</th>
                     <th scope="col">{copy.priority}</th>
-                    <th scope="col">{copy.doneHead}</th>
+                    {mayClose ? <th scope="col">{copy.doneHead}</th> : null}
                     <th scope="col">{copy.askHead}</th>
                   </tr>
                 </thead>
@@ -507,25 +521,27 @@ export function OpenTicketList({
                             </select>
                           </Hint>
                         </td>
-                        <td>
-                          <Hint text={copy.closeTitle}>
-                            <button
-                              type="button"
-                              aria-label={entry.closeRequested ? copy.closeQueued : copy.done}
-                              disabled={locked}
-                              onClick={() => {
-                                setPendingConfirm({
-                                  message: copy.confirmClose,
-                                  run: () => {
-                                    void changeTicket(entry.number, { action: 'close' });
-                                  },
-                                });
-                              }}
-                            >
-                              <CheckIcon />
-                            </button>
-                          </Hint>
-                        </td>
+                        {mayClose ? (
+                          <td>
+                            <Hint text={copy.closeTitle}>
+                              <button
+                                type="button"
+                                aria-label={entry.closeRequested ? copy.closeQueued : copy.done}
+                                disabled={locked}
+                                onClick={() => {
+                                  setPendingConfirm({
+                                    message: copy.confirmClose,
+                                    run: () => {
+                                      void changeTicket(entry.number, { action: 'close' });
+                                    },
+                                  });
+                                }}
+                              >
+                                <CheckIcon />
+                              </button>
+                            </Hint>
+                          </td>
+                        ) : null}
                         <td>
                           {entry.status === 'open' ? (
                             <Hint text={copy.askStaffTitle}>
