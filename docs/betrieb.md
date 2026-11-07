@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.8`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.9`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 
@@ -73,7 +73,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Anmeldung
 
-Die Seite `/anmelden` zeigt eine Fehlermeldung direkt unter der Einleitung, in Rot. Ein abgelehntes Passwort, ein fehlendes Konto und ein nicht erreichbares Verzeichnis bleiben nicht ohne Text. Ein Domänenkonto ohne Einmalcode sieht den QR-Code sofort. Der lokale Admin aus `ADMIN_IP_ALLOWLIST` kommt mit Benutzername und Passwort in die Verwaltung. Rechts oben steht dann der Anmeldename.
+Die Seite `/anmelden` zeigt keinen Einleitungstext zu Domänen und Ticketrechten. Der QR-Code steht unter Mit Passkey anmelden. Der Satz dazu nennt das Windows Konto. Eine Fehlermeldung steht direkt darunter, in Rot. Ein abgelehntes Passwort, ein fehlendes Konto und ein nicht erreichbares Verzeichnis bleiben nicht ohne Text. Ein Domänenkonto ohne Einmalcode sieht den QR-Code sofort. Der lokale Admin aus `ADMIN_IP_ALLOWLIST` kommt mit Benutzername und Passwort in die Verwaltung. Rechts oben steht dann der Anmeldename.
 
 Ein lokaler Admin entsteht nur durch `pnpm install:helpdesk`. Derselbe Befehl ersetzt ihn, wenn er schon existiert: das alte Konto wird gelöscht und mit dem neuen Benutzernamen und Passwort angelegt. Domänenkonten bleiben. Benutzername und Passwort stehen danach in keiner Datei, nur der Hash in der Tabelle `staff`. Ohne diese Zeile prüft die Anmeldung das eingegebene Konto im Active Directory.
 

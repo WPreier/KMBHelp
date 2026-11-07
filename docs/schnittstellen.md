@@ -94,7 +94,7 @@ Ist MFA eingerichtet, genügen E-Mail und TOTP oder Passkey. Die Mitgliedschaft 
 
 Die Sitzung heißt `kmbhelp_session`, `HttpOnly`, `SameSite=Lax`, `Secure` nur über https. Der CSRF-Wert heißt `kmbhelp_csrf` und ist für die Seite lesbar. Änderungen senden ihn als `x-kmbhelp-csrf`. Eine Sitzung mit offener MFA-Einrichtung darf keine Staff-Tickets lesen.
 
-Passkey und TOTP: `POST /api/v1/auth/totp/setup`, `POST /api/v1/auth/totp/confirm`, `POST /api/v1/auth/webauthn/register/options`, `POST /api/v1/auth/webauthn/register/verify`, `POST /api/v1/auth/webauthn/login/options`, `POST /api/v1/auth/webauthn/login/verify`. Abmelden: `POST /api/v1/auth/logout`.
+Die Anmeldeseite zeigt den QR-Code unter Mit Passkey anmelden. Der Satz nennt das Windows Konto. Passkey und TOTP: `POST /api/v1/auth/totp/setup`, `POST /api/v1/auth/totp/confirm`, `POST /api/v1/auth/webauthn/register/options`, `POST /api/v1/auth/webauthn/register/verify`, `POST /api/v1/auth/webauthn/login/options`, `POST /api/v1/auth/webauthn/login/verify`. Abmelden: `POST /api/v1/auth/logout`.
 
 `WEBAUTHN_RP_ID` und `WEBAUTHN_ORIGIN` überschreiben die Vorgaben. Sonst gilt in Produktion `helpdesk.kmbcloud.at`, lokal `127.0.0.1` und `http://127.0.0.1:5173`.
 

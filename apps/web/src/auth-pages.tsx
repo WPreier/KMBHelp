@@ -209,13 +209,6 @@ export function SignInPage() {
   return (
     <section>
       <h2>{copy.signIn}</h2>
-      <p>{copy.signInLead}</p>
-      {passQr && step !== 'enroll' ? (
-        <>
-          <p>{copy.passkeyQrLead}</p>
-          <img className="totp-qr" src={passQr} width={220} height={220} alt={copy.passkeyQrLead} />
-        </>
-      ) : null}
       {error ? (
         <p className="form-error" role="alert">
           {error[lang]}
@@ -293,6 +286,12 @@ export function SignInPage() {
             </button>
           </div>
         </form>
+      ) : null}
+      {passQr && step !== 'enroll' ? (
+        <>
+          <p>{copy.passkeyQrLead}</p>
+          <img className="totp-qr" src={passQr} width={220} height={220} alt={copy.passkeyQrLead} />
+        </>
       ) : null}
     </section>
   );

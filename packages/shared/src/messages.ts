@@ -162,10 +162,8 @@ export const messages = {
     roleAdministrator: 'Administrator',
     roleUser: 'Benutzer',
     passkeyQrLead:
-      'Nach der ersten Anmeldung mit dem Kanzleikonto kann ein Passkey hinterlegt werden. Danach öffnet dieser Code die Anmeldung auf dem Gerät mit dem Passkey.',
+      'Nach der ersten Anmeldung mit dem Windows Konto kann ein Passkey hinterlegt werden. Danach öffnet dieser Code die Anmeldung auf dem Gerät mit dem Passkey.',
     passkeyQrFailed: 'Der Passkey konnte nicht bestätigt werden.',
-    signInLead:
-      'Jedes Konto aus den freigegebenen Domänen meldet sich mit dem Active-Directory-Passwort an. Die Gruppe helpdesk sieht alle Tickets. Alle anderen sehen nur ihre eigenen und können sie nicht schließen.',
     identifier: 'E-Mail oder Benutzername',
     password: 'Passwort',
     oneTimeCode: 'Einmalcode',
@@ -500,10 +498,8 @@ export const messages = {
     roleAdministrator: 'Administrator',
     roleUser: 'User',
     passkeyQrLead:
-      'After the first sign-in with the firm account a passkey can be stored. This code then opens sign-in on the device that holds the passkey.',
+      'After the first sign-in with the Windows account a passkey can be stored. This code then opens sign-in on the device that holds the passkey.',
     passkeyQrFailed: 'The passkey could not be confirmed.',
-    signInLead:
-      'Every account from the allowed domains signs in with the Active Directory password. The helpdesk group sees every ticket. Everyone else sees only their own tickets and cannot close them.',
     identifier: 'Email or username',
     password: 'Password',
     oneTimeCode: 'One-time code',
