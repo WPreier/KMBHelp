@@ -1,6 +1,7 @@
 import { createDatabase } from '@kmbhelp/db';
 import { adoptLegacyConfig, loadEnvFileIfPresent, loadWorkstationEnv } from '@kmbhelp/shared/env';
 import { runMailCycle } from '@kmbhelp/api/mail-cycle';
+import { maybeRotateLogs } from '@kmbhelp/api/log-rotate';
 import { runTicketArchive } from '@kmbhelp/api/ticket-archive';
 import { workerStartupEvent } from './worker.js';
 
@@ -26,6 +27,7 @@ async function tick(): Promise<void> {
     const result = await runMailCycle({ database, env: process.env, lastSlot });
     if (result.slot) lastSlot = result.slot;
     await runTicketArchive({ database, env: process.env });
+    await maybeRotateLogs({ database, env: process.env });
   } catch {
     process.stderr.write(
       `${JSON.stringify({ level: 'error', component: 'kmbhelp-worker', event: 'cycle_failed' })}\n`,

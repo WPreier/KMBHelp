@@ -167,7 +167,9 @@ export const messages = {
     identifier: 'E-Mail oder Benutzername',
     password: 'Passwort',
     oneTimeCode: 'Einmalcode',
-    signInSubmit: 'Anmelden',
+    signInSubmit: 'Mit Passwort anmelden',
+    passkeyCode: 'Passkey',
+    passkeyHint: 'Die aktuelle sechsstellige Zahl aus der App. Sie wechselt alle 30 Sekunden.',
     enrollLead:
       'Richten Sie einen Einmalcode oder einen Passkey ein. Ohne diesen Schritt bleibt der Inhalt gesperrt.',
     enrollTotp: 'Einmalcode einrichten',
@@ -215,6 +217,14 @@ export const messages = {
     categories: 'Kategorien',
     saveAccess: 'Zuordnung speichern',
     signedIn: 'Angemeldet.',
+    signedInAs: 'Angemeldet als {role} mit {email}',
+    signOutNow: 'Abmelden',
+    authenticatorLead:
+      'Diesen Code in 1Password oder einer Authenticator-App hinterlegen. Danach genügen die E-Mail und der sechsstellige Code.',
+    authenticatorSecret: 'Code für den Authenticator',
+    passkeyTest: 'Teste Passkey jetzt',
+    passkeyAccepted: 'Passkey akzeptiert',
+    passkeyRejected: 'Passkey falsch',
     noticesTitle: 'Meldungen',
     noticesLead:
       'Nur der lokale Admin legt fest, ob eine Meldung ausgelöst wird und welche Kategorie sie hat.',
@@ -274,6 +284,7 @@ export const messages = {
     serviceLead:
       'Ein grünes Häkchen heißt, der Dienst antwortet. Ein rotes Kreuz heißt, er meldet einen Fehler oder ist nicht erreichbar.',
     serviceUnavailable: 'Die Dienstprüfung ist nicht erreichbar.',
+    serviceTest: 'Test jetzt durchführen und prüfen',
     dashboardTitle: 'Dashboard',
     dashboardOwn:
       'Eigene Zahlen. Offene P1 sind der aktuelle Stand, die übrigen Zahlen folgen dem Zeitraum. Die Uhr ist Europe/Vienna.',
@@ -503,7 +514,9 @@ export const messages = {
     identifier: 'Email or username',
     password: 'Password',
     oneTimeCode: 'One-time code',
-    signInSubmit: 'Sign in',
+    signInSubmit: 'Sign in with password',
+    passkeyCode: 'Passkey',
+    passkeyHint: 'The current six-digit number from the app. It changes every 30 seconds.',
     enrollLead:
       'Set up a one-time code or a passkey. Ticket contents stay locked until that is done.',
     enrollTotp: 'Set up a one-time code',
@@ -551,6 +564,14 @@ export const messages = {
     categories: 'Categories',
     saveAccess: 'Save assignment',
     signedIn: 'Signed in.',
+    signedInAs: 'Signed in as {role} with {email}',
+    signOutNow: 'Sign out',
+    authenticatorLead:
+      'Store this code in 1Password or an authenticator app. After that, the email and the six-digit code are enough.',
+    authenticatorSecret: 'Authenticator code',
+    passkeyTest: 'Test passkey now',
+    passkeyAccepted: 'Passkey accepted',
+    passkeyRejected: 'Passkey wrong',
     noticesTitle: 'Messages',
     noticesLead:
       'Only the local admin decides whether a message is raised and which category it has.',
@@ -610,6 +631,7 @@ export const messages = {
     serviceLead:
       'A green mark means the service answers. A red mark means it reports an error or cannot be reached.',
     serviceUnavailable: 'The service check cannot be reached.',
+    serviceTest: 'Run this test now and check',
     dashboardTitle: 'Dashboard',
     dashboardOwn:
       'Your own figures. Open P1 is the current stock. The other figures follow the period. The clock is Europe/Vienna.',

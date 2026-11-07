@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { serviceRows, type ServiceFacts } from './service-status.js';
+import { readOneService, serviceRows, type ServiceFacts } from './service-status.js';
 
 const healthy: ServiceFacts = {
   database: true,
@@ -46,5 +46,23 @@ describe('serviceRows', () => {
       status: 'error',
       textDe: 'Das Zertifikat lässt sich nicht lesen.',
     });
+  });
+
+  it('runs one named check', async () => {
+    const open = await readOneService(
+      { database: undefined, env: {}, tcp: async () => 'open' },
+      'smtp',
+    );
+    expect(open).toMatchObject({ code: 'smtp', status: 'ok' });
+    const closed = await readOneService(
+      { database: undefined, env: {}, tcp: async () => 'closed' },
+      'smtp',
+    );
+    expect(closed).toMatchObject({
+      code: 'smtp',
+      status: 'error',
+      textDe: 'Postfix ist nicht erreichbar.',
+    });
+    expect(await readOneService({ database: undefined, env: {} }, 'missing')).toBeNull();
   });
 });

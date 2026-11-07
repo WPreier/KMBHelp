@@ -4,7 +4,9 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { App } from './App';
+import { SignInPage } from './auth-pages';
 import { DashboardPage } from './dashboard-page';
+import { ServiceChecks } from './operations-pages';
 import { LocaleProvider } from './locale';
 
 function json(body: unknown) {
@@ -242,7 +244,7 @@ describe('placeholder page', () => {
       target: { value: 'office-admin' },
     });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a-long-password' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in with password' }));
     expect(await screen.findByRole('heading', { name: 'IT staff' })).toBeTruthy();
     expect(screen.getByText('Administrator, office-admin')).toBeTruthy();
     expect(screen.queryByText('Not signed in')).toBeNull();
@@ -282,12 +284,86 @@ describe('placeholder page', () => {
     fireEvent.change(screen.getByLabelText('Password'), {
       target: { value: 'directory-password' },
     });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Sign in' })[1]!);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in with password' }));
     expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Set up a one-time code' })).toBeNull();
   });
 
-  it('hides the service check for a signed-out visitor and shows a failure after sign-in', async () => {
+  it('names the signed-in account and shows a code that signs the user out', async () => {
+    let signed = true;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes('/api/v1/auth/logout')) {
+          signed = false;
+          return json({ ok: true });
+        }
+        if (url.includes('/api/v1/auth/session')) {
+          return json(
+            signed
+              ? {
+                  signedIn: true,
+                  isLocalAdmin: false,
+                  displayName: 'Ada',
+                  internalAdmin: false,
+                  email: 'ada@example.com',
+                  audience: 'user',
+                }
+              : {
+                  signedIn: false,
+                  isLocalAdmin: false,
+                  displayName: null,
+                  internalAdmin: false,
+                  email: null,
+                  audience: null,
+                },
+          );
+        }
+        if (url.includes('/api/v1/auth/totp/setup')) {
+          return json({
+            secret: 'JBSWY3DPEHPK3PXP',
+            otpauth:
+              'otpauth://totp/KMBHelp:ada@example.com?secret=JBSWY3DPEHPK3PXP&issuer=KMBHelp&algorithm=SHA1&digits=6&period=30',
+          });
+        }
+        if (url.includes('/api/v1/auth/totp/check')) {
+          const body = JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}')) as {
+            code?: string;
+          };
+          return json({ ok: body.code === '123456' });
+        }
+        return json({ articles: [], hits: [], categories: [], tickets: [] });
+      }),
+    );
+    render(
+      <MemoryRouter initialEntries={['/anmelden']}>
+        <LocaleProvider lang="de">
+          <SignInPage />
+        </LocaleProvider>
+      </MemoryRouter>,
+    );
+    expect(
+      await screen.findByText('Angemeldet als Benutzer mit ada@example.com'),
+    ).toBeTruthy();
+    expect(await screen.findByText('JBSWY3DPEHPK3PXP')).toBeTruthy();
+    expect(
+      await screen.findByRole('img', { name: 'Mit der Authenticator-App scannen.' }),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Passkey hinterlegen' })).toBeNull();
+    expect(screen.queryByText('vorschau@example.com')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Einmalcode'), { target: { value: '000000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Teste Passkey jetzt' }));
+    expect(await screen.findByText('Passkey falsch')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Einmalcode'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Teste Passkey jetzt' }));
+    expect(await screen.findByText('Passkey akzeptiert')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Abmelden' }));
+    expect(await screen.findByRole('button', { name: 'Mit Passwort anmelden' })).toBeTruthy();
+    expect(screen.queryByText('Angemeldet als Benutzer mit ada@example.com')).toBeNull();
+  });
+
+  it('hides the service check on the dashboard', async () => {
     function session(signedIn: boolean) {
       return json({
         signedIn,
@@ -300,28 +376,8 @@ describe('placeholder page', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const url = String(input);
-        if (url.includes('/api/v1/auth/session')) return session(false);
-        return { ok: false, status: 401, json: async () => null };
-      }),
-    );
-    const { unmount } = render(
-      <MemoryRouter>
-        <LocaleProvider lang="de">
-          <DashboardPage />
-        </LocaleProvider>
-      </MemoryRouter>,
-    );
-    expect(await screen.findByText('Die Daten konnten nicht geladen werden.')).toBeTruthy();
-    expect(screen.queryByText('Die Dienstprüfung ist nicht erreichbar.')).toBeNull();
-    expect(screen.queryByRole('heading', { name: 'Dienste' })).toBeNull();
-    unmount();
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const url = String(input);
         if (url.includes('/api/v1/auth/session')) return session(true);
-        return { ok: false, status: 503, json: async () => null };
+        return { ok: false, status: 401, json: async () => null };
       }),
     );
     render(
@@ -331,7 +387,47 @@ describe('placeholder page', () => {
         </LocaleProvider>
       </MemoryRouter>,
     );
-    expect(await screen.findByText('Die Dienstprüfung ist nicht erreichbar.')).toBeTruthy();
+    expect(await screen.findByText('Die Daten konnten nicht geladen werden.')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Dienste' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Test jetzt durchführen und prüfen' })).toBeNull();
+  });
+
+  it('runs one service test from the configuration page', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/api/v1/staff/services/smtp')) {
+          return json({
+            code: 'smtp',
+            status: 'ok',
+            textDe: 'Postfix nimmt Verbindungen an.',
+            textEn: 'Postfix accepts connections.',
+          });
+        }
+        if (url.endsWith('/api/v1/staff/services')) {
+          return json({
+            services: [
+              {
+                code: 'smtp',
+                status: 'error',
+                textDe: 'Postfix ist nicht erreichbar.',
+                textEn: 'Postfix cannot be reached.',
+              },
+            ],
+          });
+        }
+        return { ok: false, status: 404, json: async () => null };
+      }),
+    );
+    render(
+      <LocaleProvider lang="de">
+        <ServiceChecks />
+      </LocaleProvider>,
+    );
+    expect(await screen.findByText('Postfix ist nicht erreichbar.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Test jetzt durchführen und prüfen' }));
+    expect(await screen.findByText('Postfix nimmt Verbindungen an.')).toBeTruthy();
   });
 
   it('boots from the browser before the module loads', () => {

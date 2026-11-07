@@ -2,12 +2,9 @@ import {
   dashboardRanges,
   dashboardSchema,
   pieSliceKeys,
-  serviceReportSchema,
-  sessionViewSchema,
   type DashboardRange,
   type DashboardReport,
   type PieSliceKey,
-  type ServiceReport,
 } from '@kmbhelp/shared';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -48,9 +45,6 @@ export function DashboardPage() {
   const [range, setRange] = useState<DashboardRange>('month');
   const [data, setData] = useState<DashboardReport | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [services, setServices] = useState<ServiceReport | null>(null);
-  const [serviceError, setServiceError] = useState(false);
-  const [serviceAllowed, setServiceAllowed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -74,54 +68,10 @@ export function DashboardPage() {
     };
   }, [copy.loadFailed, lang, range]);
 
-  useEffect(() => {
-    let cancelled = false;
-    getJson('/api/v1/auth/session', sessionViewSchema.parse)
-      .then(async (session) => {
-        if (cancelled) return;
-        const allowed = session.signedIn || session.internalAdmin;
-        setServiceAllowed(allowed);
-        if (!allowed) return;
-        try {
-          const loaded = await getJson('/api/v1/staff/services', serviceReportSchema.parse);
-          if (!cancelled) setServices(loaded);
-        } catch {
-          if (!cancelled) setServiceError(true);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setServiceAllowed(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <section>
       <h2>{copy.dashboardTitle}</h2>
       <p>{data?.scope === 'own' ? copy.dashboardOwn : copy.dashboardFirm}</p>
-      {serviceAllowed ? (
-        <>
-          <h3>{copy.serviceTitle}</h3>
-          <p>{copy.serviceLead}</p>
-          <ul className="service-list">
-            {serviceError ? (
-              <li className="service-row">
-                <Mark ok={false} />
-                <span>{copy.serviceUnavailable}</span>
-              </li>
-            ) : (
-              services?.services.map((service) => (
-                <li key={service.code} className="service-row">
-                  <Mark ok={service.status === 'ok'} />
-                  <span>{lang === 'de' ? service.textDe : service.textEn}</span>
-                </li>
-              ))
-            )}
-          </ul>
-        </>
-      ) : null}
       <div className="form-actions" role="group" aria-label={copy.dashboardRange}>
         {dashboardRanges.map((entry) => (
           <button
@@ -266,33 +216,6 @@ function PieChart({ slices, caption }: { slices: DashboardReport['slices']; capt
           </text>
         );
       })}
-    </svg>
-  );
-}
-
-function Mark({ ok }: { ok: boolean }) {
-  return ok ? (
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-      <circle cx="12" cy="12" r="11" fill="#1b7f3a" />
-      <path
-        d="M6.5 12.5 l3.5 3.5 7.5-8"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  ) : (
-    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
-      <circle cx="12" cy="12" r="11" fill="#a32020" />
-      <path
-        d="M8 8 l8 8 M16 8 l-8 8"
-        fill="none"
-        stroke="#fff"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-      />
     </svg>
   );
 }

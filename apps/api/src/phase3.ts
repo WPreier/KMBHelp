@@ -40,6 +40,7 @@ import {
   sessionViewSchema,
   skillTermPrompt,
   termTextSchema,
+  totpCheckSchema,
   totpConfirmSchema,
   totpSetupSchema,
   vocabularySchema,
@@ -54,6 +55,7 @@ import {
   type StaffSession,
 } from './auth.js';
 import { writeActivity } from './activity-log.js';
+import { noteExternal } from './syslog.js';
 import { DirectoryUnavailable, type Directory, type DirectoryAccount } from './directory.js';
 import { deactivateMissing, reconcileHelpdesk } from './helpdesk-sync.js';
 import {
@@ -105,7 +107,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
   const model = options.model ?? unconfiguredModel;
 
   app.addHook('onRequest', async (request, reply) => {
-    if (!options.database || localhostAdmin(request)) return;
+    if (!options.database) return;
     try {
       const renewed = await renewGrant(options.database, request, now());
       if (renewed) setSessionCookies(reply, request, renewed.id, renewed.csrf, sessionSeconds);
@@ -115,6 +117,33 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
   });
 
   app.get('/api/v1/auth/session', async (request) => {
+    const anonymous = {
+      signedIn: false,
+      isLocalAdmin: false,
+      displayName: null,
+      internalAdmin: false,
+      email: null,
+      audience: null,
+    };
+    if (options.database) {
+      const current = await staffFromSession(options.database, request, now());
+      if (current && !current.mfaPending) {
+        const names = await options.database.db
+          .select({ displayName: staff.displayName, username: staff.username })
+          .from(staff)
+          .where(eq(staff.id, current.staffId));
+        const row = names[0];
+        const loginName = current.isLocalAdmin ? row?.username : row?.displayName;
+        return sessionViewSchema.parse({
+          signedIn: true,
+          isLocalAdmin: current.isLocalAdmin,
+          displayName: loginName || row?.displayName || current.email,
+          internalAdmin: false,
+          email: current.email,
+          audience: current.isLocalAdmin || current.helpdesk ? 'administrator' : 'user',
+        });
+      }
+    }
     if (localhostAdmin(request)) {
       return sessionViewSchema.parse({
         signedIn: true,
@@ -125,31 +154,7 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
         audience: 'administrator',
       });
     }
-    const anonymous = {
-      signedIn: false,
-      isLocalAdmin: false,
-      displayName: null,
-      internalAdmin: false,
-      email: null,
-      audience: null,
-    };
-    if (!options.database) return sessionViewSchema.parse(anonymous);
-    const current = await staffFromSession(options.database, request, now());
-    if (!current || current.mfaPending) return sessionViewSchema.parse(anonymous);
-    const names = await options.database.db
-      .select({ displayName: staff.displayName, username: staff.username })
-      .from(staff)
-      .where(eq(staff.id, current.staffId));
-    const row = names[0];
-    const loginName = current.isLocalAdmin ? row?.username : row?.displayName;
-    return sessionViewSchema.parse({
-      signedIn: true,
-      isLocalAdmin: current.isLocalAdmin,
-      displayName: loginName || row?.displayName || current.email,
-      internalAdmin: false,
-      email: current.email,
-      audience: current.isLocalAdmin || current.helpdesk ? 'administrator' : 'user',
-    });
+    return sessionViewSchema.parse(anonymous);
   });
 
   app.post('/api/v1/auth/login', async (request, reply) => {
@@ -212,9 +217,35 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
           passwordRequired: false,
         });
       }
+      if (!/^\d{6}$/u.test(code)) {
+        await writeAudit(
+          database,
+          request,
+          person.id,
+          email,
+          'totp',
+          'denied',
+          'Passkey ist keine sechsstellige Zahl.',
+        );
+        throw new PublicError(401, 'sign_in_denied', {
+          de: 'Der Passkey ist die aktuelle sechsstellige Zahl aus der App. Der lange Code unter dem QR-Code dient nur zum Einrichten.',
+          en: 'The passkey is the current six-digit number from the app. The long code under the QR code is only for setup.',
+        });
+      }
       if (!totpCodeMatches(options.sessionSecret, person.totpCipher, code, now())) {
-        await writeAudit(database, request, person.id, email, 'totp', 'denied');
-        throw denied();
+        await writeAudit(
+          database,
+          request,
+          person.id,
+          email,
+          'totp',
+          'denied',
+          'Der Passkey stimmt nicht.',
+        );
+        throw new PublicError(401, 'sign_in_denied', {
+          de: 'Der Passkey stimmt nicht. Die Zahl wechselt alle 30 Sekunden.',
+          en: 'The passkey does not match. The number changes every 30 seconds.',
+        });
       }
       if (!local) {
         await assertAccount(options.directory, database, request, person.id, person.email, 'totp');
@@ -240,16 +271,40 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
 
   app.post('/api/v1/auth/totp/setup', async (request) => {
     const database = db();
-    const current = await pending(database, request, now());
+    const current = await signedSession(database, request, now());
     assertCsrf(current, request);
     if (options.sessionSecret.trim().length < 16) {
       throw new PublicError(503, 'directory_unavailable', publicErrors.directoryUnavailable);
     }
-    const secret = randomTotpSecret();
-    await database.db
-      .update(staff)
-      .set({ totpCipher: sealSecret(options.sessionSecret, secret) })
+    const rows = await database.db
+      .select({ totpCipher: staff.totpCipher, mfaEnrolledAt: staff.mfaEnrolledAt })
+      .from(staff)
       .where(eq(staff.id, current.staffId));
+    const row = rows[0];
+    let secret = current.mfaPending
+      ? null
+      : openStoredSecret(options.sessionSecret, row?.totpCipher);
+    if (!secret) {
+      const fresh = randomTotpSecret();
+      const stored = sealSecret(options.sessionSecret, fresh);
+      if (current.mfaPending) {
+        await database.db
+          .update(staff)
+          .set({ totpCipher: stored })
+          .where(eq(staff.id, current.staffId));
+        secret = fresh;
+      } else {
+        const written = await database.db
+          .update(staff)
+          .set({ totpCipher: stored, mfaEnrolledAt: row?.mfaEnrolledAt ?? now() })
+          .where(and(eq(staff.id, current.staffId), isNull(staff.totpCipher)))
+          .returning({ totpCipher: staff.totpCipher });
+        secret =
+          written.length > 0
+            ? fresh
+            : await readStoredTotp(database, current.staffId, options.sessionSecret);
+      }
+    }
     const label = encodeURIComponent(current.email);
     const encoded = encodeBase32(secret);
     return totpSetupSchema.parse({
@@ -280,6 +335,35 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     setSessionCookies(reply, request, current.id, csrf, sessionSeconds);
     await writeAudit(database, request, current.staffId, current.email, 'totp', 'ok');
     return loginResultSchema.parse({ step: 'staff', isLocalAdmin: row.isLocalAdmin });
+  });
+
+  app.post('/api/v1/auth/totp/check', async (request) => {
+    const parsed = totpConfirmSchema.safeParse(request.body);
+    if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
+    const database = db();
+    const current = await signedSession(database, request, now());
+    assertCsrf(current, request);
+    const rows = await database.db
+      .select({ totpCipher: staff.totpCipher })
+      .from(staff)
+      .where(eq(staff.id, current.staffId));
+    const matches = totpCodeMatches(
+      options.sessionSecret,
+      rows[0]?.totpCipher ?? null,
+      parsed.data.code,
+      now(),
+    );
+    await writeAudit(
+      database,
+      request,
+      current.staffId,
+      current.email,
+      'totp',
+      matches ? 'ok' : 'denied',
+      matches ? 'Passkey akzeptiert.' : 'Passkey falsch.',
+      'POST /api/v1/auth/totp/check',
+    );
+    return totpCheckSchema.parse({ ok: matches });
   });
 
   app.post('/api/v1/auth/webauthn/register/options', async (request) => {
@@ -452,6 +536,16 @@ export function registerPhase3(app: FastifyInstance, options: Phase3Options): vo
     if (current) {
       assertCsrf(current, request);
       await database.db.update(session).set({ revokedAt: now() }).where(eq(session.id, current.id));
+      await writeAudit(
+        database,
+        request,
+        current.staffId,
+        current.email,
+        'admin',
+        'ok',
+        'Abmeldung. Die Sitzung wurde beendet.',
+        'POST /api/v1/auth/logout',
+      );
     }
     clearSessionCookies(reply, request);
     return { ok: true };
@@ -799,6 +893,29 @@ async function enrolledMethods(
   if (rows[0]?.totpCipher) methods.push('totp');
   if ((await credentialsFor(database, staffId)).length > 0) methods.push('webauthn');
   return methods.length > 0 ? methods : ['totp'];
+}
+
+async function readStoredTotp(
+  database: Database,
+  staffId: string,
+  sessionSecret: string,
+): Promise<Buffer> {
+  const rows = await database.db
+    .select({ totpCipher: staff.totpCipher })
+    .from(staff)
+    .where(eq(staff.id, staffId));
+  const opened = openStoredSecret(sessionSecret, rows[0]?.totpCipher);
+  if (!opened) throw denied();
+  return opened;
+}
+
+function openStoredSecret(sessionSecret: string, cipher: string | null | undefined): Buffer | null {
+  if (!cipher) return null;
+  try {
+    return openSecret(sessionSecret, cipher);
+  } catch {
+    return null;
+  }
 }
 
 function totpCodeMatches(secret: string, cipher: string | null, code: string, at: Date): boolean {
@@ -1246,7 +1363,7 @@ const auditDescription: Record<string, string> = {
   'ad_password:denied':
     'Anmeldung abgelehnt. Das Konto fehlt im Verzeichnis oder das Passwort stimmt nicht.',
   'ad_password:not_member': 'Anmeldung abgelehnt. Das Konto ist nicht in der Helpdesk-Gruppe.',
-  'ad_password:ok': 'Verzeichnis-Anmeldung angenommen. Der zweite Faktor fehlt noch.',
+  'ad_password:ok': 'Verzeichnis-Anmeldung angenommen.',
   'totp:denied': 'Anmeldung abgelehnt. Der Einmalcode stimmt nicht.',
   'totp:ok': 'Anmeldung mit Einmalcode abgeschlossen.',
   'webauthn:denied': 'Anmeldung abgelehnt. Der Passkey wurde nicht bestätigt.',
@@ -1263,6 +1380,7 @@ async function writeAudit(
   method: 'ad_password' | 'local_password' | 'totp' | 'webauthn' | 'admin',
   outcome: 'ok' | 'denied' | 'not_member' | 'mfa_reset',
   detail?: string,
+  target = 'POST /api/v1/auth/login',
 ): Promise<void> {
   await database.db.insert(loginAudit).values({
     staffId,
@@ -1273,13 +1391,19 @@ async function writeAudit(
   });
   const description =
     detail ?? auditDescription[`${method}:${outcome}`] ?? `Anmeldung: ${method} ${outcome}.`;
+  const actor = email.slice(0, 200) || 'anonymous';
   await writeActivity(database, {
-    actor: email.slice(0, 200) || 'anonymous',
+    actor,
     kind: 'page',
-    target: 'POST /api/v1/auth/login',
+    target,
     detail: description,
     ip: clientAddress(request),
   }).catch(() => undefined);
+  void noteExternal(
+    process.env,
+    outcome === 'ok' ? 'informational' : 'warning',
+    `${description} Konto ${actor}.`,
+  );
 }
 
 function denied(): PublicError {

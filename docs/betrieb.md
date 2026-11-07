@@ -26,7 +26,7 @@ curl -fsS https://helpdesk.kmbcloud.at/api/health
 
 `worker` steht auf `up`, `down` oder `not_configured`. `smtp` steht auf `up`, wenn Postfix auf `MAIL_SMTP_SERVER` und `MAIL_SMTP_PORT` eine Verbindung annimmt, sonst auf `down`. `down` bei Worker oder Postfix macht die Webseite nicht unerreichbar. Die Antwort bleibt 200, solange die Datenbank antwortet. `not_configured` heißt: die Graph-Werte fehlen, der Worker stürzt nicht ab. Das Ergebnis für Postfix wird 30 Sekunden gehalten, damit jede Abfrage nicht neu verbindet.
 
-Das Dashboard unter `/mitarbeit/dashboard` zeigt dieselben Dienste mit einem grünen Häkchen oder einem roten Kreuz: Datenbank, Mail-Worker, Postfix, Verzeichnis, Helpdesk-Mailbox, Ollama und Syslog. Grün heißt, der Dienst antwortet. Rot heißt, er meldet einen Fehler oder ist nicht erreichbar. Beim Verzeichnis zählen ein lesbares, nicht abgelaufenes Zertifikat, eine offene LDAPS-Verbindung und eine Suche mit dem Dienstkonto. Die Mailbox gilt als in Ordnung, wenn die Graph-Anmeldung angenommen wird. Syslog ist grün, sobald ein Ziel gesetzt ist. UDP bestätigt den Empfang nicht. Die Ticketzahlen laden unabhängig von dieser Prüfung.
+Das Dashboard unter `/mitarbeit/dashboard` zeigt die Ticketzahlen. Die Dienste stehen am Anfang der Konfiguration unter `/verwaltung/konfiguration`: Datenbank, Mail-Worker, Postfix, Verzeichnis, Helpdesk-Mailbox, Ollama und Syslog. Links neben jedem Dienst steht der Knopf T. Er prüft nur diesen Dienst und setzt danach das grüne Häkchen oder das rote Kreuz. Grün heißt, der Dienst antwortet. Rot heißt, er meldet einen Fehler oder ist nicht erreichbar. Beim Verzeichnis zählen ein lesbares, nicht abgelaufenes Zertifikat, eine offene LDAPS-Verbindung und eine Suche mit dem Dienstkonto. Die Mailbox gilt als in Ordnung, wenn die Graph-Anmeldung angenommen wird. Syslog ist grün, sobald ein Ziel gesetzt ist. UDP bestätigt den Empfang nicht.
 
 ## Aktualisieren
 
@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.9`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.1.10`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 
@@ -73,11 +73,13 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Anmeldung
 
-Die Seite `/anmelden` zeigt keinen Einleitungstext zu Domänen und Ticketrechten. Der QR-Code steht unter Mit Passkey anmelden. Der Satz dazu nennt das Windows Konto. Eine Fehlermeldung steht direkt darunter, in Rot. Ein abgelehntes Passwort, ein fehlendes Konto und ein nicht erreichbares Verzeichnis bleiben nicht ohne Text. Ein Domänenkonto ohne Einmalcode sieht den QR-Code sofort. Der lokale Admin aus `ADMIN_IP_ALLOWLIST` kommt mit Benutzername und Passwort in die Verwaltung. Rechts oben steht dann der Anmeldename.
+Die Seite `/anmelden` zeigt keinen Einleitungstext zu Domänen und Ticketrechten. Der Knopf heißt Mit Passwort anmelden. Darunter steht das Passkey-Feld. Es gilt zusammen mit der E-Mail darüber. Eine Fehlermeldung steht direkt unter der Überschrift, in Rot. Ein abgelehntes Passwort, ein fehlendes Konto und ein nicht erreichbares Verzeichnis bleiben nicht ohne Text. Nach der Anmeldung steht dort „Angemeldet als Administrator mit …“ oder „Angemeldet als Benutzer mit …“, mit der E-Mail des angemeldeten Kontos, darunter Abmelden. Abmelden beendet die Sitzung in der Datenbank und löscht die Anmelde-Cookies. Darunter zeigt die Seite den QR-Code und den lesbaren Code für 1Password oder eine Authenticator-App. Ein Feld und der Knopf Teste Passkey jetzt prüfen die eingegebene Zahl und schreiben „Passkey akzeptiert“ oder „Passkey falsch“. Bei der nächsten Anmeldung genügen dann die E-Mail und der sechsstellige Code. Jede Anmeldung, die Prüfung und die Abmeldung gehen ins Aktivitätsprotokoll und zusätzlich per Syslog. Der Aufruf der Seite `/anmelden` ebenfalls. Der lokale Admin aus `ADMIN_IP_ALLOWLIST` kommt mit Benutzername und Passwort in die Verwaltung. Rechts oben steht dann der Anmeldename.
 
 Ein lokaler Admin entsteht nur durch `pnpm install:helpdesk`. Derselbe Befehl ersetzt ihn, wenn er schon existiert: das alte Konto wird gelöscht und mit dem neuen Benutzernamen und Passwort angelegt. Domänenkonten bleiben. Benutzername und Passwort stehen danach in keiner Datei, nur der Hash in der Tabelle `staff`. Ohne diese Zeile prüft die Anmeldung das eingegebene Konto im Active Directory.
 
 Die öffentliche Seite und die App nennen keine Mitarbeiternamen und keinen Kalender. `GET /api/v1/staff/assignable` und `GET /api/v1/staff/:id/availability` antworten ohne fertige Sitzung mit 401. Ein Dienst sendet `Authorization: Bearer` und den Wert von `MCP_SERVICE_TOKEN`. Eine Verbindung aus `127.0.0.0/8` auf dem Server selbst bleibt ohne Anmeldung frei. Ein anonymes Ticket wird niemandem zugeordnet.
+
+`LOG_ROTATE_DAYS` steht auf 30. Der Worker prüft einmal am Tag, ab Mitternacht. Sind die Protokolldateien so alt, benennt er `activity.log`, `error.log`, `mail.log` und `ki.log` um. Der neue Name endet auf `_ddMMyyyy`, zum Beispiel `activity.log_07112026`. Danach fangen die Dateien leer an.
 
 Jede abgelehnte Anmeldung und jeder andere Fehler schreibt eine Zeile nach `/var/lib/kmbhelp/error.log`. Ein Seitenaufruf schreibt nach `/var/lib/kmbhelp/activity.log`, ein Mailvorgang und jeder Zugriff auf `helpdesk@kmbcloud.at` nach `/var/lib/kmbhelp/mail.log`, jede Modellanfrage nach `/var/lib/kmbhelp/ki.log`. Dieselben Zeilen der Seiten und Mails stehen in `activity_log`. Die Datei wird nach der Antwort geschrieben, die Anfrage wartet nicht auf die Festplatte. Passwort, Datenbank-URL und Zertifikatstext stehen nicht darin. Der Mailtext steht nur maskiert in `ki.log`. Die Prüfung „Das Dienstkonto kann nicht suchen.“ steht in `error.log`.
 
@@ -85,11 +87,45 @@ Jede abgelehnte Anmeldung und jeder andere Fehler schreibt eine Zeile nach `/var
 
 Die Seite ist `https://helpdesk.kmbcloud.at/verwaltung/konfiguration`. Sie ist aus `192.168.36.0/24` und `192.168.191.0/24` mit Anmeldung erreichbar, und auf dem Server selbst ohne Anmeldung.
 
-Die Konfiguration steht alphabetisch. Ältere Namen wie `OLLAMA_URL`, `SMTP_SERVER`, `NOTICE_DIGEST` und `AI_ENDPOINT` werden noch gelesen, solange der neue Name leer ist. Werte ohne Geheimnis speichert die Seite in der Datenbank und in `.env`. Ein Geheimnis, darunter `MAIL_SMTP_PASSWD` und `LDAPS_CA_PEM`, schreibt die Seite auf dem Produktionsserver nicht. Es steht in `/etc/kmbhelp/kmbhelp.env`. Danach die API und den Worker neu starten.
+Die Konfiguration steht alphabetisch. Ältere Namen wie `OLLAMA_URL`, `SMTP_SERVER`, `NOTICE_DIGEST` und `AI_ENDPOINT` werden noch gelesen, solange der neue Name leer ist. Werte ohne Geheimnis speichert die Seite in der Datenbank und in `.env`. Ein Geheimnis, darunter `MAIL_SMTP_PASSWD` und `LDAPS_CA_PEM`, schreibt die Seite auf dem Produktionsserver nicht. Es steht in `/etc/kmbhelp/kmbhelp.env`. Danach die API und den Worker neu starten. Die eigenen Blöcke Syslog-Server und Lokaler SMTP sind von dieser Seite entfernt. Syslog und SMTP bleiben als einzelne Felder in der Liste. Der Knopf T bei den Diensten prüft die Erreichbarkeit, er verschickt keine Mail.
+
+Dieser Arbeitsplatz liest `/etc/kmbhelp/kmbhelp.env` nicht. Die lokale Datei ist `.env` im Projektordner. Leere Schlüssel füllt danach `%LOCALAPPDATA%\kmbhelp\dev.env`, dann `%LOCALAPPDATA%\kmbhelp\secrets.json`. Ein gespeicherter Wert ohne Geheimnis aus der Datenbank gilt beim nächsten Start vor beiden Dateien.
+
+In der lokalen `.env` müssen diese Einträge stehen, weil sie diesen Rechner beschreiben und die zentrale Datei sie nicht liefert:
+
+- `DATABASE_URL`
+- `API_HOST` mit `127.0.0.1`
+- `API_PORT`
+- `PUBLIC_ORIGIN` mit `http://127.0.0.1:5173`
+
+Dieselben vier Namen stehen auf dem Server mit den Serverwerten. `API_HOST` ist dort die interne Adresse, `PUBLIC_ORIGIN` ist `https://helpdesk.kmbcloud.at`.
+
+Geheimnisse schreibt die Konfigurationsseite lokal nach `secrets.json` und auf dem Server nicht. Sie können in der lokalen `.env` stehen, sonst in `secrets.json`. Auf dem Server stehen sie in `/etc/kmbhelp/kmbhelp.env`:
+
+- `SESSION_SECRET`
+- `LDAPS_BIND_PASSWORD`
+- `LDAPS_CA_PEM`
+- `GRAPH_CLIENT_SECRET`
+- `MAIL_SMTP_PASSWD`
+- `SEARCH_AI_API_KEY`
+- `SEARCH_MODEL_PASSWORD`
+- `SEARCH_MODEL_API_KEY`
+- `MCP_SERVICE_TOKEN`
+- `DATABASE_URL` zusätzlich, weil der Serverprozess sie von dort liest
+
+`LOCAL_ADMIN_PASSWORD` bleibt nur für den einmaligen Befehl `pnpm install:helpdesk` in der Shell. Danach wird es nicht gespeichert.
+
+In der zentralen Datei `/etc/kmbhelp/kmbhelp.env` können alle übrigen Einträge stehen. Ein Wert ohne Geheimnis, der auf der Konfigurationsseite gespeichert ist, gilt danach vor der Datei. Das sind:
+
+`ALLOW_TEST_AUTH`, `EMAIL_AUTH_DOMAINS`, `ADMIN_IP_ALLOWLIST`, `API_HOST`, `API_PORT`, `PUBLIC_ORIGIN`, `LDAPS_URL`, `LDAPS_BIND_DN`, `LDAPS_BASE_DN`, `LDAPS_GROUP_DN`, `LDAPS_CA_FILE`, `SYSLOG_HOST`, `SYSLOG_PORT`, `SYSLOG_NAME`, `SYSLOG_FACILITY`, `SYSLOG_UTC_OFFSET`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_MAILBOX`, `ONCALL_EMAIL`, `FALLBACK_CATEGORY`, `CALENDAR_DEFAULT_MINUTES`, `CALENDAR_DELAY_P1`, `CALENDAR_DELAY_P2`, `CALENDAR_DELAY_P3`, `WORKER_SCHEDULE`, `ACCESS_LOG_RETENTION_DAYS`, `LOG_ROTATE_DAYS`, `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGIN`, `SEARCH_AI_PROVIDER`, `INTERNAL_MAIL_DOMAINS`, `MAILCHECK_KI_URL`, `MAILCHECK_KI_MODEL`, `MAIL_ERROR_TO`, `MAIL_SMTP_SERVER`, `MAIL_SMTP_PORT`, `MAIL_SMTP_USER`, `MAIL_SMTP_LOGIN`, `MAIL_SMTP_TO`, `MAIL_NOTICE_DIGEST`, `MAIL_NOTICE_DIGEST_HOUR`, `MAIL_AI_PROMPT`, `SEARCH_AI_ENDPOINT`, `SEARCH_AI_REGION`, `SEARCH_AI_AVV_REFERENCE`, `SEARCH_AI_AUTO_REPLY_CATEGORIES`, `TICKET_FILE_TYPES`, `TICKET_FILE_MAX_BYTES`, `TICKET_ARCHIVE_DIR`, `SEARCH_MODEL_URL`, `SEARCH_MODEL_NAME`, `SEARCH_MODEL_INTERFACE`, `SEARCH_MODEL_CALL`, `SEARCH_MODEL_USER`, `SEARCH_MODEL_API_ID`, `LOCAL_ADMIN_USERNAME`.
+
+`VITE_PUBLIC_URL_WWW`, `VITE_PUBLIC_URL_HOME` und `VITE_PUBLIC_URL_WIKI` liest nur der Bau der Webseite aus der `.env` im Projektordner. Auf dem Server ist das `/opt/kmbhelp/.env`. Die zentrale Datei liefert sie dem Bau nicht.
+
+`ALLOW_TEST_AUTH` bleibt auf dem Server leer. `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGIN`, `LDAPS_CA_FILE`, `ACTIVITY_LOG_FILE` und `TICKET_ARCHIVE_DIR` nennen Pfade oder Namen dieses Rechners. Der Arbeitsplatz behält dafür eigene Werte. `ACTIVITY_LOG_FILE` ist kein Feld der Konfigurationsseite. Leer heißt lokal `%LOCALAPPDATA%\kmbhelp` und auf dem Server `/var/lib/kmbhelp`.
 
 Das Domänencontroller-Zertifikat liegt als PEM-Datei unter `/etc/kmbhelp/madc1.crt`, mit `BEGIN CERTIFICATE`, `END CERTIFICATE` und echten Zeilenumbrüchen. `LDAPS_CA_FILE` nennt diesen Pfad. `LDAPS_CA_PEM` bleibt leer. `certificate.missing: Das Zertifikat lässt sich nicht lesen.` heißt, dass ein Wert gesetzt ist, die Datei aber fehlt oder der Text keine Zeilenumbrüche mehr hat. Danach `sudo systemctl restart kmbhelp-api`.
 
-`Prüfen und melden` prüft die Werte und ob `MAIL_SMTP_SERVER` auf `MAIL_SMTP_PORT` eine Verbindung annimmt. `SMTP testen` schickt eine kurze Mail über den lokalen Postfix an `MAIL_SMTP_TO`. Das ist keine Störungsmeldung.
+`Prüfen und melden` prüft die Werte. Ob `MAIL_SMTP_SERVER` auf `MAIL_SMTP_PORT` eine Verbindung annimmt, zeigt der Dienst Postfix über den Knopf T.
 
 ## Fehlermail
 

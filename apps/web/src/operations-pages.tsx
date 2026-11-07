@@ -2,10 +2,12 @@ import {
   configFieldResultSchema,
   configurationSchema,
   noticeListSchema,
-  syslogFacilities,
-  syslogTestSchema,
+  serviceCodes,
+  serviceReportSchema,
+  serviceRowSchema,
   type ConfigurationReport,
   type NoticeList,
+  type ServiceRow,
 } from '@kmbhelp/shared';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
@@ -112,13 +114,7 @@ export function NoticesPage() {
   );
 }
 
-function ConfigField({
-  entry,
-  onSyslog,
-}: {
-  entry: ConfigurationReport['entries'][number];
-  onSyslog: (syslog: ConfigurationReport['syslog']) => void;
-}) {
+function ConfigField({ entry }: { entry: ConfigurationReport['entries'][number] }) {
   const { lang, copy } = useLocale();
   const [value, setValue] = useState(entry.secret ? '' : entry.value);
   const [result, setResult] = useState<string | null>(null);
@@ -141,7 +137,6 @@ function ConfigField({
     setSaved(false);
     try {
       const next = await postJson(path, { key: entry.key, value }, configFieldResultSchema.parse);
-      onSyslog(next.syslog);
       setResult(lang === 'de' ? next.check.textDe : next.check.textEn);
       setSaved(path.endsWith('/value'));
     } catch (caught) {
@@ -207,12 +202,6 @@ export function ConfigurationPage() {
   const { lang, copy } = useLocale();
   const [data, setData] = useState<ConfigurationReport | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [host, setHost] = useState('');
-  const [port, setPort] = useState('');
-  const [appName, setAppName] = useState('KMBHelp');
-  const [facility, setFacility] = useState('local0');
-  const [offset, setOffset] = useState('+01:00');
-  const [statusText, setStatusText] = useState<string | null>(null);
 
   async function load(report: boolean) {
     setError(null);
@@ -221,74 +210,6 @@ export function ConfigurationPage() {
         ? await postJson('/api/v1/admin/configuration/check', {}, configurationSchema.parse)
         : await getJson('/api/v1/admin/configuration', configurationSchema.parse);
       setData(next);
-    } catch (caught) {
-      setError(
-        caught instanceof RequestFailed
-          ? (caught.text?.[lang] ?? copy.loadFailed)
-          : copy.loadFailed,
-      );
-    }
-  }
-
-  useEffect(() => {
-    if (!data) return;
-    setHost(data.syslog.host);
-    setPort(String(data.syslog.port));
-    setAppName(data.syslog.appName);
-    setFacility(data.syslog.facility);
-    setOffset(data.syslog.offset);
-  }, [data]);
-
-  async function saveSyslog(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-    setStatusText(null);
-    try {
-      const next = await postJson(
-        '/api/v1/admin/configuration/syslog',
-        { host, port: Number(port), appName, facility, offset },
-        configurationSchema.parse,
-      );
-      setData(next);
-      setStatusText(copy.syslogSaved);
-    } catch (caught) {
-      setError(
-        caught instanceof RequestFailed
-          ? (caught.text?.[lang] ?? copy.loadFailed)
-          : copy.loadFailed,
-      );
-    }
-  }
-
-  async function testSmtp() {
-    setError(null);
-    setStatusText(null);
-    try {
-      const result = await postJson(
-        '/api/v1/admin/configuration/smtp/test',
-        {},
-        syslogTestSchema.parse,
-      );
-      setStatusText(result.ok ? copy.smtpTestOk : copy.smtpTestFailed);
-    } catch (caught) {
-      setError(
-        caught instanceof RequestFailed
-          ? (caught.text?.[lang] ?? copy.loadFailed)
-          : copy.loadFailed,
-      );
-    }
-  }
-
-  async function testSyslog() {
-    setError(null);
-    setStatusText(null);
-    try {
-      const result = await postJson(
-        '/api/v1/admin/configuration/syslog/test',
-        { host, port: Number(port), appName, facility, offset },
-        syslogTestSchema.parse,
-      );
-      setStatusText(result.ok ? copy.syslogTestOk : copy.syslogTestFailed);
     } catch (caught) {
       setError(
         caught instanceof RequestFailed
@@ -318,90 +239,13 @@ export function ConfigurationPage() {
     };
   }, [copy.loadFailed, lang]);
 
-  if (!data) {
-    return (
-      <section>
-        <h2>{copy.configurationTitle}</h2>
-        {error ? <p role="alert">{error}</p> : null}
-      </section>
-    );
-  }
-
   return (
     <section>
       <h2>{copy.configurationTitle}</h2>
+      <ServiceChecks />
       <p>{copy.configurationLead}</p>
       <p>{copy.configurationSource}</p>
       <p>{copy.graphSetup}</p>
-      <form className="form" onSubmit={(event) => void saveSyslog(event)}>
-        <h3>{copy.syslogServer}</h3>
-        <label>
-          {copy.syslogServer}
-          <input
-            name="host"
-            value={host}
-            autoComplete="off"
-            onChange={(event) => setHost(event.target.value)}
-          />
-        </label>
-        <label>
-          {copy.syslogPort}
-          <input
-            name="port"
-            inputMode="numeric"
-            value={port}
-            autoComplete="off"
-            onChange={(event) => setPort(event.target.value)}
-          />
-        </label>
-        <label>
-          {copy.syslogName}
-          <input
-            name="appName"
-            value={appName}
-            maxLength={48}
-            autoComplete="off"
-            onChange={(event) => setAppName(event.target.value)}
-          />
-        </label>
-        <label>
-          {copy.syslogFacility}
-          <select
-            name="facility"
-            value={facility}
-            onChange={(event) => setFacility(event.target.value)}
-          >
-            {syslogFacilities.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {copy.syslogOffset}
-          <input
-            name="offset"
-            value={offset}
-            autoComplete="off"
-            onChange={(event) => setOffset(event.target.value)}
-          />
-        </label>
-        <div className="form-actions">
-          <button type="submit">{copy.saveSyslog}</button>
-          <button type="button" onClick={() => void testSyslog()}>
-            {copy.testSyslog}
-          </button>
-        </div>
-      </form>
-      {statusText ? <p role="status">{statusText}</p> : null}
-      <h3>{copy.smtpTitle}</h3>
-      <p>{copy.smtpLead}</p>
-      <div className="form-actions">
-        <button type="button" onClick={() => void testSmtp()}>
-          {copy.testSmtp}
-        </button>
-      </div>
       <button type="button" onClick={() => void load(true)}>
         {copy.checkAgain}
       </button>
@@ -410,17 +254,7 @@ export function ConfigurationPage() {
         <>
           <h3>{copy.configurationTitle}</h3>
           {data.entries.map((entry) => (
-            <ConfigField
-              key={entry.key}
-              entry={entry}
-              onSyslog={(syslog) => {
-                setHost(syslog.host);
-                setPort(String(syslog.port));
-                setAppName(syslog.appName);
-                setFacility(syslog.facility);
-                setOffset(syslog.offset);
-              }}
-            />
+            <ConfigField key={entry.key} entry={entry} />
           ))}
           <h3>{copy.checkAgain}</h3>
           <ul>
@@ -433,5 +267,121 @@ export function ConfigurationPage() {
         </>
       ) : null}
     </section>
+  );
+}
+
+export function ServiceChecks() {
+  const { lang, copy } = useLocale();
+  const [rows, setRows] = useState<ServiceRow[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getJson('/api/v1/staff/services', serviceReportSchema.parse)
+      .then((loaded) => {
+        if (!cancelled) setRows(loaded.services);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function testOne(code: string) {
+    setBusy(code);
+    try {
+      const row = await getJson(
+        `/api/v1/staff/services/${encodeURIComponent(code)}`,
+        serviceRowSchema.parse,
+      );
+      setFailed(false);
+      setRows((current) => {
+        const list = current ?? [];
+        if (!list.some((entry) => entry.code === code)) return [...list, row];
+        return list.map((entry) => (entry.code === code ? row : entry));
+      });
+    } catch {
+      const missed: ServiceRow = {
+        code,
+        status: 'error',
+        textDe: copy.serviceUnavailable,
+        textEn: copy.serviceUnavailable,
+      };
+      setRows((current) => {
+        const list = current ?? serviceCodes.map((item) => ({ ...missed, code: item }));
+        if (!list.some((entry) => entry.code === code)) return [...list, missed];
+        return list.map((entry) => (entry.code === code ? missed : entry));
+      });
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const shown =
+    rows ??
+    (failed
+      ? serviceCodes.map(
+          (code): ServiceRow => ({
+            code,
+            status: 'error',
+            textDe: copy.serviceUnavailable,
+            textEn: copy.serviceUnavailable,
+          }),
+        )
+      : []);
+
+  return (
+    <>
+      <h3>{copy.serviceTitle}</h3>
+      <p>{copy.serviceLead}</p>
+      <ul className="service-list">
+        {shown.map((service) => (
+          <li key={service.code} className="service-row">
+            <button
+              type="button"
+              className="service-test"
+              title={copy.serviceTest}
+              aria-label={copy.serviceTest}
+              disabled={busy === service.code}
+              onClick={() => void testOne(service.code)}
+            >
+              T
+            </button>
+            <Mark ok={service.status === 'ok'} />
+            <span>{lang === 'de' ? service.textDe : service.textEn}</span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function Mark({ ok }: { ok: boolean }) {
+  return ok ? (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <circle cx="12" cy="12" r="11" fill="#1b7f3a" />
+      <path
+        d="M6.5 12.5 l3.5 3.5 7.5-8"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  ) : (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+      <circle cx="12" cy="12" r="11" fill="#a32020" />
+      <path
+        d="M8 8 l8 8 M16 8 l-8 8"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }

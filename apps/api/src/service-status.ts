@@ -68,6 +68,32 @@ export async function readServiceStatus(input: {
   });
 }
 
+export async function readOneService(
+  input: {
+    database: Database | undefined;
+    env: NodeJS.ProcessEnv;
+    fetchImpl?: FetchLike | undefined;
+    tcp?: ((host: string, port: number, timeoutMs?: number) => Promise<TcpResult>) | undefined;
+    bind?: typeof serviceBindWorks | undefined;
+  },
+  code: string,
+): Promise<ServiceRow | null> {
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const tcp = input.tcp ?? tcpOpen;
+  const bind = input.bind ?? serviceBindWorks;
+  if (code === 'database') return databaseRow(await probeDatabase(input.database));
+  if (code === 'worker') return workerRow(await probeWorker(input.database));
+  if (code === 'smtp') return smtpRow(await probeSmtp(input.env, tcp));
+  if (code === 'directory') {
+    const directory = await probeDirectory(input.env, tcp, bind);
+    return directoryRow(directory.state, directory.days);
+  }
+  if (code === 'mailbox') return mailboxRow(await probeMailbox(input.env, fetchImpl));
+  if (code === 'ollama') return ollamaRow(await probeOllama(input.env, fetchImpl));
+  if (code === 'syslog') return syslogRow(await probeSyslog(input.database, input.env));
+  return null;
+}
+
 async function probeDatabase(database: Database | undefined): Promise<boolean> {
   if (!database) return false;
   try {

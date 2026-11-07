@@ -174,9 +174,12 @@ export {
   type LogReport,
 } from './logs.js';
 export {
+  serviceCodeSchema,
+  serviceCodes,
   serviceReportSchema,
   serviceRowSchema,
   serviceStatusSchema,
+  type ServiceCode,
   type ServiceReport,
   type ServiceRow,
   type ServiceStatus,
@@ -216,6 +219,7 @@ export {
   qrStartSchema,
   skillTermPrompt,
   termTextSchema,
+  totpCheckSchema,
   totpConfirmSchema,
   totpSetupSchema,
   vocabularySchema,

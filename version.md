@@ -1,6 +1,6 @@
 # Version
 
-Aktueller Stand: **V 0.1.9**
+Aktueller Stand: **V 0.1.10**
 
 | | |
 |---|---|
@@ -19,11 +19,15 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 | 1 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. |
 | 1 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.1.10**. Die Minor-Stelle bleibt 1, bis Wolfgang eine Minor freigibt. Die erste Minor danach heißt **V 0.2.0**, der Patch beginnt wieder bei 0. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.1.11**. Die Minor-Stelle bleibt 1, bis Wolfgang eine Minor freigibt. Die erste Minor danach heißt **V 0.2.0**, der Patch beginnt wieder bei 0. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.1.10 — 07.11.2026
+
+Die Dienste stehen am Anfang der Konfiguration. Der Knopf T prüft den jeweiligen Dienst sofort. Die Blöcke Syslog-Server und Lokaler SMTP sind dort entfernt. Nach der Anmeldung nennt die Seite Rolle und E-Mail, darunter steht Abmelden. Der QR-Code und der lesbare Code gehören zum angemeldeten Konto. Das Passkey-Feld nutzt die E-Mail darüber. Teste Passkey jetzt prüft die Zahl. Anmeldung, Prüfung und Abmeldung gehen ins Protokoll und per Syslog. `LOG_ROTATE_DAYS` benennt die Protokolldateien alle 30 Tage um.
 
 ### V 0.1.9 — 07.11.2026
 

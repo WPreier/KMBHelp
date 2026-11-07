@@ -2,8 +2,8 @@ import {
   adminStaffSchema,
   loginResultSchema,
   messages,
-  qrPollSchema,
-  qrStartSchema,
+  sessionViewSchema,
+  totpCheckSchema,
   totpSetupSchema,
   type AdminStaffList,
   type LoginResult,
@@ -30,10 +30,12 @@ export function SignInPage() {
   const [secret, setSecret] = useState<string | null>(null);
   const [otpauth, setOtpauth] = useState<string | null>(null);
   const [qr, setQr] = useState<string | null>(null);
-  const [passQr, setPassQr] = useState<string | null>(null);
+  const [account, setAccount] = useState<{ role: string; email: string } | null>(null);
+  const [passkeyResult, setPasskeyResult] = useState<'ok' | 'bad' | null>(null);
   const [preview, setPreview] = useState(false);
   const [error, setError] = useState<CopyText | null>(null);
   const [pending, setPending] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
 
   async function onLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -69,32 +71,40 @@ export function SignInPage() {
 
   useEffect(() => {
     let cancelled = false;
-    let token = '';
-    void postJson('/api/v1/auth/qr/start', {}, qrStartSchema.parse)
-      .then(async (started) => {
-        token = started.token;
-        const image = await QRCode.toDataURL(`${window.location.origin}/anmelden/qr/${token}`, {
-          width: 220,
-          margin: 1,
-          errorCorrectionLevel: 'M',
-        });
-        if (!cancelled) setPassQr(image);
+    void getJson('/api/v1/auth/session', sessionViewSchema.parse)
+      .then((session) => {
+        if (cancelled || !session.signedIn || session.internalAdmin || session.isLocalAdmin) return;
+        setStep('staff');
       })
       .catch(() => undefined);
-    const timer = window.setInterval(() => {
-      if (!token || cancelled) return;
-      void getJson(`/api/v1/auth/qr/${token}`, qrPollSchema.parse)
-        .then((result) => {
-          if (result.step !== 'staff') return;
-          finish({ step: 'staff', isLocalAdmin: Boolean(result.isLocalAdmin) });
-        })
-        .catch(() => undefined);
-    }, 2000);
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    if (step !== 'staff' || preview) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const session = await getJson('/api/v1/auth/session', sessionViewSchema.parse);
+        if (cancelled || !session.signedIn || session.internalAdmin || session.isLocalAdmin) return;
+        setAccount({
+          role: session.audience === 'user' ? copy.roleUser : copy.roleAdministrator,
+          email: session.email || session.displayName || '',
+        });
+        const setup = await postJson('/api/v1/auth/totp/setup', {}, totpSetupSchema.parse);
+        if (cancelled) return;
+        setSecret(setup.secret);
+        setOtpauth(setup.otpauth);
+      } catch (caught) {
+        if (!cancelled) setError(bilingual(caught));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [copy.roleAdministrator, copy.roleUser, preview, step]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -158,6 +168,40 @@ export function SignInPage() {
     }
   }
 
+  async function onTestCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const code = String(new FormData(event.currentTarget).get('code') ?? '');
+    setPending(true);
+    setPasskeyResult(null);
+    setError(null);
+    try {
+      const result = await postJson('/api/v1/auth/totp/check', { code }, totpCheckSchema.parse);
+      setPasskeyResult(result.ok ? 'ok' : 'bad');
+    } catch {
+      setPasskeyResult('bad');
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onSignOut() {
+    setPending(true);
+    setError(null);
+    try {
+      await postJson('/api/v1/auth/logout', {}, (value) => value);
+      setStep('start');
+      setSecret(null);
+      setOtpauth(null);
+      setAccount(null);
+      setPasskeyResult(null);
+      window.dispatchEvent(new Event('kmbhelp-session'));
+    } catch (caught) {
+      setError(bilingual(caught));
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function onPasskeyRegister() {
     setPending(true);
     setError(null);
@@ -183,22 +227,17 @@ export function SignInPage() {
 
   async function onPasskey(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const email = String(new FormData(event.currentTarget).get('email') ?? '');
+    const code = String(new FormData(event.currentTarget).get('code') ?? '');
     setPending(true);
     setError(null);
     try {
-      const options = await postJson(
-        '/api/v1/auth/webauthn/login/options',
-        { email },
-        (value) => value,
-      );
-      const credential = await startAuthentication({ optionsJSON: options as never });
       const result = await postJson(
-        '/api/v1/auth/webauthn/login/verify',
-        credential,
+        '/api/v1/auth/login',
+        { email: loginEmail, code },
         loginResultSchema.parse,
       );
       finish(result);
+      if (result.step === 'enroll' && result.presentTotp) await onSetup();
     } catch (caught) {
       setError(bilingual(caught));
     } finally {
@@ -216,10 +255,39 @@ export function SignInPage() {
       ) : null}
       {step === 'staff' ? (
         <>
-          <p role="status">{copy.signedIn}</p>
-          <button type="button" onClick={() => void onPasskeyRegister()} disabled={pending}>
-            {copy.passkeyRegister}
+          <p role="status">
+            {account
+              ? copy.signedInAs.replace('{role}', account.role).replace('{email}', account.email)
+              : copy.signedIn}
+          </p>
+          <button type="button" onClick={() => void onSignOut()} disabled={pending}>
+            {copy.signOutNow}
           </button>
+          <p>{copy.authenticatorLead}</p>
+          {qr ? (
+            <img className="totp-qr" src={qr} width={320} height={320} alt={copy.scanCode} />
+          ) : null}
+          {secret ? (
+            <p className="totp-secret">
+              {copy.authenticatorSecret}
+              <br />
+              <code>{secret}</code>
+            </p>
+          ) : null}
+          <form className="passkey-test" onSubmit={(event) => void onTestCode(event)}>
+            <label>
+              {copy.oneTimeCode}
+              <input name="code" inputMode="numeric" autoComplete="one-time-code" required />
+            </label>
+            <button type="submit" disabled={pending}>
+              {copy.passkeyTest}
+            </button>
+          </form>
+          {passkeyResult ? (
+            <p className={passkeyResult === 'bad' ? 'form-error' : undefined} role="status">
+              {passkeyResult === 'ok' ? copy.passkeyAccepted : copy.passkeyRejected}
+            </p>
+          ) : null}
         </>
       ) : null}
       {step === 'enroll' ? (
@@ -255,18 +323,18 @@ export function SignInPage() {
         <form className="form" onSubmit={(event) => void onLogin(event)}>
           <label>
             {copy.identifier}
-            <input name="email" autoComplete="username" required />
+            <input
+              name="email"
+              autoComplete="username"
+              required
+              value={loginEmail}
+              onChange={(event) => setLoginEmail(event.target.value)}
+            />
           </label>
           <label>
             {copy.password}
             <input name="password" type="password" autoComplete="current-password" />
           </label>
-          {step === 'mfa' ? (
-            <label>
-              {copy.oneTimeCode}
-              <input name="code" inputMode="numeric" autoComplete="one-time-code" />
-            </label>
-          ) : null}
           <div className="form-actions">
             <button type="submit" disabled={pending}>
               {copy.signInSubmit}
@@ -274,11 +342,19 @@ export function SignInPage() {
           </div>
         </form>
       ) : null}
-      {step !== 'staff' ? (
+      {step !== 'staff' && step !== 'enroll' ? (
         <form className="form" onSubmit={(event) => void onPasskey(event)}>
+          <p>{copy.passkeyHint}</p>
           <label>
-            {copy.identifier}
-            <input name="email" autoComplete="username" required />
+            {copy.passkeyCode}
+            <input
+              name="code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              pattern="[0-9]{6}"
+              required
+            />
           </label>
           <div className="form-actions">
             <button type="submit" disabled={pending}>
@@ -286,12 +362,6 @@ export function SignInPage() {
             </button>
           </div>
         </form>
-      ) : null}
-      {passQr && step !== 'enroll' ? (
-        <>
-          <p>{copy.passkeyQrLead}</p>
-          <img className="totp-qr" src={passQr} width={220} height={220} alt={copy.passkeyQrLead} />
-        </>
       ) : null}
     </section>
   );

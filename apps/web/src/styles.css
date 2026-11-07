@@ -394,6 +394,23 @@ a.text-button {
   overflow-wrap: anywhere;
 }
 
+.passkey-test {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.passkey-test label {
+  flex: 0 1 9rem;
+  margin-top: 0;
+}
+
+.passkey-test button {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
 :root[data-theme='dark'] .form-error,
 :root[data-theme='dark'] .term-error {
   color: #ffb4b4;
@@ -835,6 +852,13 @@ button[aria-pressed='true'] {
 .service-row svg {
   flex: none;
   margin-top: 1px;
+}
+
+.service-test {
+  flex: none;
+  width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
 }
 
 @media (max-width: 640px) {

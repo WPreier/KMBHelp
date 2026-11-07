@@ -103,6 +103,32 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
     expect(user.status).toBe(200);
     const view = await agent.get('/api/v1/auth/session');
     expect(view.body.audience).toBe('user');
+    const setup = await agent
+      .post('/api/v1/auth/totp/setup')
+      .set('x-kmbhelp-csrf', csrfFrom(user))
+      .send({});
+    expect(setup.status).toBe(200);
+    expect(String(setup.body.otpauth)).toContain(encodeURIComponent(email));
+    const again = await agent
+      .post('/api/v1/auth/totp/setup')
+      .set('x-kmbhelp-csrf', csrfFrom(user))
+      .send({});
+    expect(again.body.secret).toBe(setup.body.secret);
+    const code = totpCode(decodeBase32(String(setup.body.secret)));
+    const checked = await agent
+      .post('/api/v1/auth/totp/check')
+      .set('x-kmbhelp-csrf', csrfFrom(user))
+      .send({ code });
+    expect(checked.status).toBe(200);
+    expect(checked.body.ok).toBe(true);
+    const rejected = await agent
+      .post('/api/v1/auth/totp/check')
+      .set('x-kmbhelp-csrf', csrfFrom(user))
+      .send({ code: code === '000000' ? '111111' : '000000' });
+    expect(rejected.body.ok).toBe(false);
+    const byCode = await request(app.server).post('/api/v1/auth/login').send({ email, code });
+    expect(byCode.status).toBe(200);
+    expect(byCode.body.step).toBe('staff');
     await expect(
       database.pool.query(`update login_audit set outcome = 'ok' where email = $1`, [email]),
     ).rejects.toThrow(/append-only/);
@@ -290,7 +316,7 @@ describe.skipIf(!databaseUrl)('phase 3 against postgres', () => {
     const denied = await request(app.server)
       .post('/api/v1/auth/login')
       .send({ email: first, password: firstPassword });
-    expect(denied.status).toBe(503);
+    expect(denied.status).toBe(401);
     const accepted = await request(app.server)
       .post('/api/v1/auth/login')
       .send({ email: second, password: secondPassword });

@@ -342,6 +342,16 @@ export async function checkConfigField(
           'A whole number of minutes, at most 1440.',
         );
   }
+  if (key === 'LOG_ROTATE_DAYS') {
+    return /^\d+$/u.test(value) && Number(value) >= 1 && Number(value) <= 3650
+      ? line(
+          key,
+          'ok',
+          `${value} Tage, danach werden die Protokolldateien umbenannt.`,
+          `${value} days, then the log files are renamed.`,
+        )
+      : line(key, 'warning', 'Eine ganze Zahl von 1 bis 3650.', 'A whole number from 1 to 3650.');
+  }
   if (key === 'ACCESS_LOG_RETENTION_DAYS') {
     return /^\d+$/u.test(value) && Number(value) >= 1 && Number(value) <= 3650
       ? line(

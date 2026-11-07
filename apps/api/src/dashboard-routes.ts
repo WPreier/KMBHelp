@@ -14,6 +14,7 @@ import {
   dashboardRanges,
   dashboardSchema,
   serviceReportSchema,
+  serviceRowSchema,
   type DashboardRange,
   type StaffRole,
 } from '@kmbhelp/shared';
@@ -24,8 +25,8 @@ import {
   serviceTokenMatches,
   staffFromSession,
 } from './auth.js';
-import { databaseDown } from './http.js';
-import { readServiceStatus } from './service-status.js';
+import { databaseDown, PublicError } from './http.js';
+import { readOneService, readServiceStatus } from './service-status.js';
 
 export function registerDashboard(
   app: FastifyInstance,
@@ -140,6 +141,19 @@ export function registerDashboard(
   app.get('/api/v1/staff/services', async (request) => {
     await reader(request);
     return serviceReportSchema.parse(await readServiceStatus({ database: options.database, env }));
+  });
+
+  app.get('/api/v1/staff/services/:code', async (request) => {
+    await reader(request);
+    const code = (request.params as { code?: string }).code ?? '';
+    const row = await readOneService({ database: options.database, env }, code);
+    if (!row) {
+      throw new PublicError(404, 'not_found', {
+        de: 'Dieser Dienst ist unbekannt.',
+        en: 'This service is unknown.',
+      });
+    }
+    return serviceRowSchema.parse(row);
   });
 }
 

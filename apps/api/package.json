@@ -11,6 +11,10 @@
     "./ticket-archive": {
       "types": "./src/ticket-archive.ts",
       "default": "./src/ticket-archive.ts"
+    },
+    "./log-rotate": {
+      "types": "./src/log-rotate.ts",
+      "default": "./src/log-rotate.ts"
     }
   },
   "scripts": {

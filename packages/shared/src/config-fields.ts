@@ -25,6 +25,7 @@ const shownWhenEmpty: Record<string, string> = {
   FALLBACK_CATEGORY: defaultFallbackCategory,
   WORKER_SCHEDULE: defaultWorkerSchedule,
   ACCESS_LOG_RETENTION_DAYS: '90',
+  LOG_ROTATE_DAYS: '30',
   SEARCH_AI_PROVIDER: defaultAiProvider,
   INTERNAL_MAIL_DOMAINS: defaultInternalMailDomains,
   MAIL_AI_PROMPT: defaultMailPrompt,
@@ -564,6 +565,14 @@ export const configFields: readonly ConfigField[] = [
     textDe:
       'API-Schlüssel für die spätere Suche. Das Feld zeigt ihn nie an. Noch wird er nicht verwendet.',
     textEn: 'API key for the later search. The field never shows it. It is not used yet.',
+  },
+  {
+    key: 'LOG_ROTATE_DAYS',
+    secret: false,
+    textDe:
+      'Nach so vielen Tagen werden activity.log, error.log, mail.log und ki.log umbenannt. Der neue Name endet auf _ddMMyyyy, zum Beispiel activity.log_07112026. Der Worker prüft das einmal am Tag, ab Mitternacht. Standard sind 30 Tage.',
+    textEn:
+      'After this many days activity.log, error.log, mail.log and ki.log are renamed. The new name ends in _ddMMyyyy, for example activity.log_07112026. The worker checks once a day, from midnight. 30 days is the default.',
   },
   {
     key: 'LOCAL_ADMIN_PASSWORD',

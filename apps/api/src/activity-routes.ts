@@ -10,6 +10,7 @@ import {
   type LogName,
 } from '@kmbhelp/shared';
 import { readActivity, writeActivity } from './activity-log.js';
+import { noteExternal } from './syslog.js';
 import { readLogFile } from './log-files.js';
 import {
   assertCsrf,
@@ -118,13 +119,17 @@ export function registerActivity(
       throw new PublicError(422, 'invalid_path', publicErrors.invalidInput);
     }
     const database = db();
+    const actor = await actorEmail(request);
     await writeActivity(database, {
-      actor: await actorEmail(request),
+      actor,
       kind: 'page',
       target: parsed.data.path,
       detail: 'page',
       ip: clientAddress(request),
     });
+    if (parsed.data.path === '/anmelden' || parsed.data.path.startsWith('/anmelden/')) {
+      void noteExternal(env, 'informational', `Anmeldeseite ${parsed.data.path} ${actor}`);
+    }
     return reply.code(204).send();
   });
 

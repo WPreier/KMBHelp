@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const loginRequestSchema = z.object({
   email: z.string().trim().min(1).max(200),
   password: z.string().max(200).optional(),
-  code: z.string().trim().max(12).optional(),
+  code: z.string().trim().max(80).optional(),
 });
 
 export const qrStartSchema = z.object({
@@ -32,6 +32,10 @@ export const totpSetupSchema = z.object({
 
 export const totpConfirmSchema = z.object({
   code: z.string().trim().min(6).max(12),
+});
+
+export const totpCheckSchema = z.object({
+  ok: z.boolean(),
 });
 
 export const adminPasswordSchema = z.object({
