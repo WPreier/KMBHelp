@@ -531,21 +531,6 @@ export function TicketWikiPage() {
               )}
             </dd>
           </div>
-          <div>
-            <dt>{copy.ticketOpen}</dt>
-            <dd>
-              <label className="check">
-                <input
-                  type="checkbox"
-                  checked={header.status === 'open'}
-                  disabled={frozen || header.status === 'expired' || header.status === 'closed'}
-                  aria-label={copy.ticketOpen}
-                  onChange={() => void toggleOpen()}
-                />
-                {copy.ticketOpen}
-              </label>
-            </dd>
-          </div>
           {staff ? (
             <div>
               <dt>{copy.firstDescription}</dt>
@@ -585,10 +570,21 @@ export function TicketWikiPage() {
           {frozen ? <p>{copy.frozenNote}</p> : null}
           <div className="wiki-head">
             <strong>{copy.ticketHeading}</strong>
-            <span>
-              <Hint text={copy.archiveIndexTitle}>
-                <Link to={`/archiv/${code}`}>{copy.archiveIndex}</Link>
-              </Hint>
+            <span className="wiki-actions">
+              {header ? (
+                <Hint text={header.status === 'open' ? copy.setInactiveTitle : copy.setActiveTitle}>
+                  <input
+                    className="wiki-open"
+                    type="checkbox"
+                    checked={header.status === 'open'}
+                    disabled={frozen || header.status === 'expired' || header.status === 'closed'}
+                    aria-label={
+                      header.status === 'open' ? copy.setInactiveTitle : copy.setActiveTitle
+                    }
+                    onChange={() => void toggleOpen()}
+                  />
+                </Hint>
+              ) : null}
               <Hint text={copy.createPdfTitle}>
                 <a className="text-button" href={`/api/v1/staff/tickets/work/${code}/pdf`}>
                   {copy.createPdf}

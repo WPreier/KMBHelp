@@ -1,6 +1,6 @@
 # Version
 
-Aktueller Stand: **V 0.1.6**
+Aktueller Stand: **V 0.1.7**
 
 | | |
 |---|---|
@@ -19,11 +19,15 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 | 1 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. |
 | 1 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.1.7**. Die Minor-Stelle bleibt 1, bis Wolfgang eine Minor freigibt. Die erste Minor danach heißt **V 0.2.0**, der Patch beginnt wieder bei 0. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.1.8**. Die Minor-Stelle bleibt 1, bis Wolfgang eine Minor freigibt. Die erste Minor danach heißt **V 0.2.0**, der Patch beginnt wieder bei 0. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.1.7 — 07.11.2026
+
+Auf der Ticketseite steht die Checkbox ohne Beschriftung und in normaler Größe links neben PDF erstellen. Ist sie gesetzt, lautet der Hinweis „Setze Ticket inaktiv“, sonst „Aktiviere Ticket“. Der Link Index ist von dieser Seite entfernt.
 
 ### V 0.1.6 — 07.11.2026
 
