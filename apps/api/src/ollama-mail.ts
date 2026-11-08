@@ -310,6 +310,7 @@ function pastedMail(body: string, fields: Partial<InboundMail> = {}): InboundMai
     sentAt: (fields.sentAt ?? '').slice(0, 40),
     inReplyTo: (fields.inReplyTo ?? '').slice(0, 500),
     references: (fields.references ?? '').slice(0, 500),
+    unread: true,
   };
 }
 

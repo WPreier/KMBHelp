@@ -27,6 +27,7 @@ export type InboundMail = {
   body: string;
   fromEmail: string;
   fromName: string;
+  unread: boolean;
   to?: string;
   cc?: string;
   sentAt?: string;
@@ -34,9 +35,17 @@ export type InboundMail = {
   references?: string;
 };
 
+export const inboxListCap = 500;
+
+export type InboxList = {
+  messages: InboundMail[];
+  truncated: boolean;
+};
+
 export type Mailbox = {
   readonly configured: boolean;
   listUnread(limit: number): Promise<InboundMail[]>;
+  listInbox(limit: number): Promise<InboxList>;
   markRead(graphId: string): Promise<void>;
   setRead(graphId: string, isRead: boolean): Promise<void>;
 };
@@ -269,53 +278,11 @@ export function mailboxFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = f
   return {
     configured: config !== null,
     async listUnread(limit) {
-      if (!config) return [];
-      const started = Date.now();
-      let token: string;
-      try {
-        token = await accessToken(config, fetchImpl);
-      } catch (error) {
-        mailboxAccess(config.mailbox, 'posteingang', 'fehler', 'ungelesen', Date.now() - started);
-        throw error;
-      }
-      const cap = Math.min(Math.max(limit, 1), 200);
-      const query = [
-        '$filter=' + encodeURIComponent('isRead eq false'),
-        `$top=${Math.min(cap, 50)}`,
-        '$select=' +
-          encodeURIComponent(
-            'id,internetMessageId,subject,body,from,toRecipients,ccRecipients,receivedDateTime,internetMessageHeaders',
-          ),
-      ].join('&');
-      let next = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/inbox/messages?${query}`;
-      const mails: InboundMail[] = [];
-      let status = 0;
-      while (next !== '' && mails.length < cap) {
-        const response = await fetchImpl(next, { headers: { authorization: `Bearer ${token}` } });
-        status = response.status;
-        if (!response.ok) {
-          mailboxAccess(
-            config.mailbox,
-            'posteingang',
-            'fehler',
-            `ungelesen http=${response.status}`,
-            Date.now() - started,
-          );
-          throw new Error('graph list failed');
-        }
-        const body: unknown = await response.json();
-        mails.push(...parseInboundMessages(body));
-        next = nextPage(body);
-      }
-      const shown = mails.slice(0, cap);
-      mailboxAccess(
-        config.mailbox,
-        'posteingang',
-        'ok',
-        `ungelesen anzahl=${shown.length} http=${status}`,
-        Date.now() - started,
-      );
-      return shown;
+      const listed = await listFolder(config, fetchImpl, { limit, unreadOnly: true });
+      return listed.messages;
+    },
+    listInbox(limit) {
+      return listFolder(config, fetchImpl, { limit, unreadOnly: false });
     },
     markRead(graphId) {
       return changeRead(config, fetchImpl, graphId, true);
@@ -359,6 +326,65 @@ async function changeRead(
     Date.now() - started,
   );
   if (!response.ok) throw new Error('graph read failed');
+}
+
+const messageSelect =
+  'id,isRead,internetMessageId,subject,body,from,toRecipients,ccRecipients,receivedDateTime,internetMessageHeaders';
+
+async function listFolder(
+  config: GraphEnv | null,
+  fetchImpl: GraphFetch,
+  options: { limit: number; unreadOnly: boolean },
+): Promise<InboxList> {
+  if (!config) return { messages: [], truncated: false };
+  const started = Date.now();
+  const label = options.unreadOnly ? 'ungelesen' : 'posteingang';
+  let token: string;
+  try {
+    token = await accessToken(config, fetchImpl);
+  } catch (error) {
+    mailboxAccess(config.mailbox, 'posteingang', 'fehler', label, Date.now() - started);
+    throw error;
+  }
+  const ceiling = options.unreadOnly ? 200 : inboxListCap;
+  const cap = Math.min(Math.max(options.limit, 1), ceiling);
+  const query = [
+    options.unreadOnly
+      ? '$filter=' + encodeURIComponent('isRead eq false')
+      : '$orderby=' + encodeURIComponent('receivedDateTime desc'),
+    `$top=${Math.min(cap, 50)}`,
+    '$select=' + encodeURIComponent(messageSelect),
+  ].join('&');
+  let next = `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/inbox/messages?${query}`;
+  const mails: InboundMail[] = [];
+  let status = 0;
+  while (next !== '' && mails.length < cap) {
+    const response = await fetchImpl(next, { headers: { authorization: `Bearer ${token}` } });
+    status = response.status;
+    if (!response.ok) {
+      mailboxAccess(
+        config.mailbox,
+        'posteingang',
+        'fehler',
+        `${label} http=${response.status}`,
+        Date.now() - started,
+      );
+      throw new Error('graph list failed');
+    }
+    const body: unknown = await response.json();
+    mails.push(...parseInboundMessages(body));
+    next = nextPage(body);
+  }
+  const truncated = mails.length > cap || next !== '';
+  const shown = mails.slice(0, cap);
+  mailboxAccess(
+    config.mailbox,
+    'posteingang',
+    'ok',
+    `${label} anzahl=${shown.length} http=${status}`,
+    Date.now() - started,
+  );
+  return { messages: shown, truncated };
 }
 
 function nextPage(body: unknown): string {
@@ -445,6 +471,7 @@ export function parseInboundMessages(body: unknown): InboundMail[] {
       internetMessageId: stringField(item, 'internetMessageId'),
       subject: stringField(item, 'subject').slice(0, 500),
       body: plainText(contentText, contentType).slice(0, 20_000),
+      unread: !('isRead' in item && item.isRead === true),
       fromEmail:
         address && 'address' in address ? stringValue(address.address).trim().toLowerCase() : '',
       fromName: address && 'name' in address ? stringValue(address.name).slice(0, 200) : '',

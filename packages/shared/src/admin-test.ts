@@ -30,7 +30,7 @@ export const mailTestResultSchema = z
   })
   .strict();
 
-export const mailboxMessageSchema = z
+export const mailboxRowSchema = z
   .object({
     graphId: z.string(),
     fromName: z.string(),
@@ -43,13 +43,20 @@ export const mailboxMessageSchema = z
     inReplyTo: z.string(),
     references: z.string(),
     body: z.string(),
+    unread: z.boolean(),
+  })
+  .strict();
+
+export const mailboxMessageSchema = mailboxRowSchema
+  .extend({
     source: z.string(),
   })
   .strict();
 
 export const mailboxListSchema = z
   .object({
-    messages: z.array(mailboxMessageSchema),
+    messages: z.array(mailboxRowSchema),
+    truncated: z.boolean(),
   })
   .strict();
 
@@ -61,4 +68,5 @@ export const mailboxReadSchema = z
   .strict();
 
 export type MailTestResult = z.infer<typeof mailTestResultSchema>;
+export type MailboxRow = z.infer<typeof mailboxRowSchema>;
 export type MailboxMessage = z.infer<typeof mailboxMessageSchema>;

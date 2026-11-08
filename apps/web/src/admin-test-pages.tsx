@@ -3,7 +3,7 @@ import {
   mailboxMessageSchema,
   mailTestPromptSchema,
   mailTestResultSchema,
-  type MailboxMessage,
+  type MailboxRow,
   type MailTestResult,
 } from '@kmbhelp/shared';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -156,9 +156,8 @@ export function MailTestPage() {
 
 export function MailboxAdminPage() {
   const { copy, lang } = useLocale();
-  const [messages, setMessages] = useState<Array<MailboxMessage & { unread: boolean }> | null>(
-    null,
-  );
+  const [messages, setMessages] = useState<MailboxRow[] | null>(null);
+  const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -166,7 +165,10 @@ export function MailboxAdminPage() {
     let cancelled = false;
     getJson('/api/v1/admin/mailbox', mailboxListSchema.parse)
       .then((loaded) => {
-        if (!cancelled) setMessages(loaded.messages.map((mail) => ({ ...mail, unread: true })));
+        if (!cancelled) {
+          setMessages(loaded.messages);
+          setTruncated(loaded.truncated);
+        }
       })
       .catch((caught: unknown) => {
         if (!cancelled) setError(failure(caught, lang, copy.loadFailed));
@@ -176,16 +178,28 @@ export function MailboxAdminPage() {
     };
   }, [copy.loadFailed, lang]);
 
-  function openTest(mail: MailboxMessage) {
-    sessionStorage.setItem(`kmbhelp-mail-test:${mail.graphId}`, mail.source);
-    window.open(
-      `/verwaltung/ki-mailtest?id=${encodeURIComponent(mail.graphId)}`,
-      '_blank',
-      'noopener',
-    );
+  async function openTest(mail: MailboxRow) {
+    setBusy(mail.graphId);
+    setError(null);
+    try {
+      const full = await getJson(
+        `/api/v1/admin/mailbox/message?id=${encodeURIComponent(mail.graphId)}`,
+        mailboxMessageSchema.parse,
+      );
+      sessionStorage.setItem(`kmbhelp-mail-test:${mail.graphId}`, full.source);
+      window.open(
+        `/verwaltung/ki-mailtest?id=${encodeURIComponent(mail.graphId)}`,
+        '_blank',
+        'noopener',
+      );
+    } catch (caught) {
+      setError(failure(caught, lang, copy.loadFailed));
+    } finally {
+      setBusy(null);
+    }
   }
 
-  async function toggle(mail: MailboxMessage & { unread: boolean }) {
+  async function toggle(mail: MailboxRow) {
     const unread = !mail.unread;
     setBusy(mail.graphId);
     setError(null);
@@ -212,6 +226,9 @@ export function MailboxAdminPage() {
       <h2>{copy.mailboxAdminTitle}</h2>
       <p>{copy.mailboxAdminLead}</p>
       {error ? <p role="alert">{error}</p> : null}
+      {truncated && messages ? (
+        <p>{copy.mailboxTruncated.replace('{count}', String(messages.length))}</p>
+      ) : null}
       {messages && messages.length === 0 ? <p>{copy.mailboxNone}</p> : null}
       {messages && messages.length > 0 ? (
         <div className="mail-box">
@@ -232,14 +249,15 @@ export function MailboxAdminPage() {
             </thead>
             <tbody>
               {messages.map((mail) => (
-                <tr key={mail.graphId}>
+                <tr key={mail.graphId} className={mail.unread ? 'mailbox-unread' : undefined}>
                   <td className="mailbox-actions">
                     <button
                       type="button"
                       className="service-test"
                       title={copy.mailboxTestMail}
                       aria-label={copy.mailboxTestMail}
-                      onClick={() => openTest(mail)}
+                      disabled={busy === mail.graphId}
+                      onClick={() => void openTest(mail)}
                     >
                       T
                     </button>

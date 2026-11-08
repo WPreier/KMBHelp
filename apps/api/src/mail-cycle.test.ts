@@ -212,6 +212,7 @@ const mail = {
   body: 'Die Meldung geht nicht raus.',
   fromEmail: 'sender@example.com',
   fromName: 'Sender',
+  unread: true,
 };
 
 describe('ingestMail', () => {

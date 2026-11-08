@@ -12,7 +12,7 @@ import {
 } from '@kmbhelp/shared';
 import { requireAdministrator } from './auth.js';
 import { writeActivity } from './activity-log.js';
-import { mailboxFromEnv, type InboundMail, type Mailbox } from './graph.js';
+import { inboxListCap, mailboxFromEnv, type InboundMail, type Mailbox } from './graph.js';
 import { clientAddress, PublicError } from './http.js';
 import {
   askOllama,
@@ -93,14 +93,17 @@ export function registerAdminTests(
     if (!box.configured) {
       throw new PublicError(503, 'mail_not_connected', publicErrors.mailNotConnected);
     }
-    const messages = (await box.listUnread(200)).map(messageView);
-    return mailboxListSchema.parse({ messages });
+    const listed = await box.listInbox(inboxListCap);
+    return mailboxListSchema.parse({
+      truncated: listed.truncated,
+      messages: listed.messages.map(messageRow),
+    });
   });
 
   app.get('/api/v1/admin/mailbox/message', async (request) => {
     await administrator(request, false);
     const id = readId(request.query);
-    const mail = await findUnread(mailbox(), id);
+    const mail = await findInInbox(mailbox(), id);
     return mailboxMessageSchema.parse(messageView(mail));
   });
 
@@ -126,7 +129,7 @@ export function registerAdminTests(
   });
 }
 
-function messageView(mail: InboundMail) {
+function messageRow(mail: InboundMail) {
   return {
     graphId: mail.graphId,
     fromName: mail.fromName,
@@ -139,15 +142,21 @@ function messageView(mail: InboundMail) {
     inReplyTo: mail.inReplyTo ?? '',
     references: mail.references ?? '',
     body: maskPersonalData(mail.body).slice(0, 8000),
-    source: formatMailSource(mail),
+    unread: mail.unread,
   };
 }
 
-async function findUnread(box: Mailbox, graphId: string): Promise<InboundMail> {
+function messageView(mail: InboundMail) {
+  return { ...messageRow(mail), source: formatMailSource(mail) };
+}
+
+async function findInInbox(box: Mailbox, graphId: string): Promise<InboundMail> {
   if (!box.configured) {
     throw new PublicError(503, 'mail_not_connected', publicErrors.mailNotConnected);
   }
-  const mail = (await box.listUnread(200)).find((item) => item.graphId === graphId);
+  const mail = (await box.listInbox(inboxListCap)).messages.find(
+    (item) => item.graphId === graphId,
+  );
   if (!mail) throw new PublicError(404, 'not_found', publicErrors.notFound);
   return mail;
 }

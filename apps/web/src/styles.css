@@ -888,6 +888,10 @@ button[aria-pressed='true'] {
   vertical-align: top;
 }
 
+.mailbox-unread {
+  font-weight: 600;
+}
+
 .mailbox-actions {
   display: flex;
   gap: 6px;

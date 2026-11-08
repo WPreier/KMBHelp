@@ -300,10 +300,12 @@ export const messages = {
     mailTestKindImportance: 'Wichtigkeit',
     mailboxAdminTitle: 'Helpdesk-Mailbox',
     mailboxAdminLead:
-      'Ungelesene Nachrichten mit den Angaben, die die KI-Prüfung erhält. Der Text ist maskiert.',
+      'Alle Nachrichten im Posteingang, mit den Angaben, die die KI-Prüfung erhält. Der Text in der Tabelle ist maskiert. Ungelesene Zeilen sind fett.',
     mailboxTestMail: 'Teste die KI-Schnittstelle mit dieser Mail',
     mailboxToggle: 'Gelesen oder ungelesen markieren',
-    mailboxNone: 'Keine ungelesene Nachricht.',
+    mailboxNone: 'Der Posteingang ist leer.',
+    mailboxTruncated:
+      'Gezeigt werden die neuesten {count} Nachrichten. Ältere bleiben im Postfach.',
     mailboxFrom: 'Absender',
     mailboxTo: 'An',
     mailboxCc: 'Kopie',
@@ -675,10 +677,11 @@ export const messages = {
     mailTestKindImportance: 'Importance',
     mailboxAdminTitle: 'Helpdesk mailbox',
     mailboxAdminLead:
-      'Unread messages with the fields the model check receives. The text is masked.',
+      'Every message in the inbox, with the fields the model check receives. The text in the table is masked. Unread rows are bold.',
     mailboxTestMail: 'Test the model interface with this mail',
     mailboxToggle: 'Mark read or unread',
-    mailboxNone: 'No unread message.',
+    mailboxNone: 'The inbox is empty.',
+    mailboxTruncated: 'The newest {count} messages are shown. Older mail stays in the mailbox.',
     mailboxFrom: 'From',
     mailboxTo: 'To',
     mailboxCc: 'Cc',

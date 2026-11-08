@@ -25,6 +25,7 @@ const mail: InboundMail = {
   sentAt: '2026-10-29T08:00:00Z',
   inReplyTo: '',
   references: '',
+  unread: true,
 };
 
 describe('local mail review', () => {

@@ -188,11 +188,13 @@ export {
   mailboxListSchema,
   mailboxMessageSchema,
   mailboxReadSchema,
+  mailboxRowSchema,
   mailExchangeSchema,
   mailTestPromptSchema,
   mailTestRequestSchema,
   mailTestResultSchema,
   type MailboxMessage,
+  type MailboxRow,
   type MailTestResult,
 } from './admin-test.js';
 export {

@@ -199,7 +199,8 @@ Die App ist in Betrieb. Diese Phase härtet sie, prüft sie an echten Vorgängen
 
 - [x] `/verwaltung/tests` nur für Administratoren. Die Dienste sind von der Konfiguration dorthin gezogen. Der Knopf T prüft weiter nur den jeweiligen Dienst
 - [x] `/verwaltung/ki-mailtest` zeigt den Abfragetext, nimmt eine E-Mail im Textfeld oder als Datei an und prüft sie mit derselben Ollama-Schnittstelle wie der Worker. Darunter stehen der gesendete Text, die Antwort und die Dauer in Sekunden
-- [x] `/verwaltung/mailbox` listet ungelesene Nachrichten der Helpdesk-Mailbox mit den Feldern, die an die KI gehen. T öffnet KI-Mailtest in einem neuen Fenster und füllt die E-Mail. U/G setzt gelesen oder ungelesen
+- [x] `/verwaltung/mailbox` listet den ganzen Posteingang der Helpdesk-Mailbox, gelesen und ungelesen, mit den Feldern, die an die KI gehen. T öffnet KI-Mailtest in einem neuen Fenster und füllt die E-Mail. U/G setzt gelesen oder ungelesen. Mehr als 500 Nachrichten zeigen die neuesten 500
+- [x] `docs/nachtwache.md` hält das Sicherheitsbild fest. `docs/handlauf.md` hält fest, wo die Arbeit flüssiger werden kann. Beides ist beschrieben und noch nicht als Änderung eingebaut
 - [ ] Härtung, Praxistest und Notfallblatt
 
 Start: `pnpm dev`. Die Seiten stehen auf `http://127.0.0.1:5173/verwaltung/tests`. Ein Benutzer ohne Helpdesk-Gruppe erhält von der API 401.

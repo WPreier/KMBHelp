@@ -1,10 +1,10 @@
 # Version
 
-Aktueller Stand: **V 0.2.12**
+Aktueller Stand: **V 0.2.13**
 
 | | |
 |---|---|
-| Datum | 07.11.2026 |
+| Datum | 08.11.2026 |
 | Commit | dieser Stand, Branch `phase/12-haerten` |
 | Branch | `phase/12-haerten` |
 | Datei auf dem Server | `/opt/kmbhelp/version.md` |
@@ -17,13 +17,17 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 |---|---|---|
 | 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
 | 2 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. Am 07.11.2026 hat er die Minor 2 freigegeben. |
-| 12 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
+| 13 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.13**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.14**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.2.13 — 08.11.2026
+
+Die Helpdesk-Mailbox zeigt den ganzen Posteingang, gelesen und ungelesen. Ungelesene Zeilen sind fett. Mehr als 500 Nachrichten zeigen die neuesten 500. Der unmaskierte Mailtext steht nur noch in der einzelnen Prüfung, nicht in der Liste. `docs/nachtwache.md` beschreibt, was die App verriegelt und wo noch nachgebessert werden soll. `docs/handlauf.md` beschreibt, wo die Arbeit flüssiger werden kann, einschließlich Teams, Slack, Wiki, Obsidian und einer Suche im Web. Beides ist noch nicht als Funktion eingebaut. Der Worker liest weiterhin nur ungelesene Nachrichten.
 
 ### V 0.2.12 — 07.11.2026
 

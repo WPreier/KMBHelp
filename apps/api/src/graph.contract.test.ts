@@ -102,6 +102,7 @@ describe('graph contract payloads', () => {
         body: 'Der Drucker klemmt.',
         fromEmail: 'sender@example.com',
         fromName: 'Sender',
+        unread: true,
         to: '',
         cc: '',
         sentAt: '',
@@ -152,5 +153,42 @@ describe('graph contract payloads', () => {
         (call) => call.url.includes('graph.microsoft.com') && call.url.includes('example.tenant'),
       ),
     ).toBe(false);
+  });
+
+  it('lists the whole inbox and drops a next page outside Microsoft Graph', async () => {
+    const urls: string[] = [];
+    const fetchImpl: typeof fetch = async (input) => {
+      const url = String(input);
+      urls.push(url);
+      if (url.includes('/oauth2/v2.0/token')) return json({ access_token: 'token' });
+      return json({
+        value: [
+          {
+            id: 'read-1',
+            isRead: true,
+            subject: 'Schon gelesen',
+            body: { contentType: 'Text', content: 'Erledigt.' },
+            from: { emailAddress: { address: 'ada@example.com', name: 'Ada' } },
+          },
+          {
+            id: 'new-1',
+            isRead: false,
+            subject: 'Noch offen',
+            body: { contentType: 'Text', content: 'Bitte prüfen.' },
+            from: { emailAddress: { address: 'ben@example.com', name: 'Ben' } },
+          },
+        ],
+        '@odata.nextLink': 'https://evil.example/next',
+      });
+    };
+    const listed = await mailboxFromEnv(env, fetchImpl).listInbox(10);
+    expect(listed.truncated).toBe(false);
+    expect(listed.messages.map((mail) => [mail.graphId, mail.unread])).toEqual([
+      ['read-1', false],
+      ['new-1', true],
+    ]);
+    expect(urls.some((url) => url.includes('isRead%20eq%20false'))).toBe(false);
+    expect(urls.some((url) => url.includes('receivedDateTime%20desc'))).toBe(true);
+    expect(urls.some((url) => url.includes('evil.example'))).toBe(false);
   });
 });
