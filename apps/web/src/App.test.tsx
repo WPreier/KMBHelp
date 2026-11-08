@@ -497,7 +497,9 @@ describe('placeholder page', () => {
     expect(await screen.findByDisplayValue('Lies diese E-Mail.')).toBeTruthy();
     fireEvent.change(screen.getByLabelText('E-Mail'), { target: { value: 'Hallo' } });
     fireEvent.click(screen.getByRole('button', { name: 'Testen' }));
+    expect(document.body.classList.contains('wait')).toBe(true);
     expect(await screen.findByText('An die KI geschickt')).toBeTruthy();
+    expect(document.body.classList.contains('wait')).toBe(false);
     expect(screen.getByText('SPAM')).toBeTruthy();
     expect(screen.getByText('Der Test hat 1.5 Sekunden gedauert.')).toBeTruthy();
   });

@@ -12,7 +12,7 @@ Nach der Anmeldung steht Rolle und E-Mail oben, darunter Abmelden. Das Menü geh
 
 Die Ticketseite merkt sich den formatierten Text, die Uhrzeit und den letzten Bearbeiter. Fertig fragt nach. PDF erstellen schließt nicht. Die Checkbox setzt aktiv und inaktiv sofort. Die Mail an einen neuen Bearbeiter geht mit der Zuordnung hinaus. Der Knopf M stellt dieselbe Rückfrage wie die Liste.
 
-Die Dienste, der KI-Mailtest und der ganze Posteingang liegen unter Verwaltung und nur bei Administratoren. Ein Test nennt die Dauer in Sekunden. Ungelesene Zeilen im Posteingang sind fett. T öffnet die Prüfung mit dieser Mail. U/G setzt gelesen oder ungelesen. Der Worker arbeitet weiter nur an ungelesenen Nachrichten.
+Die Dienste, der KI-Mailtest und der ganze Posteingang liegen unter Verwaltung und nur bei Administratoren. Ein Test nennt die Dauer in Sekunden und zeigt solange einen Wartecursor. Ungelesene Zeilen im Posteingang sind fett. T öffnet die Prüfung mit dieser Mail. G auf dunklem Grund heißt ungelesen, U auf hellem Grund heißt gelesen. Der Worker arbeitet weiter nur an ungelesenen Nachrichten.
 
 Wissen hat zwei Ebenen, beschrieben in `docs/prozesse/12-wissen.md`: eine kurze öffentliche FAQ und der Rohtext nur für das Team. Die Suche sagt in einem Satz, warum ein Treffer kam.
 

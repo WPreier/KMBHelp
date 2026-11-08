@@ -87,6 +87,7 @@ export function MailTestPage() {
     setPending(true);
     setError(null);
     setResult(null);
+    document.body.classList.add('wait');
     try {
       const loaded = await postJson(
         '/api/v1/admin/mail-test',
@@ -97,6 +98,7 @@ export function MailTestPage() {
     } catch (caught) {
       setError(failure(caught, lang, copy.loadFailed));
     } finally {
+      document.body.classList.remove('wait');
       setPending(false);
     }
   }
@@ -263,14 +265,17 @@ export function MailboxAdminPage() {
                     </button>
                     <button
                       type="button"
-                      className="service-test read-toggle"
-                      title={copy.mailboxToggle}
-                      aria-label={copy.mailboxToggle}
-                      aria-pressed={!mail.unread}
+                      className={
+                        mail.unread
+                          ? 'service-test read-toggle is-unread'
+                          : 'service-test read-toggle is-read'
+                      }
+                      title={mail.unread ? copy.mailboxMarkRead : copy.mailboxMarkUnread}
+                      aria-label={mail.unread ? copy.mailboxMarkRead : copy.mailboxMarkUnread}
                       disabled={busy === mail.graphId}
                       onClick={() => void toggle(mail)}
                     >
-                      U/G
+                      {mail.unread ? 'G' : 'U'}
                     </button>
                   </td>
                   <td>{mail.fromName ? `${mail.fromName} <${mail.fromEmail}>` : mail.fromEmail}</td>
