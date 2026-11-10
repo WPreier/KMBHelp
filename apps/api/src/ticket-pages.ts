@@ -181,6 +181,10 @@ export function registerTicketPages(
     '/api/v1/staff/tickets/work/:code/assignee',
     async (request) => {
       await options.reader(request);
+      const viewer = await ticketViewer(options.db(), request, options.now(), false);
+      if (viewer.audience !== 'administrator') {
+        throw new PublicError(403, 'unauthorized', publicErrors.unauthorized);
+      }
       const parsed = ticketAssigneeSchema.safeParse(request.body);
       if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
       const database = options.db();
@@ -212,7 +216,22 @@ export function registerTicketPages(
         });
       }
       const mailed = changed
-        ? await sendTransferMail(database, row, chosen.email, options.now())
+        ? await sendAssigneeNotice(
+            database,
+            {
+              code: row.code,
+              subject: row.subject,
+              body: row.body,
+              workingMarkdown: row.workingMarkdown,
+              priority: row.priority,
+              dueOn: row.dueOn,
+              createdAt: row.createdAt,
+              categoryLabel: row.categoryLabelDe,
+              requesterName: row.requesterName ?? '',
+            },
+            chosen.email,
+            options.now(),
+          )
         : false;
       return ticketAssigneeResultSchema.parse({ assigneeEmail: chosen.email, mailed });
     },
@@ -394,7 +413,7 @@ export function registerTicketPages(
   );
 }
 
-async function sendTransferMail(
+export async function sendAssigneeNotice(
   database: Database,
   row: {
     code: string;
@@ -404,6 +423,8 @@ async function sendTransferMail(
     priority: string;
     dueOn: string | null;
     createdAt: Date;
+    categoryLabel: string;
+    requesterName: string;
   },
   email: string,
   now: Date,
@@ -431,23 +452,27 @@ async function sendTransferMail(
   const age = ageLabel(Math.max(0, Math.floor((now.getTime() - row.createdAt.getTime()) / 1000)));
   const due = row.dueOn ? isoDateToDisplay(row.dueOn) : 'kein Datum';
   const origin = publicOriginFromEnv(process.env);
+  const message = {
+    to: email,
+    subject: `Ticket ${row.code}`,
+    text: [
+      `Ticket an ${name} übertragen.`,
+      '',
+      `Ticket-ID: ${row.code}`,
+      `Kategorie: ${row.categoryLabel}`,
+      `Betreff: ${row.subject}`,
+      `Beschreibung: ${text}`,
+      `Gemeldet von: ${row.requesterName.trim() || 'Anwender'}`,
+      `Anlagedatum: ${created}`,
+      `Priorität: ${priority}`,
+      `Ablauf bis: ${due}`,
+      `Alter: ${age}`,
+      `Link: ${origin}/ticket/${row.code}`,
+    ].join('\n'),
+  };
   try {
-    await mailer.send({
-      to: email,
-      subject: `Ticket ${row.code}`,
-      text: [
-        `Ticket an ${name} übertragen.`,
-        '',
-        `Ticket-ID: ${row.code}`,
-        `Betreff: ${row.subject}`,
-        `Text: ${text}`,
-        `Anlagedatum: ${created}`,
-        `Priorität: ${priority}`,
-        `Ablauf bis: ${due}`,
-        `Alter: ${age}`,
-        `Link: ${origin}/ticket/${row.code}`,
-      ].join('\n'),
-    });
+    if (mailer.deliver) await mailer.deliver(message);
+    else await mailer.send(message);
     return true;
   } catch {
     return false;

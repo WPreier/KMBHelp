@@ -213,6 +213,7 @@ export function TicketWikiPage() {
   const [reloadToken, setReloadToken] = useState(0);
   const [staff, setStaff] = useState(false);
   const [mayClose, setMayClose] = useState(true);
+  const [mayAssign, setMayAssign] = useState(false);
   const [markdown, setMarkdown] = useState('');
   const [first, setFirst] = useState('');
   const [requester, setRequester] = useState('');
@@ -225,13 +226,15 @@ export function TicketWikiPage() {
   const [fileError, setFileError] = useState('');
   const [fileTypes, setFileTypes] = useState(() => defaultTicketFileTypes.split(', '));
   const [maxFileBytes, setMaxFileBytes] = useState(defaultTicketFileBytes);
-  const [confirming, setConfirming] = useState<'text' | 'file' | 'delete' | 'ask' | 'close' | null>(
-    null,
-  );
+  const [confirming, setConfirming] = useState<
+    'text' | 'file' | 'delete' | 'ask' | 'close' | 'assignee' | 'priority' | null
+  >(null);
   const [loaded, setLoaded] = useState(false);
   const draft = useRef('');
   const pendingFile = useRef<File | null>(null);
   const pendingDelete = useRef<string>('');
+  const pendingAssignee = useRef('');
+  const pendingPriority = useRef('');
   const surface = useRef<HTMLDivElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLButtonElement>(null);
@@ -258,7 +261,10 @@ export function TicketWikiPage() {
     getJson('/api/v1/auth/session', (value) => sessionViewSchema.parse(value))
       .then(async (session) => {
         const allowed = session.signedIn || session.internalAdmin;
-        if (!cancelled) setMayClose(session.audience !== 'user');
+        if (!cancelled) {
+          setMayClose(session.audience !== 'user');
+          setMayAssign(session.audience === 'administrator' || session.internalAdmin);
+        }
         if (!allowed || cancelled) return;
         setStaff(true);
         const work = await getJson(`/api/v1/staff/tickets/work/${code}`, (value) =>
@@ -395,6 +401,24 @@ export function TicketWikiPage() {
     }
   }
 
+  async function changePriority(priority: string) {
+    if (!header) return;
+    try {
+      const result = await postJson(
+        `/api/v1/tickets/public/${header.number}`,
+        { action: 'priority', priority },
+        (value) => publicTicketStateSchema.parse(value),
+      );
+      setHeader((current) => (current ? { ...current, priority: result.priority } : current));
+      setNotice(copy.prioritySaved);
+      setFileError('');
+    } catch (error) {
+      setNotice('');
+      const text = error instanceof RequestFailed ? error.text : null;
+      setFileError(text ? text[lang] : copy.saveFailed);
+    }
+  }
+
   async function askAssignee() {
     if (!header) return;
     try {
@@ -509,17 +533,6 @@ export function TicketWikiPage() {
             <dd>
               {staff && !frozen ? (
                 <span className="assignee-line">
-                  <select
-                    aria-label={copy.assignedStaff}
-                    value={assigneeEmail}
-                    onChange={(event) => void changeAssignee(event.target.value)}
-                  >
-                    {assigneeChoices(roster, assigneeEmail).map((person) => (
-                      <option key={person.email} value={person.email}>
-                        {person.displayName} ({person.email})
-                      </option>
-                    ))}
-                  </select>
                   <Hint text={copy.askStaffTitle}>
                     <button
                       type="button"
@@ -530,6 +543,26 @@ export function TicketWikiPage() {
                       {copy.askStaff}
                     </button>
                   </Hint>
+                  {mayAssign ? (
+                    <select
+                      aria-label={copy.assignedStaff}
+                      value={assigneeEmail}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        if (next === assigneeEmail) return;
+                        pendingAssignee.current = next;
+                        setConfirming('assignee');
+                      }}
+                    >
+                      {assigneeChoices(roster, assigneeEmail).map((person) => (
+                        <option key={person.email} value={person.email}>
+                          {person.displayName} ({person.email})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    header.assigneeEmail
+                  )}
                 </span>
               ) : (
                 header.assigneeEmail
@@ -541,7 +574,6 @@ export function TicketWikiPage() {
               <dt>{copy.firstDescription}</dt>
               <dd>
                 <textarea className="ticket-description" rows={3} readOnly value={first} />
-                {history ? <pre className="ticket-history">{history}</pre> : null}
               </dd>
             </div>
           ) : null}
@@ -557,7 +589,26 @@ export function TicketWikiPage() {
           ) : null}
           <div>
             <dt>{copy.priority}</dt>
-            <dd>{priorityLabel(header.priority, copy)}</dd>
+            <dd>
+              {staff && !frozen ? (
+                <select
+                  aria-label={copy.priority}
+                  value={header.priority}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    if (next === header.priority) return;
+                    pendingPriority.current = next;
+                    setConfirming('priority');
+                  }}
+                >
+                  <option value="p1">{copy.priorityP1}</option>
+                  <option value="p2">{copy.priorityP2}</option>
+                  <option value="p3">{copy.priorityP3}</option>
+                </select>
+              ) : (
+                priorityLabel(header.priority, copy)
+              )}
+            </dd>
           </div>
           {staff ? (
             <div>
@@ -634,51 +685,73 @@ export function TicketWikiPage() {
             <Hint text={copy.formatHeadingTitle}>
               <button
                 type="button"
+                className="format-icon"
+                aria-label={copy.formatHeadingTitle}
                 disabled={frozen}
                 onMouseDown={keepSelection}
                 onClick={() => format('formatBlock', 'h2')}
               >
-                {copy.formatHeading}
+                <FormatMark name="heading" />
               </button>
             </Hint>
             <Hint text={copy.formatBoldTitle}>
               <button
                 type="button"
+                className="format-icon"
+                aria-label={copy.formatBoldTitle}
                 disabled={frozen}
                 onMouseDown={keepSelection}
                 onClick={() => format('bold')}
               >
-                {copy.formatBold}
+                <FormatMark name="bold" />
               </button>
             </Hint>
             <Hint text={copy.formatItalicTitle}>
               <button
                 type="button"
+                className="format-icon"
+                aria-label={copy.formatItalicTitle}
                 disabled={frozen}
                 onMouseDown={keepSelection}
                 onClick={() => format('italic')}
               >
-                {copy.formatItalic}
+                <FormatMark name="italic" />
               </button>
             </Hint>
             <Hint text={copy.formatListTitle}>
               <button
                 type="button"
+                className="format-icon"
+                aria-label={copy.formatListTitle}
                 disabled={frozen}
                 onMouseDown={keepSelection}
                 onClick={() => format('insertUnorderedList')}
               >
-                {copy.formatList}
+                <FormatMark name="list" />
               </button>
             </Hint>
             <Hint text={copy.formatLinkTitle}>
-              <button type="button" disabled={frozen} onMouseDown={keepSelection} onClick={addLink}>
-                {copy.formatLink}
+              <button
+                type="button"
+                className="format-icon"
+                aria-label={copy.formatLinkTitle}
+                disabled={frozen}
+                onMouseDown={keepSelection}
+                onClick={addLink}
+              >
+                <FormatMark name="link" />
               </button>
             </Hint>
             <Hint text={copy.formatCodeTitle}>
-              <button type="button" disabled={frozen} onMouseDown={keepSelection} onClick={addCode}>
-                {copy.formatCode}
+              <button
+                type="button"
+                className="format-icon"
+                aria-label={copy.formatCodeTitle}
+                disabled={frozen}
+                onMouseDown={keepSelection}
+                onClick={addCode}
+              >
+                <FormatMark name="code" />
               </button>
             </Hint>
           </div>
@@ -738,6 +811,7 @@ export function TicketWikiPage() {
               ),
             }))}
           />
+          {history ? <pre className="ticket-history">{history}</pre> : null}
         </>
       ) : null}
       {confirming ? (
@@ -747,9 +821,13 @@ export function TicketWikiPage() {
               ? copy.confirmDelete
               : confirming === 'ask'
                 ? copy.confirmAsk
-                : confirming === 'close'
-                  ? copy.confirmFinish
-                  : `${confirming === 'text' ? copy.saveText : copy.addFile}?`}
+                : confirming === 'assignee'
+                  ? copy.confirmAssignee
+                  : confirming === 'priority'
+                    ? copy.confirmPriority
+                    : confirming === 'close'
+                      ? copy.confirmFinish
+                      : `${confirming === 'text' ? copy.saveText : copy.addFile}?`}
           </p>
           <button
             type="button"
@@ -760,6 +838,12 @@ export function TicketWikiPage() {
               if (kind === 'file') void storeFile();
               if (kind === 'delete') void removeFile();
               if (kind === 'ask') void askAssignee();
+              if (kind === 'assignee' && pendingAssignee.current) {
+                void changeAssignee(pendingAssignee.current);
+              }
+              if (kind === 'priority' && pendingPriority.current) {
+                void changePriority(pendingPriority.current);
+              }
               if (kind === 'close') void finishTicket();
             }}
           >
@@ -771,6 +855,65 @@ export function TicketWikiPage() {
         </div>
       ) : null}
     </>
+  );
+}
+
+function FormatMark({ name }: { name: 'heading' | 'bold' | 'italic' | 'list' | 'link' | 'code' }) {
+  const pen = {
+    viewBox: '0 0 24 24',
+    width: 18,
+    height: 18,
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 2,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true as const,
+    focusable: false as const,
+  };
+  if (name === 'heading') {
+    return (
+      <svg {...pen}>
+        <path d="M5 6v12M19 6v12M5 12h14" />
+      </svg>
+    );
+  }
+  if (name === 'bold') {
+    return (
+      <svg {...pen}>
+        <path d="M7 5h6a4 4 0 0 1 0 8H7zM7 13h7a4 4 0 0 1 0 8H7z" />
+      </svg>
+    );
+  }
+  if (name === 'italic') {
+    return (
+      <svg {...pen}>
+        <path d="M15 5H9M19 19H9M14 5l-4 14" />
+      </svg>
+    );
+  }
+  if (name === 'list') {
+    return (
+      <svg {...pen}>
+        <path d="M9 7h11M9 12h11M9 17h11" />
+        <circle cx="5" cy="7" r="1" fill="currentColor" stroke="none" />
+        <circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" />
+        <circle cx="5" cy="17" r="1" fill="currentColor" stroke="none" />
+      </svg>
+    );
+  }
+  if (name === 'link') {
+    return (
+      <svg {...pen}>
+        <path d="M10 13a5 5 0 0 0 7.5.5l1.5-1.5a5 5 0 0 0-7-7L10.5 6.5" />
+        <path d="M14 11a5 5 0 0 0-7.5-.5L5 12a5 5 0 0 0 7 7l1.5-1.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...pen}>
+      <path d="M9 8l-4 4 4 4M15 8l4 4-4 4" />
+    </svg>
   );
 }
 

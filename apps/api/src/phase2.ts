@@ -42,7 +42,7 @@ import {
   type StaffTicket,
 } from '@kmbhelp/shared';
 import { assigneeFromEmail } from './assignee.js';
-import { registerTicketPages } from './ticket-pages.js';
+import { registerTicketPages, sendAssigneeNotice } from './ticket-pages.js';
 import {
   localhostAdmin,
   optionalStaff,
@@ -127,7 +127,11 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         serviceTokenMatches(request) ||
         localhostAdmin(request) ||
         (await optionalStaff(database, request, options.testAuthEnabled, now())) !== null;
-      let chosen = await assigneeFromEmail(tx, input.assigneeEmail ?? helpdeskAssigneeEmail);
+      const mayAssign = viewer.audience === 'administrator';
+      const requested = mayAssign
+        ? (input.assigneeEmail ?? helpdeskAssigneeEmail)
+        : helpdeskAssigneeEmail;
+      let chosen = await assigneeFromEmail(tx, requested);
       if (!input.assigneeEmail && mayNameStaff && input.assignedStaffId) {
         const people = await tx
           .select({ id: staff.id, active: staff.active, email: staff.email })
@@ -164,8 +168,31 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
         kind: 'created',
         payload: { source: input.source, priority: decision.priority, reason: decision.reason },
       });
-      return row;
+      return { ...row, assigneeEmail: chosen.email };
     });
+    if (created.assigneeEmail.toLowerCase() !== helpdeskAssigneeEmail) {
+      const labels = await database.db
+        .select({ labelDe: category.labelDe })
+        .from(category)
+        .where(eq(category.code, input.categoryCode))
+        .limit(1);
+      await sendAssigneeNotice(
+        database,
+        {
+          code: created.code,
+          subject: input.subject,
+          body: input.body,
+          workingMarkdown: null,
+          priority: decision.priority,
+          dueOn: input.dueOn ?? null,
+          createdAt: now(),
+          categoryLabel: labels[0]?.labelDe ?? input.categoryCode,
+          requesterName: input.requesterName ?? '',
+        },
+        created.assigneeEmail,
+        now(),
+      );
+    }
     await writeAccessLog(database, request, created.id);
     return createdTicketSchema.parse({
       number: created.number,
@@ -246,6 +273,9 @@ export function registerPhase2(app: FastifyInstance, options: Phase2Options): vo
       throw new PublicError(404, 'not_found', publicErrors.notFound);
     }
     if (parsed.data.action === 'close' && viewer.audience !== 'administrator') {
+      throw new PublicError(403, 'unauthorized', publicErrors.unauthorized);
+    }
+    if (parsed.data.action === 'priority' && viewer.audience === 'anonymous') {
       throw new PublicError(403, 'unauthorized', publicErrors.unauthorized);
     }
     const next = await applyPublicAction(database, row, parsed.data, current, {

@@ -255,6 +255,15 @@ header .search select {
   min-height: 2rem;
 }
 
+.format-bar button.format-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.35rem;
+}
+
 .wiki-actions {
   display: flex;
   flex-wrap: wrap;

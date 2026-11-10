@@ -31,19 +31,24 @@ const firmLinks = publicLinkTargets({
 });
 const firmLinksMissing = !firmLinks.www || !firmLinks.home || !firmLinks.wiki;
 
-function useMayClose(): boolean {
-  const [mayClose, setMayClose] = useState(true);
+function useSessionAccess(): { mayClose: boolean; mayAssign: boolean } {
+  const [access, setAccess] = useState({ mayClose: true, mayAssign: false });
   useEffect(() => {
     getJson('/api/v1/auth/session', sessionViewSchema.parse)
-      .then((session) => setMayClose(session.audience !== 'user'))
-      .catch(() => setMayClose(true));
+      .then((session) =>
+        setAccess({
+          mayClose: session.audience !== 'user',
+          mayAssign: session.audience === 'administrator' || session.internalAdmin,
+        }),
+      )
+      .catch(() => setAccess({ mayClose: true, mayAssign: false }));
   }, []);
-  return mayClose;
+  return access;
 }
 
 export function HomePage() {
   const { lang, copy } = useLocale();
-  const mayClose = useMayClose();
+  const { mayClose, mayAssign } = useSessionAccess();
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -198,18 +203,6 @@ export function HomePage() {
         <div className="field">
           <span>{copy.assignedStaff}</span>
           <span className="assignee-line">
-            <select
-              name="assigneeEmail"
-              aria-label={copy.assignedStaff}
-              value={assigneeEmail}
-              onChange={(event) => setAssigneeEmail(event.target.value)}
-            >
-              {assigneeChoices(roster, assigneeEmail).map((person) => (
-                <option key={person.email} value={person.email}>
-                  {person.displayName} ({person.email})
-                </option>
-              ))}
-            </select>
             <Hint text={created ? copy.askStaffTitle : copy.askNeedsTicket}>
               <button
                 type="button"
@@ -220,6 +213,26 @@ export function HomePage() {
                 {copy.askStaff}
               </button>
             </Hint>
+            <select
+              name="assigneeEmail"
+              aria-label={copy.assignedStaff}
+              value={assigneeEmail}
+              disabled={!mayAssign}
+              onChange={(event) => {
+                const next = event.target.value;
+                if (next === assigneeEmail) return;
+                setPendingConfirm({
+                  message: copy.confirmAssignee,
+                  run: () => setAssigneeEmail(next),
+                });
+              }}
+            >
+              {assigneeChoices(roster, assigneeEmail).map((person) => (
+                <option key={person.email} value={person.email}>
+                  {person.displayName} ({person.email})
+                </option>
+              ))}
+            </select>
           </span>
         </div>
         <label>
@@ -346,7 +359,7 @@ export function OpenTicketList({
   mine?: boolean;
 }) {
   const { lang, copy } = useLocale();
-  const mayClose = useMayClose();
+  const { mayClose } = useSessionAccess();
   const [tickets, setTickets] = useState<PublicTicket[]>([]);
   const [loadError, setLoadError] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);

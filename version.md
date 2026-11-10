@@ -1,6 +1,6 @@
 # Version
 
-Aktueller Stand: **V 0.2.15**
+Aktueller Stand: **V 0.2.16**
 
 | | |
 |---|---|
@@ -17,13 +17,17 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 |---|---|---|
 | 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
 | 2 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. Am 07.11.2026 hat er die Minor 2 freigegeben. |
-| 15 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
+| 16 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.16**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.17**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.2.16 — 10.11.2026
+
+Der Knopf M steht links zwischen Mitarbeiter und der Auswahlliste. Nur ein Administrator ändert diese Liste, und erst nach der Rückfrage. Die Mail an den neuen Mitarbeiter wird verschickt und nennt Ticketnummer, Kategorie, Betreff, Beschreibung, Melder, Daten, Priorität und den Link. Die Priorität ist eine Auswahlliste für Administratoren und angemeldete Mitarbeiter, mit einer Rückfrage und sofortigem Speichern. Der Verlauf steht unter der Dateiliste. Die Formatleiste zeigt Strichsymbole.
 
 ### V 0.2.15 — 10.11.2026
 
