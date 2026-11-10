@@ -560,4 +560,56 @@ describe('ingestMail', () => {
     expect(finish).toBe('declined');
     expect(store.closed).toEqual(['ticket-2']);
   });
+
+  it('does not attach a reply or close a ticket when only new tickets are kept', async () => {
+    const store = memoryStore();
+    const ports = doubles();
+    const base = {
+      store,
+      mailer: ports.mailer,
+      calendar: ports.calendar,
+      writer: ports.writer,
+      now: new Date('2026-10-27T08:10:00.000Z'),
+      origin: 'https://helpdesk.kmbcloud.at',
+      fallbackCategory: 'printer',
+      duration: 30,
+      delays: { p1: 0, p2: 60, p3: 240 } as const,
+      oncallEmail: '',
+      estimatedMinutes: null,
+      ticketsOnly: true,
+      askMail: async () =>
+        ({
+          kind: 'support',
+          category: 'Drucker',
+          priority: 'p2',
+          model: 'qwen2.5:7b',
+        }) as const,
+    };
+    expect(await ingestMail(mail, base)).toBe('created');
+    const reply = await ingestMail(
+      {
+        ...mail,
+        internetMessageId: '<reply@example.com>',
+        subject: 'AW: Ticket 1',
+        inReplyTo: '<once@example.com>',
+      },
+      {
+        ...base,
+        askMail: async () =>
+          ({ kind: 'reply', category: null, priority: null, model: 'qwen2.5:7b' }) as const,
+      },
+    );
+    expect(reply).toBe('declined');
+    expect(store.tickets[0]?.body).toBe('Die Meldung geht nicht raus.');
+    const finish = await ingestMail(
+      { ...mail, internetMessageId: '<done@example.com>', subject: 'Erledigt' },
+      {
+        ...base,
+        askMail: async () =>
+          ({ kind: 'close', category: null, priority: null, model: 'qwen2.5:7b' }) as const,
+      },
+    );
+    expect(finish).toBe('declined');
+    expect(store.closed).toEqual([]);
+  });
 });

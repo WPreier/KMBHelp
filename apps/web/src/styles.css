@@ -206,6 +206,20 @@ textarea {
   resize: vertical;
 }
 
+textarea.ticket-description {
+  min-height: 0;
+  height: calc(1.5em * 3 + 22px);
+  max-height: calc(1.5em * 3 + 22px);
+  resize: none;
+  overflow: auto;
+}
+
+.ticket-history {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 12px 0 0;
+}
+
 header .search {
   display: flex;
   align-items: center;

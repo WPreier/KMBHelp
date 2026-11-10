@@ -63,7 +63,7 @@ import {
   type StoredMailTicket,
 } from './mail-store.js';
 
-export type CycleEvent = 'not_configured' | 'polled' | 'waiting' | 'database_down';
+export type CycleEvent = 'not_configured' | 'polled' | 'waiting' | 'database_down' | 'observed';
 
 const addressPattern = /^[^@\s]+@[^@\s]+$/u;
 
@@ -95,6 +95,7 @@ type IngestDeps = {
       }) => Promise<void>)
     | undefined;
   syslog?: ((category: 'informational' | 'warning', message: string) => Promise<void>) | undefined;
+  ticketsOnly?: boolean | undefined;
 };
 
 export { readWorkerState };
@@ -179,19 +180,32 @@ export async function runMailCycle(options: {
     await store.heartbeat('polling', at);
     return { event: 'waiting', created: 0, slot: decision.slot };
   }
-  const deps = await mailIngestDeps(database, options.env, at, fetchImpl);
-  const mails = await mailbox.listUnread(25);
+  const mails = await mailbox.listUnread(options.env.NODE_ENV === 'production' ? 50 : 25);
   await noteExternal(options.env, 'informational', `external graph list unread=${mails.length}`);
+  if (options.env.NODE_ENV !== 'production') {
+    await store.heartbeat('polling', at);
+    return { event: 'observed', created: 0, slot: decision.slot };
+  }
+  const deps = await mailIngestDeps(database, options.env, at, fetchImpl);
+  deps.ticketsOnly = true;
   let created = 0;
   for (const mail of mails) {
     try {
+      if ((await deps.store.lesson(mail.internetMessageId)) === 'ignored') continue;
       const result = await ingestMail(mail, deps);
       if (result === 'created') created += 1;
-      // Unreachable model: leave the mail unread. A decision, including a timeout ticket, is marked read.
-      if (result !== 'retry') {
-        await mailbox.markRead(mail.graphId);
-        await noteExternal(options.env, 'informational', 'external graph mark-read');
-        await note(deps, mail.internetMessageId, 'mark-read');
+      if (result === 'created' || result === 'duplicate') {
+        await mailbox.moveToInboxChild(mail.graphId, 'Tickets');
+        await noteExternal(options.env, 'informational', 'external graph move tickets');
+        await note(deps, mail.internetMessageId, 'move-tickets');
+        continue;
+      }
+      if ((result === 'declined' || result === 'skip') && mail.internetMessageId.trim() !== '') {
+        await deps.store.rememberLesson({
+          internetMessageId: mail.internetMessageId,
+          outcome: 'ignored',
+          reason: result,
+        });
       }
     } catch (error) {
       logError(`mail ingest: ${safeErrorText(error)}`, options.env);
@@ -386,6 +400,7 @@ async function askLocal(
   if (asked === 'unreachable') return 'retry';
   if (asked === 'timeout') return 'timeout';
   if (asked === 'unclear' || asked.kind === 'spam' || asked.kind === 'foreign') return 'declined';
+  if (deps.ticketsOnly && (asked.kind === 'reply' || asked.kind === 'close')) return 'declined';
   if (asked.kind === 'reply') {
     await attachReply(mail, deps);
     return 'declined';

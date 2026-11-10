@@ -219,6 +219,7 @@ export function TicketWikiPage() {
   const [files, setFiles] = useState<StoredFile[]>([]);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [lastEditor, setLastEditor] = useState<string | null>(null);
+  const [history, setHistory] = useState('');
   const [notice, setNotice] = useState('');
   const [failed, setFailed] = useState(false);
   const [fileError, setFileError] = useState('');
@@ -270,6 +271,7 @@ export function TicketWikiPage() {
         setMarkdown(work.workingMarkdown);
         setUpdatedAt(work.updatedAt);
         setLastEditor(work.lastEditor);
+        setHistory(work.history);
         setFiles(work.files);
         setFileTypes(work.fileTypes);
         setMaxFileBytes(work.maxFileBytes);
@@ -325,6 +327,7 @@ export function TicketWikiPage() {
       setMarkdown(next);
       setUpdatedAt(result.updatedAt);
       setLastEditor(result.lastEditor);
+      setHistory(result.history);
       setNotice(copy.saved);
       setFileError('');
       return true;
@@ -536,7 +539,10 @@ export function TicketWikiPage() {
           {staff ? (
             <div>
               <dt>{copy.firstDescription}</dt>
-              <dd>{first}</dd>
+              <dd>
+                <textarea className="ticket-description" rows={3} readOnly value={first} />
+                {history ? <pre className="ticket-history">{history}</pre> : null}
+              </dd>
             </div>
           ) : null}
           <div>
@@ -590,6 +596,11 @@ export function TicketWikiPage() {
               <Hint text={copy.createPdfTitle}>
                 <a className="text-button" href={`/api/v1/staff/tickets/work/${code}/pdf`}>
                   {copy.createPdf}
+                </a>
+              </Hint>
+              <Hint text={copy.createCsvTitle}>
+                <a className="text-button" href={`/api/v1/staff/tickets/work/${code}/csv`}>
+                  {copy.createCsv}
                 </a>
               </Hint>
               {mayClose ? (

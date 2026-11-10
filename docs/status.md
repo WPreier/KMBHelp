@@ -201,6 +201,8 @@ Die App ist in Betrieb. Diese Phase härtet sie, prüft sie an echten Vorgängen
 - [x] `/verwaltung/ki-mailtest` zeigt den Abfragetext, nimmt eine E-Mail im Textfeld oder als Datei an und prüft sie mit derselben Ollama-Schnittstelle wie der Worker. Darunter stehen der gesendete Text, die Antwort und die Dauer in Sekunden
 - [x] `/verwaltung/mailbox` listet den ganzen Posteingang der Helpdesk-Mailbox, gelesen und ungelesen, mit den Feldern, die an die KI gehen. T öffnet KI-Mailtest in einem neuen Fenster und füllt die E-Mail. Eine ungelesene Zeile trägt G auf dunklem Grund, eine gelesene U auf hellem Grund. Mehr als 500 Nachrichten zeigen die neuesten 500. Während KI-Mailtest rechnet, ist der Mauszeiger ein Wartecursor
 - [x] `docs/nachtwache.md` hält das Sicherheitsbild fest. `docs/handlauf.md` hält fest, wo die Arbeit flüssiger werden kann. Beides ist beschrieben und noch nicht als Änderung eingebaut
+- [x] Der Worker auf dem Entwicklungsrechner liest die Helpdesk-Mailbox und lässt jede Mail liegen. Auf kmbhelp wird eine als Ticket erkannte Mail nach der Verarbeitung in den Unterordner Tickets verschoben. Andere Mails bleiben ungelesen und werden nicht noch einmal an die KI gegeben
+- [x] Auf `/ticket/{code}` heißt das Feld Beschreibung und zeigt höchstens drei Zeilen. Darunter steht die Historie mit Datum, Person und Text. PDF und CSV enthalten das komplette Ticket
 - [ ] Härtung, Praxistest und Notfallblatt
 
 Start: `pnpm dev`. Die Seiten stehen auf `http://127.0.0.1:5173/verwaltung/tests`. Ein Benutzer ohne Helpdesk-Gruppe erhält von der API 401.

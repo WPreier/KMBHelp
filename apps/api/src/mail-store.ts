@@ -58,10 +58,10 @@ export type MailStore = {
   activeStaffEmails(): Promise<string[]>;
   pendingReopens(): Promise<{ eventId: string; ticketId: string; number: number }[]>;
   heartbeat(state: WorkerState, at: Date): Promise<void>;
-  lesson(internetMessageId: string): Promise<'accepted' | 'rejected' | null>;
+  lesson(internetMessageId: string): Promise<'accepted' | 'rejected' | 'ignored' | null>;
   rememberLesson(input: {
     internetMessageId: string;
-    outcome: 'accepted' | 'rejected';
+    outcome: 'accepted' | 'rejected' | 'ignored';
     reason: string;
   }): Promise<void>;
   recentLessons(): Promise<{ outcome: 'accepted' | 'rejected'; reason: string }[]>;
@@ -250,7 +250,9 @@ export function drizzleMailStore(database: Database): MailStore {
         .where(eq(mailLesson.internetMessageId, internetMessageId))
         .limit(1);
       const outcome = rows[0]?.outcome;
-      return outcome === 'accepted' || outcome === 'rejected' ? outcome : null;
+      return outcome === 'accepted' || outcome === 'rejected' || outcome === 'ignored'
+        ? outcome
+        : null;
     },
     async rememberLesson(input) {
       await database.db

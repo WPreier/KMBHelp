@@ -48,6 +48,7 @@ export type Mailbox = {
   listInbox(limit: number): Promise<InboxList>;
   markRead(graphId: string): Promise<void>;
   setRead(graphId: string, isRead: boolean): Promise<void>;
+  moveToInboxChild(graphId: string, folderName: string): Promise<void>;
 };
 
 export type CalendarDraft = {
@@ -290,7 +291,96 @@ export function mailboxFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = f
     setRead(graphId, isRead) {
       return changeRead(config, fetchImpl, graphId, isRead);
     },
+    moveToInboxChild(graphId, folderName) {
+      return moveToChild(config, fetchImpl, graphId, folderName);
+    },
   };
+}
+
+const ticketFolderIds = new Map<string, string>();
+
+async function moveToChild(
+  config: GraphEnv | null,
+  fetchImpl: GraphFetch,
+  graphId: string,
+  folderName: string,
+): Promise<void> {
+  if (!config) throw new Error('mail not configured');
+  const started = Date.now();
+  const detail = `ordner=${oneLine(folderName)} id=${oneLine(graphId)}`;
+  let token: string;
+  try {
+    token = await accessToken(config, fetchImpl);
+    const destinationId = await inboxChildId(config, fetchImpl, token, folderName);
+    const response = await fetchImpl(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/messages/${encodeURIComponent(graphId)}/move`,
+      {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ destinationId }),
+      },
+    );
+    mailboxAccess(
+      config.mailbox,
+      'verschoben',
+      response.ok ? 'ok' : 'fehler',
+      `${detail} http=${response.status}`,
+      Date.now() - started,
+    );
+    if (!response.ok) throw new Error('graph move failed');
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== 'graph move failed') {
+      mailboxAccess(config.mailbox, 'verschoben', 'fehler', detail, Date.now() - started);
+    }
+    throw error;
+  }
+}
+
+async function inboxChildId(
+  config: GraphEnv,
+  fetchImpl: GraphFetch,
+  token: string,
+  folderName: string,
+): Promise<string> {
+  const cacheKey = `${config.mailbox}\n${folderName}`;
+  const cached = ticketFolderIds.get(cacheKey);
+  if (cached) return cached;
+  const listed = await fetchImpl(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/inbox/childFolders?$filter=${encodeURIComponent(`displayName eq '${folderName.replace(/'/gu, "''")}'`)}`,
+    { headers: { authorization: `Bearer ${token}` } },
+  );
+  if (!listed.ok) throw new Error('graph folder failed');
+  const body: unknown = await listed.json();
+  const existing = folderId(body);
+  if (existing) {
+    ticketFolderIds.set(cacheKey, existing);
+    return existing;
+  }
+  const created = await fetchImpl(
+    `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/mailFolders/inbox/childFolders`,
+    {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ displayName: folderName }),
+    },
+  );
+  if (!created.ok) throw new Error('graph folder failed');
+  const made: unknown = await created.json();
+  const id = folderId(made);
+  if (!id) throw new Error('graph folder failed');
+  ticketFolderIds.set(cacheKey, id);
+  return id;
+}
+
+function folderId(body: unknown): string {
+  if (!body || typeof body !== 'object') return '';
+  if ('id' in body && typeof body.id === 'string') return body.id;
+  if (!('value' in body) || !Array.isArray(body.value)) return '';
+  const first = body.value[0];
+  if (!first || typeof first !== 'object' || !('id' in first) || typeof first.id !== 'string') {
+    return '';
+  }
+  return first.id;
 }
 
 async function changeRead(

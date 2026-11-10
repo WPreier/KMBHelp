@@ -36,5 +36,6 @@ export {
   ticketCodeCounter,
   ticketEvent,
   ticketFile,
+  ticketHistory,
   webauthnChallenge,
 } from './schema.js';

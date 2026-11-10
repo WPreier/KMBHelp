@@ -184,6 +184,20 @@ export const ticketCodeCounter = pgTable('ticket_code_counter', {
   lastValue: integer('last_value').notNull(),
 });
 
+export const ticketHistory = pgTable(
+  'ticket_history',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ticketId: uuid('ticket_id')
+      .notNull()
+      .references(() => ticket.id),
+    at: timestamp('at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
+    actor: text('actor').notNull(),
+    body: text('body').notNull(),
+  },
+  (table) => [index('ticket_history_ticket_idx').on(table.ticketId, table.at)],
+);
+
 export const ticketEvent = pgTable(
   'ticket_event',
   {

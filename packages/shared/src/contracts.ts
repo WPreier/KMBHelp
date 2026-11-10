@@ -216,6 +216,7 @@ export const ticketWorkSchema = z
     requesterName: z.string().nullable(),
     updatedAt: z.string(),
     lastEditor: z.string().nullable(),
+    history: z.string(),
     files: z.array(ticketFileViewSchema),
     fileTypes: z.array(z.string().min(1)).min(1),
     maxFileBytes: z.number().int().positive(),
@@ -227,6 +228,7 @@ export const ticketSavedSchema = z
     updatedAt: z.string(),
     lastEditor: z.string(),
     assigneeEmail: z.string().min(3).max(200),
+    history: z.string(),
   })
   .strict();
 

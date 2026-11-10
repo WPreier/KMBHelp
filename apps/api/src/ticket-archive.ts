@@ -1,7 +1,14 @@
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { eq, isNull, and, or, isNotNull } from 'drizzle-orm';
-import { appSetting, category, ticket, ticketFile, type Database } from '@kmbhelp/db';
+import { asc, eq, isNull, and, or, isNotNull } from 'drizzle-orm';
+import {
+  appSetting,
+  category,
+  ticket,
+  ticketFile,
+  ticketHistory,
+  type Database,
+} from '@kmbhelp/db';
 import { renderMarkdownHtml } from '@kmbhelp/shared';
 import { renderTextPdf } from './text-pdf.js';
 
@@ -60,6 +67,7 @@ export function ticketTexts(input: {
   body: string;
   workingMarkdown: string | null;
   files: string[];
+  history?: string | undefined;
 }): { summary: string; verdict: string; markdown: string } {
   const due = input.dueOn ?? 'kein Datum';
   const who = input.requesterName?.trim() || 'ohne Namen';
@@ -69,7 +77,7 @@ export function ticketTexts(input: {
     `Ticket ${input.code}: ${input.subject}.`,
     `Kategorie ${input.category}, Wirkung ${input.impact}, Priorität ${input.priority}, fällig ${due}.`,
     `Eingereicht von ${who}.`,
-    first ? `Erstbeschreibung: ${first.slice(0, 400)}` : '',
+    first ? `Beschreibung: ${first.slice(0, 400)}` : '',
   ]
     .filter(Boolean)
     .join(' ');
@@ -83,9 +91,13 @@ export function ticketTexts(input: {
     `- Eingereicht von: ${who}`,
     `- Priorität: ${input.priority}`,
     '',
-    '## Erstbeschreibung',
+    '## Beschreibung',
     '',
     input.body,
+    '',
+    '## Historie',
+    '',
+    input.history?.trim() || 'keine',
     '',
     '## Bearbeitung',
     '',
@@ -105,6 +117,43 @@ export function ticketTexts(input: {
     '',
   ].join('\n');
   return { summary, verdict, markdown };
+}
+
+export function formatTicketHistory(input: {
+  createdAt: Date;
+  requester: string;
+  description: string;
+  changes: { at: Date; actor: string; text: string }[];
+}): string {
+  const rule = '-'.repeat(40);
+  const who = input.requester.trim() || 'Anwender';
+  const lines = [
+    `Ticket am ${viennaStamp(input.createdAt)}, Von ${who}, Beschreibung`,
+    input.description.trim(),
+  ];
+  for (const change of input.changes) {
+    lines.push(
+      rule,
+      `${viennaStamp(change.at)}, ${change.actor}, Beschreibung`,
+      change.text.trim(),
+    );
+  }
+  return lines.join('\n');
+}
+
+function viennaStamp(date: Date): string {
+  const parts = new Intl.DateTimeFormat('de-AT', {
+    timeZone: 'Europe/Vienna',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('day')}.${part('month')}.${part('year')} ${part('hour')}:${part('minute')}`;
 }
 
 export function archiveIndexHtml(input: {
@@ -256,6 +305,7 @@ export async function runTicketArchive(options: {
     .select({
       id: ticket.id,
       code: ticket.code,
+      createdAt: ticket.createdAt,
       subject: ticket.subject,
       impact: ticket.impact,
       priority: ticket.priority,
@@ -284,6 +334,21 @@ export async function runTicketArchive(options: {
       })
       .from(ticketFile)
       .where(eq(ticketFile.ticketId, row.id));
+    const changes = await database.db
+      .select({
+        at: ticketHistory.at,
+        actor: ticketHistory.actor,
+        text: ticketHistory.body,
+      })
+      .from(ticketHistory)
+      .where(eq(ticketHistory.ticketId, row.id))
+      .orderBy(asc(ticketHistory.at));
+    const history = formatTicketHistory({
+      createdAt: row.createdAt,
+      requester: row.requesterName ?? '',
+      description: row.body,
+      changes,
+    });
     const text = ticketTexts({
       code: row.code,
       subject: row.subject,
@@ -295,6 +360,7 @@ export async function runTicketArchive(options: {
       body: row.body,
       workingMarkdown: row.workingMarkdown,
       files: files.map((file) => file.name),
+      history,
     });
     const folder = join(root, safeCode(row.code));
     await mkdir(join(folder, 'dateien'), { recursive: true });

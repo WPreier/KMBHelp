@@ -1,6 +1,14 @@
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { category, staff, ticket, ticketEvent, ticketFile, type Database } from '@kmbhelp/db';
+import {
+  category,
+  staff,
+  ticket,
+  ticketEvent,
+  ticketFile,
+  ticketHistory,
+  type Database,
+} from '@kmbhelp/db';
 import {
   archiveIndexSchema,
   closedTicketListSchema,
@@ -34,6 +42,7 @@ import {
   readArchiveDocument,
   readArchiveFile,
   readArchiveTicket,
+  formatTicketHistory,
   safeTicketFileName,
   ticketTexts,
 } from './ticket-archive.js';
@@ -117,6 +126,7 @@ export function registerTicketPages(
       requesterName: row.requesterName,
       updatedAt: row.updatedAt.toISOString(),
       lastEditor: row.lastEditor,
+      history: await historyText(options.db(), row),
       files: await fileViews(options.db(), row.id),
       ...filePolicy(),
     });
@@ -215,6 +225,7 @@ export function registerTicketPages(
       const row = await one(options.db(), request.params.code);
       if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
       const files = await fileViews(options.db(), row.id);
+      const history = await historyText(options.db(), row);
       const text = ticketTexts({
         code: row.code,
         subject: row.subject,
@@ -226,6 +237,7 @@ export function registerTicketPages(
         body: row.body,
         workingMarkdown: row.workingMarkdown,
         files: files.map((file) => file.name),
+        history,
       });
       const pdf = renderTextPdf(`Ticket ${row.code}`, text.markdown.split('\n'));
       return reply
@@ -235,17 +247,49 @@ export function registerTicketPages(
     },
   );
 
+  app.get<{ Params: { code: string } }>(
+    '/api/v1/staff/tickets/work/:code/csv',
+    async (request, reply) => {
+      await options.reader(request);
+      const row = await one(options.db(), request.params.code);
+      if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
+      const history = await historyText(options.db(), row);
+      const lines = [
+        ['kind', 'at', 'actor', 'text'],
+        ['ticket', row.code, row.requesterName ?? '', row.subject],
+        ['category', '', row.categoryLabelDe, ''],
+        ['description', '', '', row.body],
+        ['history', '', '', history],
+      ];
+      const body = lines.map((line) => line.map(csvCell).join(',')).join('\n');
+      return reply
+        .header('content-type', 'text/csv; charset=utf-8')
+        .header('content-disposition', `attachment; filename="${row.code}.csv"`)
+        .send(`\uFEFF${body}\n`);
+    },
+  );
+
   app.post<{ Params: { code: string } }>('/api/v1/staff/tickets/work/:code', async (request) => {
     await options.reader(request);
     const parsed = ticketMarkdownSchema.safeParse(request.body);
     if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
     const row = await openRow(options.db(), request.params.code);
+    const previous = row.workingMarkdown ?? row.body;
     const stamp = await touchTicket(options.db(), request, row.id, options.now(), {
       workingMarkdown: parsed.data.markdown,
     });
+    if (parsed.data.markdown !== previous) {
+      await options.db().db.insert(ticketHistory).values({
+        ticketId: row.id,
+        at: options.now(),
+        actor: stamp.lastEditor,
+        body: parsed.data.markdown,
+      });
+    }
     return ticketSavedSchema.parse({
       ...stamp,
       assigneeEmail: row.assigneeEmail,
+      history: await historyText(options.db(), row),
     });
   });
 
@@ -416,6 +460,27 @@ function ageLabel(seconds: number): string {
   const hours = Math.floor(minutes / 60);
   if (hours < 48) return `${hours} Stunden`;
   return `${Math.floor(hours / 24)} Tage`;
+}
+
+async function historyText(
+  database: Database,
+  row: { id: string; createdAt: Date; requesterName: string | null; body: string },
+): Promise<string> {
+  const changes = await database.db
+    .select({ at: ticketHistory.at, actor: ticketHistory.actor, text: ticketHistory.body })
+    .from(ticketHistory)
+    .where(eq(ticketHistory.ticketId, row.id))
+    .orderBy(asc(ticketHistory.at));
+  return formatTicketHistory({
+    createdAt: row.createdAt,
+    requester: row.requesterName ?? '',
+    description: row.body,
+    changes,
+  });
+}
+
+function csvCell(value: string): string {
+  return `"${value.replace(/"/gu, '""')}"`;
 }
 
 function filePolicy(): { fileTypes: string[]; maxFileBytes: number } {
