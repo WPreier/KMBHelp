@@ -9,3 +9,7 @@ dist/
 *.dump
 .DS_Store
 .cursor/mcp.json
+
+# Dev-only kmbhelp-test. Real credentials stay outside the checkout.
+apps/kmbhelp-test/.secrets/
+apps/kmbhelp-test/.run/

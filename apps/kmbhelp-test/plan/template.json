@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "inventoryStatus": "waiting_for_credentials",
+  "target": {
+    "publicOrigin": "https://kmbhelp.kmbcloud.at",
+    "lanOrigin": "http://192.168.36.55",
+    "shortName": "kmbhelp"
+  },
+  "pages": [],
+  "cases": []
+}
