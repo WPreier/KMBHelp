@@ -6,6 +6,7 @@ import type { CaseResult, PlanDocument } from '../src/types';
 import { z } from 'zod';
 import { CaseResultSchema, PlanSchema, type StoredCase, type StoredPlan } from './planSchema';
 import { STORE_PLAN_PATH, STORE_ROOT } from './targets';
+import { APP_VERSION } from '../src/version';
 
 const FRONTMATTER = `---
 cursor:
@@ -85,6 +86,7 @@ ${statusNote}
 - Öffentlicher Host: ${plan.target.publicOrigin}
 - Kurzname: ${plan.target.shortName}
 - LAN: ${plan.target.lanOrigin}, nur wenn es dieselbe App ist. Die Zertifikatsprüfung bleibt auf dem öffentlichen Host.
+- App-Fassung: ${APP_VERSION}. Nachweis: apps/kmbhelp-test/docs/nachweis.md
 
 Schema: \`version\` ${plan.version}, \`inventoryStatus\` \`${plan.inventoryStatus}\`, \`pages\` und \`cases\`. Jeder Fall ist \`valid\` oder \`invalid\`. Der Lauf ist abgeschlossen, wenn jeder Fall bestanden hat.
 

@@ -3,6 +3,7 @@ import { fetchCredentials, fetchPlan, runCase, runPhase, runTest, saveCredential
 import { text, type CopyKey } from './i18n';
 import { TestRow } from './TestRow';
 import type { CaseResult, CredentialStatus, Lang, PlanDocument, RowStatus, TestId, TestOutcome } from './types';
+import { APP_VERSION } from './version';
 
 const TESTS: { id: TestId; de: string; en: string }[] = [
   { id: 'certificate', de: 'Zertifikat', en: 'Certificate' },
@@ -155,8 +156,9 @@ export function App() {
       <header>
         <div>
           <h1>kmbhelp-test</h1>
+          <p className="meta">Version {APP_VERSION}</p>
           <p className="intro">{t('intro')}</p>
-          <p className="print-only">kmbhelp · https://kmbhelp.kmbcloud.at</p>
+          <p className="print-only">kmbhelp-test {APP_VERSION} · kmbhelp · https://kmbhelp.kmbcloud.at</p>
         </div>
         <div className="toolbar no-print">
           <button type="button" onClick={() => setLang(lang === 'de' ? 'en' : 'de')}>

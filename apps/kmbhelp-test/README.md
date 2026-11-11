@@ -1,5 +1,7 @@
 # kmbhelp-test
 
+Fassung **0.1.0**. Der vollständige Nachweis steht in [docs/nachweis.md](docs/nachweis.md). Die Nummernfolge und die Regel „jede Änderung erhöht die Patchnummer“ stehen in [CHANGELOG.md](CHANGELOG.md).
+
 Entwicklungsprüfung gegen den laufenden Helpdesk. Das ist keine Produktphase. `docs/status.md` bleibt unberührt, und die App ändert das Verhalten von KMBHelp nicht.
 
 Kurzname in der Oberfläche: **kmbhelp**. Der öffentliche Host ist `https://kmbhelp.kmbcloud.at`. `kmhhelp` ist kein Host. Der LAN-Host `http://192.168.36.55` wird nur verwendet, wenn er dieselbe App ist. Die Zertifikatsprüfung bleibt am öffentlichen Host.
