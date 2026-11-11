@@ -120,6 +120,13 @@
       "when": 1794000000000,
       "tag": "0017_ticket_history",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794100000000,
+      "tag": "0018_mail_lesson_ignored",
+      "breakpoints": true
     }
   ]
 }

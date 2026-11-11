@@ -124,7 +124,7 @@ export function registerActivity(
       actor,
       kind: 'page',
       target: parsed.data.path,
-      detail: 'page',
+      detail: pageLabel(parsed.data.path),
       ip: clientAddress(request),
     });
     if (parsed.data.path === '/anmelden' || parsed.data.path.startsWith('/anmelden/')) {
@@ -186,6 +186,33 @@ export function registerActivity(
       return sendLogExport(reply, file as LogName, format, lines);
     return logReportSchema.parse({ file, lines });
   });
+}
+
+function pageLabel(path: string): string {
+  if (path === '/') return 'Ticket erfassen';
+  if (path === '/offen') return 'Alle offenen Tickets';
+  if (path === '/meine') return 'Meine offenen Tickets';
+  if (path === '/abgeschlossen') return 'Abgeschlossene Tickets';
+  if (path.startsWith('/abgeschlossen/')) return 'Abschluss';
+  if (path.startsWith('/ticket/')) return 'Ticket';
+  if (path.startsWith('/archiv/')) return 'Archiv';
+  if (path === '/faq' || path.startsWith('/faq/')) return 'Anleitungen';
+  if (path.startsWith('/wissen/')) return 'Wissen';
+  if (path === '/suche') return 'Suche';
+  if (path === '/anmelden' || path.startsWith('/anmelden/')) return 'Anmeldung';
+  if (path === '/verwaltung') return 'Verwaltung';
+  if (path === '/verwaltung/kenntnisse') return 'Kenntnisse';
+  if (path === '/verwaltung/kategorien') return 'Kategorien';
+  if (path === '/verwaltung/meldungen') return 'Meldungen';
+  if (path === '/verwaltung/konfiguration') return 'Konfiguration';
+  if (path === '/verwaltung/protokoll') return 'Protokoll';
+  if (path === '/verwaltung/tests') return 'Tests';
+  if (path === '/verwaltung/ki-mailtest') return 'KI-Mailtest';
+  if (path === '/verwaltung/mailbox') return 'Helpdesk-Mailbox';
+  if (path === '/mitarbeit/dashboard') return 'Dashboard';
+  if (path.startsWith('/mitarbeit/ticket/')) return 'Ticketbearbeitung';
+  if (path.startsWith('/beschaffung/')) return 'Beschaffung';
+  return 'Seite';
 }
 
 function sendExport(

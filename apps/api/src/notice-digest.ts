@@ -99,7 +99,7 @@ export async function maybeNoticeDigest(input: {
     ? await input.inspect()
     : (await inspectConfiguration(input.env)).checks;
   const message = digestMessage(checks, decision.date);
-  let detail = 'digest-clear';
+  let detail = 'Keine offenen Warnungen.';
   if (message) {
     try {
       const via = await deliverOpsMail({
@@ -110,17 +110,20 @@ export async function maybeNoticeDigest(input: {
         text: message.text,
         deliver: input.deliver,
       });
-      detail = via === 'smtp' ? 'digest-smtp' : 'digest';
+      detail =
+        via === 'smtp'
+          ? 'Warnungen über den lokalen Mailserver verschickt.'
+          : 'Warnungen verschickt.';
       await noteExternal(input.env, 'informational', `notice digest ${via}`);
     } catch {
-      detail = 'digest-failed';
+      detail = 'Warnungen konnten nicht verschickt werden.';
       await noteExternal(input.env, 'warning', 'notice digest failed');
     }
   }
   await rememberDigestDate(input.database, decision.date);
   await writeActivity(
     input.database,
-    { actor: 'worker', kind: 'mail', target: 'digest', detail, ip: 'local' },
+    { actor: 'worker', kind: 'mail', target: 'Tagesmail', detail, ip: '' },
     input.env,
   );
 }

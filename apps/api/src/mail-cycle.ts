@@ -197,7 +197,7 @@ export async function runMailCycle(options: {
       if (result === 'created' || result === 'duplicate') {
         await mailbox.moveToInboxChild(mail.graphId, 'Tickets');
         await noteExternal(options.env, 'informational', 'external graph move tickets');
-        await note(deps, mail.internetMessageId, 'move-tickets');
+        await noteMail(deps, mail, 'In den Ordner Tickets verschoben.');
         continue;
       }
       if ((result === 'declined' || result === 'skip') && mail.internetMessageId.trim() !== '') {
@@ -215,9 +215,9 @@ export async function runMailCycle(options: {
     await writeActivity(database, {
       actor: 'worker',
       kind: 'mail',
-      target: String(number),
-      detail: 'reopen',
-      ip: 'local',
+      target: `Ticket ${number}`,
+      detail: 'Das Ticket ist wieder offen. Der Hinweis liegt bereit.',
+      ip: '',
     });
   });
   await store.heartbeat('polling', at);
@@ -236,7 +236,7 @@ export async function ingestMail(
   manual?: { reason: string },
 ): Promise<'created' | 'duplicate' | 'skip' | 'declined' | 'blocked' | 'retry'> {
   if (!addressPattern.test(mail.fromEmail) || mail.internetMessageId.trim() === '') {
-    await note(deps, mail.internetMessageId || mail.graphId, 'skip');
+    await noteMail(deps, mail, 'Übersprungen. Absender oder Kennung fehlt.');
     return 'skip';
   }
   if ((await deps.store.lesson(mail.internetMessageId)) === 'rejected') return 'blocked';
@@ -245,7 +245,7 @@ export async function ingestMail(
     await ensureCalendar(existing, deps, null);
     await ensureReply(existing, deps);
     await notifyAssignee(existing, mail, deps);
-    await note(deps, String(existing.number), 'duplicate');
+    await noteMail(deps, mail, `Gehört schon zu Ticket ${existing.number}.`);
     return 'duplicate';
   }
   const categories = await deps.store.categories();
@@ -270,7 +270,7 @@ export async function ingestMail(
     chosen = categories.find((category) => category.code === ruled) ?? chosen;
   }
   if (!chosen) {
-    await note(deps, mail.internetMessageId, 'retry');
+    await noteMail(deps, mail, 'Wird beim nächsten Durchlauf erneut geprüft.');
     return 'retry';
   }
   const impact = impactForGroup(chosen.groupCode);
@@ -315,7 +315,7 @@ export async function ingestMail(
     await ensureCalendar(raced, deps, null);
     await ensureReply(raced, deps);
     await notifyAssignee(raced, mail, deps);
-    await note(deps, String(raced.number), 'duplicate');
+    await noteMail(deps, mail, `Gehört schon zu Ticket ${raced.number}.`);
     return 'duplicate';
   }
   await deps.store.addEvent(created.id, 'created', {
@@ -323,7 +323,7 @@ export async function ingestMail(
     priority,
     reason: priorityReason,
   });
-  await note(deps, String(created.number), 'created');
+  await noteMail(deps, mail, `Ticket ${created.number} angelegt.`);
   const auto = await maybeAutoReply(created, mail, text, null, deps);
   await deps.store.addEvent(created.id, 'model_decision', {
     model: modelName,
@@ -372,43 +372,45 @@ async function askLocal(
 ): Promise<LocalMailResult | 'timeout' | 'retry' | 'declined'> {
   if (!deps.askMail) return 'retry';
   const asked = await deps.askMail(mail);
-  const detail =
-    asked === 'timeout'
-      ? 'decision=timeout'
-      : asked === 'unreachable'
-        ? 'decision=held'
-        : asked === 'unclear'
-          ? 'decision=unparsed'
-          : asked.kind === 'support'
-            ? 'decision=support'
-            : asked.kind === 'reply'
-              ? 'decision=reply'
-              : asked.kind === 'close'
-                ? 'decision=close'
-                : 'decision=not-support';
-  await deps.record?.({
-    actor: 'worker',
-    kind: 'mail',
-    target: mail.internetMessageId.slice(0, 200),
-    detail,
-    ip: 'local',
-  });
-  await deps.syslog?.(
-    asked === 'timeout' || asked === 'unreachable' ? 'warning' : 'informational',
-    `local ollama ${detail}`,
-  );
-  if (asked === 'unreachable') return 'retry';
-  if (asked === 'timeout') return 'timeout';
-  if (asked === 'unclear' || asked.kind === 'spam' || asked.kind === 'foreign') return 'declined';
-  if (deps.ticketsOnly && (asked.kind === 'reply' || asked.kind === 'close')) return 'declined';
+  const level = asked === 'timeout' || asked === 'unreachable' ? 'warning' : 'informational';
+  if (asked === 'unreachable') {
+    await tellMail(
+      deps,
+      mail,
+      'Die Prüfung war nicht erreichbar. Die Mail bleibt im Posteingang.',
+      level,
+    );
+    return 'retry';
+  }
+  if (asked === 'timeout') {
+    await tellMail(deps, mail, 'Die Prüfung hat das Zeitlimit erreicht.', level);
+    return 'timeout';
+  }
+  if (asked === 'unclear' || asked.kind === 'spam' || asked.kind === 'foreign') {
+    await tellMail(deps, mail, 'Kein Ticket. Die Mail bleibt ungelesen im Posteingang.', level);
+    return 'declined';
+  }
+  if (deps.ticketsOnly && (asked.kind === 'reply' || asked.kind === 'close')) {
+    const word = asked.kind === 'reply' ? 'eine Antwort' : 'ein Abschluss';
+    await tellMail(
+      deps,
+      mail,
+      `Die Prüfung erkennt ${word}. Es wird nur ein neues Ticket angelegt. Die Mail bleibt im Posteingang.`,
+      level,
+    );
+    return 'declined';
+  }
   if (asked.kind === 'reply') {
+    await tellMail(deps, mail, 'Als Antwort erkannt.', level);
     await attachReply(mail, deps);
     return 'declined';
   }
   if (asked.kind === 'close') {
+    await tellMail(deps, mail, 'Als Abschluss erkannt.', level);
     await closeFromSender(mail, deps);
     return 'declined';
   }
+  await tellMail(deps, mail, 'Als Ticket erkannt.', level);
   return asked;
 }
 
@@ -418,7 +420,7 @@ async function attachReply(mail: InboundMail, deps: IngestDeps): Promise<void> {
   const referenced = byNumber ? null : await referencedTicket(mail, deps);
   const target = byNumber ?? referenced;
   if (!target) {
-    await note(deps, mail.internetMessageId, 'reply-unmatched');
+    await noteMail(deps, mail, 'Als Antwort erkannt, aber kein passendes Ticket gefunden.');
     return;
   }
   const noteText = `${mail.fromName} <${mail.fromEmail}>\n${mail.subject}\n${mail.body}`.slice(
@@ -426,7 +428,7 @@ async function attachReply(mail: InboundMail, deps: IngestDeps): Promise<void> {
     8000,
   );
   await deps.store.appendReply(target.id, noteText);
-  await note(deps, String(target.number), 'reply-attached');
+  await noteMail(deps, mail, `Antwort an Ticket ${target.number} gehängt.`);
 }
 
 async function referencedTicket(
@@ -447,12 +449,12 @@ async function referencedTicket(
 async function closeFromSender(mail: InboundMail, deps: IngestDeps): Promise<void> {
   const target = await deps.store.latestOpenFrom(mail.fromEmail);
   if (!target) {
-    await note(deps, mail.internetMessageId, 'close-unmatched');
+    await noteMail(deps, mail, 'Als Abschluss erkannt, aber kein passendes Ticket gefunden.');
     return;
   }
   await deps.store.closeTicket(target.id);
   await deps.store.addEvent(target.id, 'closed', { source: 'mail' });
-  await note(deps, String(target.number), 'closed');
+  await noteMail(deps, mail, `Ticket ${target.number} geschlossen.`);
 }
 
 async function notifyModelTimeout(mail: InboundMail, deps: IngestDeps): Promise<void> {
@@ -463,7 +465,7 @@ async function notifyModelTimeout(mail: InboundMail, deps: IngestDeps): Promise<
     try {
       await deps.mailer.deliver({ to, subject, text });
       await deps.syslog?.('informational', 'local ollama timeout notice sent');
-      await note(deps, mail.internetMessageId, 'timeout-sent');
+      await noteMail(deps, mail, 'Hinweis zur Zeitüberschreitung verschickt.');
       return;
     } catch (error) {
       logError(`mail timeout-graph: ${safeErrorText(error)}`, process.env);
@@ -474,11 +476,15 @@ async function notifyModelTimeout(mail: InboundMail, deps: IngestDeps): Promise<
     if (deps.sendErrorSmtp) await deps.sendErrorSmtp({ subject, text });
     else await sendSmtp(deps.smtp ?? smtpSettingsFromEnv(process.env), { subject, text });
     await deps.syslog?.('informational', 'local ollama timeout notice smtp');
-    await note(deps, mail.internetMessageId, 'timeout-smtp');
+    await noteMail(
+      deps,
+      mail,
+      'Hinweis zur Zeitüberschreitung über den lokalen Mailserver verschickt.',
+    );
   } catch (error) {
     logError(`mail timeout-smtp: ${safeErrorText(error)}`, process.env);
     await deps.syslog?.('warning', 'local ollama timeout notice failed');
-    await note(deps, mail.internetMessageId, 'timeout-failed');
+    await noteMail(deps, mail, 'Hinweis zur Zeitüberschreitung konnte nicht verschickt werden.');
   }
 }
 
@@ -507,7 +513,7 @@ async function maybeAutoReply(
   });
   await deps.store.addEvent(stored.id, 'reply', { auto: true });
   await deps.store.closeTicket(stored.id);
-  await note(deps, String(stored.number), 'auto-reply');
+  await noteMail(deps, mail, `Ticket ${stored.number} automatisch beantwortet und geschlossen.`);
   return true;
 }
 
@@ -536,11 +542,19 @@ async function ensureCalendar(
       end,
     });
     await deps.store.addEvent(stored.id, 'calendar', { id: event.id });
-    await note(deps, String(stored.number), 'calendar');
+    await note(
+      deps,
+      `Ticket ${stored.number}`,
+      `Kalendereintrag für ${stored.assigneeEmail} angelegt. Betreff: ${stored.subject}.`,
+    );
   } catch (error) {
     logError(`mail calendar: ${safeErrorText(error)}`, process.env);
     await deps.store.addEvent(stored.id, 'calendar_failed', {});
-    await note(deps, String(stored.number), 'calendar-failed');
+    await note(
+      deps,
+      `Ticket ${stored.number}`,
+      `Kalendereintrag für ${stored.assigneeEmail} konnte nicht angelegt werden. Betreff: ${stored.subject}.`,
+    );
   }
 }
 
@@ -566,7 +580,11 @@ async function notifyAssignee(
     });
     await deps.store.addEvent(stored.id, 'assignee_mail', {});
     await deps.syslog?.('informational', 'external graph assignee-mail');
-    await note(deps, String(stored.number), 'assignee-mail');
+    await noteMail(
+      deps,
+      mail,
+      `Entwurf an ${stored.assigneeEmail} für Ticket ${stored.number} angelegt.`,
+    );
   } catch (error) {
     logError(`mail assignee: ${safeErrorText(error)}`, process.env);
   }
@@ -581,7 +599,11 @@ async function ensureReply(stored: StoredMailTicket, deps: IngestDeps): Promise<
     text: replyText(stored.number, deps.origin, stored.body),
   });
   await deps.store.addEvent(stored.id, 'reply', {});
-  await note(deps, String(stored.number), 'reply');
+  await note(
+    deps,
+    `von Helpdesk an ${stored.requesterEmail}`,
+    `Betreff: Ticket ${stored.number}. Antwortentwurf an den Melder angelegt.`,
+  );
 }
 
 export async function deliverReopen(
@@ -594,9 +616,9 @@ export async function deliverReopen(
     await writeActivity(database, {
       actor: 'worker',
       kind: 'mail',
-      target: String(input.number),
-      detail: 'reopen',
-      ip: 'local',
+      target: `Ticket ${input.number}`,
+      detail: 'Das Ticket ist wieder offen. Der Hinweis liegt bereit.',
+      ip: '',
     });
   });
 }
@@ -639,10 +661,31 @@ async function notifyOnCall(
       text: `Neues Ticket ${stored.number}\n\n${stored.subject}\n${deps.origin}${staffTicketPath}/${stored.number}\n`,
     });
     await deps.store.addEvent(stored.id, 'oncall', {});
-    await note(deps, String(stored.number), 'oncall');
+    await note(
+      deps,
+      `von Helpdesk an ${deps.oncallEmail}`,
+      `Betreff: Ticket ${stored.number}. Die Bereitschaft wurde informiert.`,
+    );
   } catch (error) {
     logError(`mail oncall: ${safeErrorText(error)}`, process.env);
   }
+}
+
+async function tellMail(
+  deps: IngestDeps,
+  mail: InboundMail,
+  happened: string,
+  level: 'warning' | 'informational',
+): Promise<void> {
+  await noteMail(deps, mail, happened);
+  await deps.syslog?.(level, happened);
+}
+
+async function noteMail(deps: IngestDeps, mail: InboundMail, happened: string): Promise<void> {
+  const from = mail.fromEmail.trim() || 'unbekannt';
+  const to = mail.to?.trim() || 'Helpdesk';
+  const subject = mail.subject.trim() || '(ohne Betreff)';
+  await note(deps, `von ${from} an ${to}`, `Betreff: ${subject}. ${happened}`);
 }
 
 async function note(deps: IngestDeps, target: string, detail: string): Promise<void> {
@@ -651,7 +694,7 @@ async function note(deps: IngestDeps, target: string, detail: string): Promise<v
     kind: 'mail',
     target: target.slice(0, 200),
     detail: detail.slice(0, 300),
-    ip: 'local',
+    ip: '',
   });
 }
 

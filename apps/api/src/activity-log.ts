@@ -17,14 +17,10 @@ export function activityLogPath(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 export function activityLine(entry: ActivityRow): string {
-  const fields = [
-    entry.at.toISOString(),
-    entry.actor,
-    entry.kind,
-    entry.target,
-    entry.detail,
-    entry.ip,
-  ].map((field) => field.replace(/[\t\r\n]/gu, ' ').slice(0, 300));
+  const kind = entry.kind === 'page' ? 'Seite' : entry.kind === 'mail' ? 'Mail' : entry.kind;
+  const fields = [entry.at.toISOString(), entry.actor, kind, entry.target, entry.detail].map(
+    (field) => field.replace(/[\t\r\n]/gu, ' ').slice(0, 300),
+  );
   return fields.join('\t');
 }
 

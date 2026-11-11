@@ -204,6 +204,7 @@ Die App ist in Betrieb. Diese Phase härtet sie, prüft sie an echten Vorgängen
 - [x] Der Worker auf dem Entwicklungsrechner liest die Helpdesk-Mailbox und lässt jede Mail liegen. Auf kmbhelp wird eine als Ticket erkannte Mail nach der Verarbeitung in den Unterordner Tickets verschoben. Andere Mails bleiben ungelesen und werden nicht noch einmal an die KI gegeben
 - [x] Auf `/ticket/{code}` heißt das Feld Beschreibung und zeigt höchstens drei Zeilen. Darunter steht die Historie mit Datum, Person und Text. PDF und CSV enthalten das komplette Ticket
 - [x] Der Knopf M steht links neben der Mitarbeiterliste. Nur ein Administrator ändert sie, nach Rückfrage. Die Übergabemail wird verschickt. Die Priorität ist eine Auswahlliste für Administratoren und angemeldete Mitarbeiter, mit Rückfrage und sofortigem Speichern. Der Verlauf steht unter der Dateiliste. Die Formatleiste zeigt Strichsymbole
+- [x] `mail_lesson` speichert `ignored`. `mail.log` nennt Absender, Empfänger, Betreff und das Ergebnis auf Deutsch. `activity.log` nennt die Seite auf Deutsch und lässt die Adresse am Zeilenende weg
 - [ ] Härtung, Praxistest und Notfallblatt
 
 Start: `pnpm dev`. Die Seiten stehen auf `http://127.0.0.1:5173/verwaltung/tests`. Ein Benutzer ohne Helpdesk-Gruppe erhält von der API 401.
