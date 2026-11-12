@@ -8,9 +8,18 @@ import {
   type ThemeName,
 } from '@kmbhelp/shared';
 import { useEffect, useState, type FormEvent } from 'react';
-import { BrowserRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import {
+  BrowserRouter,
+  Link,
+  NavLink,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import kmbDark from '../../../brand/kmb-logo-dark.png';
 import kmbLight from '../../../brand/kmb-logo--light.png';
+import helpdeskMark from '../../../brand/kmb-helpdesk.png';
 import malamaDark from '../../../brand/malama-logo-dark.svg';
 import malamaLight from '../../../brand/malama-logo-light.svg';
 import { LocaleProvider, useLocale } from './locale.js';
@@ -120,6 +129,7 @@ function Shell({
   }, [location.pathname]);
   const admitted = Boolean(session?.signedIn || session?.internalAdmin);
   const onLogin = location.pathname === '/anmelden' || location.pathname.startsWith('/anmelden/');
+  const markOnDark = theme === 'dark';
   useEffect(() => {
     if (session && !admitted && !onLogin) navigate('/anmelden', { replace: true });
   }, [admitted, navigate, onLogin, session]);
@@ -137,7 +147,7 @@ function Shell({
       <header className="band">
         <div className="brand">
           <Link className="logo-link" to="/">
-            <img src={theme === 'dark' ? kmbDark : kmbLight} alt={copy.kmb} />
+            <img src={markOnDark ? kmbDark : kmbLight} alt={copy.kmb} />
           </Link>
           <nav aria-label={copy.navigation}>
             <SiteLink href={targets.www}>{copy.www}</SiteLink>
@@ -221,61 +231,72 @@ function Shell({
             target="_blank"
             rel="noopener noreferrer"
           >
-            <img src={theme === 'dark' ? malamaDark : malamaLight} alt={copy.malama} />
+            <img src={markOnDark ? malamaDark : malamaLight} alt={copy.malama} />
           </a>
         </div>
       </header>
-      <div className="band identity">
-        <h1>{copy.documentTitle}</h1>
-        <p>{copy.lead}</p>
-      </div>
       <main id="content">
-        {admitted ? (
-          <nav className="content-nav" aria-label={copy.contentNav}>
-            <Link to="/mitarbeit/dashboard">{copy.dashboardTitle}</Link>
-            <Link to="/">{copy.fileTicket}</Link>
-            <Link to="/meine">{copy.myOpenTickets}</Link>
-            <Link to="/offen">{copy.openTickets}</Link>
-            <Link to="/abgeschlossen">{copy.guides}</Link>
-          </nav>
-        ) : null}
-        {session?.signedIn ? (
-          <AdminLinks
-            administrator={session.audience === 'administrator' || Boolean(session.internalAdmin)}
-          />
-        ) : null}
-        {session && !admitted && !onLogin ? (
-          <SignInPage />
-        ) : (
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/offen" element={<OpenTicketsPage />} />
-            <Route path="/meine" element={<MyOpenTicketsPage />} />
-            <Route path="/abgeschlossen" element={<ClosedTicketsPage />} />
-            <Route path="/abgeschlossen/:code" element={<ClosedSummaryPage />} />
-            <Route path="/ticket/:code" element={<TicketWikiPage />} />
-            <Route path="/archiv/:code" element={<ArchiveIndexPage />} />
-            <Route path="/faq" element={<FaqListPage />} />
-            <Route path="/faq/:slug" element={<FaqPage />} />
-            <Route path="/wissen/:id" element={<ArticlePage />} />
-            <Route path="/suche" element={<SearchPage />} />
-            <Route path="/anmelden" element={<SignInPage />} />
-            <Route path="/anmelden/qr/:token" element={<QrSignInPage />} />
-            <Route path="/verwaltung" element={<AdminPage />} />
-            <Route path="/verwaltung/kenntnisse" element={<TermPage kind="skill" />} />
-            <Route path="/verwaltung/kategorien" element={<TermPage kind="category" />} />
-            <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
-            <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
-            <Route path="/verwaltung/protokoll" element={<ActivityPage />} />
-            <Route path="/verwaltung/tests" element={<TestsPage />} />
-            <Route path="/verwaltung/ki-mailtest" element={<MailTestPage />} />
-            <Route path="/verwaltung/mailbox" element={<MailboxAdminPage />} />
-            <Route path="/mitarbeit/dashboard" element={<DashboardPage />} />
-            <Route path="/mitarbeit/ticket/:number" element={<TicketPage />} />
-            <Route path="/beschaffung/:token" element={<ProcurementDecisionPage />} />
-            <Route path="*" element={<MissingPage />} />
-          </Routes>
-        )}
+        <div className="shell-body">
+          {admitted || session?.signedIn ? (
+            <div className="shell-rail">
+              <Link className="rail-mark" to="/" title={copy.helpdeskMark}>
+                <img src={helpdeskMark} alt={copy.helpdeskMark} />
+              </Link>
+              {admitted ? (
+                <nav className="content-nav" aria-label={copy.contentNav}>
+                  <NavLink to="/" end>
+                    {copy.fileTicket}
+                  </NavLink>
+                  <NavLink to="/meine">{copy.myOpenTickets}</NavLink>
+                  <NavLink to="/offen">{copy.openTickets}</NavLink>
+                  <NavLink to="/abgeschlossen">{copy.guides}</NavLink>
+                  <NavLink to="/mitarbeit/dashboard">{copy.dashboardTitle}</NavLink>
+                </nav>
+              ) : null}
+              {session?.signedIn ? (
+                <AdminLinks
+                  administrator={
+                    session.audience === 'administrator' || Boolean(session.internalAdmin)
+                  }
+                />
+              ) : null}
+            </div>
+          ) : null}
+          <div className="shell-stage">
+            {session && !admitted && !onLogin ? (
+              <SignInPage />
+            ) : (
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/offen" element={<OpenTicketsPage />} />
+                <Route path="/meine" element={<MyOpenTicketsPage />} />
+                <Route path="/abgeschlossen" element={<ClosedTicketsPage />} />
+                <Route path="/abgeschlossen/:code" element={<ClosedSummaryPage />} />
+                <Route path="/ticket/:code" element={<TicketWikiPage />} />
+                <Route path="/archiv/:code" element={<ArchiveIndexPage />} />
+                <Route path="/faq" element={<FaqListPage />} />
+                <Route path="/faq/:slug" element={<FaqPage />} />
+                <Route path="/wissen/:id" element={<ArticlePage />} />
+                <Route path="/suche" element={<SearchPage />} />
+                <Route path="/anmelden" element={<SignInPage />} />
+                <Route path="/anmelden/qr/:token" element={<QrSignInPage />} />
+                <Route path="/verwaltung" element={<AdminPage />} />
+                <Route path="/verwaltung/kenntnisse" element={<TermPage kind="skill" />} />
+                <Route path="/verwaltung/kategorien" element={<TermPage kind="category" />} />
+                <Route path="/verwaltung/meldungen" element={<NoticesPage />} />
+                <Route path="/verwaltung/konfiguration" element={<ConfigurationPage />} />
+                <Route path="/verwaltung/protokoll" element={<ActivityPage />} />
+                <Route path="/verwaltung/tests" element={<TestsPage />} />
+                <Route path="/verwaltung/ki-mailtest" element={<MailTestPage />} />
+                <Route path="/verwaltung/mailbox" element={<MailboxAdminPage />} />
+                <Route path="/mitarbeit/dashboard" element={<DashboardPage />} />
+                <Route path="/mitarbeit/ticket/:number" element={<TicketPage />} />
+                <Route path="/beschaffung/:token" element={<ProcurementDecisionPage />} />
+                <Route path="*" element={<MissingPage />} />
+              </Routes>
+            )}
+          </div>
+        </div>
       </main>
     </>
   );

@@ -20,7 +20,7 @@ import {
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { getJson, postJson, RequestFailed } from './api.js';
-import { formatAge, priorityLabel, reasonLabel } from './format.js';
+import { priorityLabel, reasonLabel } from './format.js';
 import { Hint } from './hint.js';
 import { useLocale } from './locale.js';
 
@@ -109,7 +109,7 @@ export function HomePage() {
           body: String(data.get('body') ?? ''),
           requesterName: String(data.get('requesterName') ?? ''),
           assigneeEmail,
-          dueOn: isoDateToDisplay(String(data.get('dueOn') ?? '')),
+          dueOn: String(data.get('dueOn') ?? '').trim(),
           clientPriority: String(data.get('clientPriority') ?? ''),
           source: 'web',
         },
@@ -198,7 +198,7 @@ export function HomePage() {
         </label>
         <label>
           {copy.dueOn}
-          <input name="dueOn" type="date" />
+          <input name="dueOn" type="text" inputMode="numeric" placeholder="dd.MM.yyyy" />
         </label>
         <div className="field">
           <span>{copy.assignedStaff}</span>
@@ -463,15 +463,32 @@ export function OpenTicketList({
               <table className="ticket-table">
                 <thead>
                   <tr>
-                    <th scope="col">{copy.ticketId}</th>
-                    <th scope="col">{copy.assignedStaff}</th>
-                    <th scope="col">{copy.ticketText}</th>
-                    <th scope="col">{copy.age}</th>
-                    <th scope="col">{copy.dueUntil}</th>
-                    <th scope="col">{copy.ticketOpen}</th>
-                    <th scope="col">{copy.priority}</th>
-                    {mayClose ? <th scope="col">{copy.doneHead}</th> : null}
-                    <th scope="col">{copy.askHead}</th>
+                    <th className="col-id" scope="col">
+                      {copy.ticketId}
+                    </th>
+                    <th className="col-assignee" scope="col">
+                      {copy.assignedStaff}
+                    </th>
+                    <th className="col-text" scope="col">
+                      {copy.ticketText}
+                    </th>
+                    <th className="col-due" scope="col">
+                      {copy.dueUntil}
+                    </th>
+                    <th className="col-open" scope="col">
+                      {copy.ticketOpen}
+                    </th>
+                    <th className="col-priority" scope="col">
+                      {copy.priority}
+                    </th>
+                    {mayClose ? (
+                      <th className="col-done" scope="col">
+                        {copy.doneHead}
+                      </th>
+                    ) : null}
+                    <th className="col-ask" scope="col">
+                      {copy.askHead}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -484,16 +501,19 @@ export function OpenTicketList({
                       entry.closeRequested;
                     return (
                       <tr key={entry.number}>
-                        <td>
+                        <td className="col-id">
                           <Link to={`/ticket/${entry.code}`}>{entry.code}</Link>
                         </td>
-                        <td>{entry.assigneeEmail}</td>
-                        <td className="ticket-text">
+                        <td className="col-assignee" title={entry.assigneeEmail}>
+                          {entry.assigneeEmail}
+                        </td>
+                        <td className="col-text ticket-text">
                           <Hint text={entry.subject}>{entry.subject}</Hint>
                         </td>
-                        <td>{formatAge(entry.ageSeconds, copy)}</td>
-                        <td>{entry.dueOn ? isoDateToDisplay(entry.dueOn) : copy.noDue}</td>
-                        <td>
+                        <td className="col-due">
+                          {entry.dueOn ? isoDateToDisplay(entry.dueOn) : copy.noDue}
+                        </td>
+                        <td className="col-open">
                           <Hint text={switchTitle}>
                             <label className="check">
                               <input
@@ -505,11 +525,10 @@ export function OpenTicketList({
                                   void changeTicket(entry.number, { action: 'toggle' });
                                 }}
                               />
-                              {copy.ticketOpen}
                             </label>
                           </Hint>
                         </td>
-                        <td>
+                        <td className="col-priority">
                           <Hint text={copy.priorityTitle}>
                             <select
                               value={entry.priority}
@@ -535,7 +554,7 @@ export function OpenTicketList({
                           </Hint>
                         </td>
                         {mayClose ? (
-                          <td>
+                          <td className="col-done">
                             <Hint text={copy.closeTitle}>
                               <button
                                 type="button"
@@ -555,7 +574,7 @@ export function OpenTicketList({
                             </Hint>
                           </td>
                         ) : null}
-                        <td>
+                        <td className="col-ask">
                           {entry.status === 'open' ? (
                             <Hint text={copy.askStaffTitle}>
                               <button

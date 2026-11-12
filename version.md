@@ -1,10 +1,10 @@
 # Version
 
-Aktueller Stand: **V 0.2.17**
+Aktueller Stand: **V 0.2.18**
 
 | | |
 |---|---|
-| Datum | 11.11.2026 |
+| Datum | 13.11.2026 |
 | Commit | dieser Stand, Branch `phase/12-haerten` |
 | Branch | `phase/12-haerten` |
 | Datei auf dem Server | `/opt/kmbhelp/version.md` |
@@ -17,13 +17,17 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 |---|---|---|
 | 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
 | 2 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. Am 07.11.2026 hat er die Minor 2 freigegeben. |
-| 17 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
+| 18 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.18**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.19**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.2.18 — 13.11.2026
+
+Die Oberfläche folgt fest der Designsprache Leitstand. Die Seitenleiste zeigt das Helpdesk-Zeichen, die aktive Seite und den Hover. Ticket erfassen ist die Startseite und steht zuerst im Menü. Die offenen Tickets haben feste Spalten ohne Alter, die Checkbox heißt offen. Datum ist `dd.MM.yyyy`. IBM Plex Sans liegt lokal unter `apps/web/public/fonts/`. Der große Titel und der Untertitel unter der Kopfzeile entfallen.
 
 ### V 0.2.17 — 11.11.2026
 
@@ -129,3 +133,4 @@ Darin enthalten ist die bisherige Arbeit seit dem 26.10.2026:
 | 03.11.2026 | `e8f4354` | Katalogimport nimmt den Dateipfad nach `--` an |
 | 04.11.2026 | `3ed5890` | Mitarbeiterliste nur noch mit Anmeldung, localhost oder Diensttoken |
 | 06.11.2026 | `e2cad45` | Postfachzugriff in `mail.log`, Modellanfrage ausführlich in `ki.log` |
+

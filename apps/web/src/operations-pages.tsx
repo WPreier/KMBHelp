@@ -10,23 +10,25 @@ import {
   type ServiceRow,
 } from '@kmbhelp/shared';
 import { useEffect, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { getJson, postJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
 
 export function AdminLinks({ administrator }: { administrator: boolean }) {
   const { copy } = useLocale();
   return (
-    <nav className="content-nav" aria-label={copy.adminTitle}>
-      <Link to="/verwaltung">{copy.adminTitle}</Link>
-      <Link to="/verwaltung/kenntnisse">{copy.skills}</Link>
-      <Link to="/verwaltung/kategorien">{copy.categories}</Link>
-      <Link to="/verwaltung/meldungen">{copy.noticesTitle}</Link>
-      <Link to="/verwaltung/konfiguration">{copy.configurationTitle}</Link>
-      <Link to="/verwaltung/protokoll">{copy.activityTitle}</Link>
-      {administrator ? <Link to="/verwaltung/tests">{copy.testsTitle}</Link> : null}
-      {administrator ? <Link to="/verwaltung/ki-mailtest">{copy.mailTestTitle}</Link> : null}
-      {administrator ? <Link to="/verwaltung/mailbox">{copy.mailboxAdminTitle}</Link> : null}
+    <nav className="content-nav admin-nav" aria-label={copy.adminTitle}>
+      <NavLink to="/verwaltung" end>
+        {copy.adminTitle}
+      </NavLink>
+      <NavLink to="/verwaltung/kenntnisse">{copy.skills}</NavLink>
+      <NavLink to="/verwaltung/kategorien">{copy.categories}</NavLink>
+      <NavLink to="/verwaltung/meldungen">{copy.noticesTitle}</NavLink>
+      <NavLink to="/verwaltung/konfiguration">{copy.configurationTitle}</NavLink>
+      <NavLink to="/verwaltung/protokoll">{copy.activityTitle}</NavLink>
+      {administrator ? <NavLink to="/verwaltung/tests">{copy.testsTitle}</NavLink> : null}
+      {administrator ? <NavLink to="/verwaltung/ki-mailtest">{copy.mailTestTitle}</NavLink> : null}
+      {administrator ? <NavLink to="/verwaltung/mailbox">{copy.mailboxAdminTitle}</NavLink> : null}
     </nav>
   );
 }

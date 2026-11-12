@@ -2,13 +2,15 @@
 
 Stand 08.11.2026, Fassung V 0.2.13, Zweig `phase/12-haerten`.
 
+Die sichtbare Designsprache ist Leitstand und steht in `docs/design/leitstand.md`.
+
 Der Handlauf ist das, woran man sich festhält, wenn der Gang lang wird. Für KMBHelp heißt das: eine durchgängige Helpdesk-Anwendung, in der sich Melder und Mitarbeiter sicher fühlen. Der Leitspruch ist „Wir kümmern uns“. Dieses Blatt hält fest, wo der Gang schon ein Geländer hat, wo man noch sucht, und welche Anschlüsse später dazu passen. Nichts davon ist in V 0.2.13 als neue Funktion eingebaut. Die Stack-Entscheidung in `docs/stack-entscheidung.md` bleibt bindend. Die Nachtwache in `docs/nachtwache.md` sagt, was dabei nicht nach außen darf.
 
 ## Was sich schon durchgängig anfühlt
 
 Die öffentliche Seite und die App sprechen dieselbe API. Ticket erfassen, die Liste, die Suche, FAQ, Sprache und Hell/Dunkel sitzen an festen Orten. Datum ist `dd.MM.yyyy`. Die Priorität heißt im Alltag „Sehr wichtig“, „bitte heute noch“ und „bei Gelegenheit“. Die sichtbare Nummer, zum Beispiel `26-0091`, bleibt.
 
-Nach der Anmeldung steht Rolle und E-Mail oben, darunter Abmelden. Das Menü geht von Dashboard über Ticket erfassen zu den eigenen offenen Tickets, allen offenen Tickets und den abgeschlossenen. Ein Benutzer sieht nur das Eigene und schließt nichts. Ein Helpdesk-Konto sieht die Kanzlei.
+Nach der Anmeldung steht Rolle und E-Mail oben, darunter Abmelden. Das Menü beginnt mit Ticket erfassen, dann eigene offene Tickets, alle offenen Tickets, abgeschlossene Tickets und Dashboard. Ein Benutzer sieht nur das Eigene und schließt nichts. Ein Helpdesk-Konto sieht die Kanzlei.
 
 Die Ticketseite merkt sich den formatierten Text, die Uhrzeit und den letzten Bearbeiter. Fertig fragt nach. PDF erstellen schließt nicht. Die Checkbox setzt aktiv und inaktiv sofort. Die Mail an einen neuen Bearbeiter geht mit der Zuordnung hinaus. Der Knopf M stellt dieselbe Rückfrage wie die Liste.
 

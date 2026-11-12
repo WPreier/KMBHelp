@@ -125,8 +125,8 @@ describe('placeholder page', () => {
     expect(screen.getByRole('button', { name: 'Search' }).getAttribute('title')).toBe(
       'Searches the chosen area: verdict, summary or ticket.',
     );
-    expect(screen.getByRole('heading', { name: 'KMBHelp' })).toBeTruthy();
-    expect(screen.getByText('IT helpdesk for KMB Steuerberatung')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'KMBHelp' })).toBeNull();
+    expect(screen.queryByText('IT helpdesk for KMB Steuerberatung')).toBeNull();
     expect(screen.queryByText('Search')).toBeNull();
     expect(screen.queryByLabelText('Email for the secret link')).toBeNull();
     expect(screen.getByRole('heading', { name: 'File a ticket' })).toBeTruthy();
@@ -134,8 +134,9 @@ describe('placeholder page', () => {
     expect(await screen.findByText(/Payroll run text/)).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'ID' })).toBeTruthy();
     expect(screen.getByRole('columnheader', { name: 'Text' })).toBeTruthy();
-    expect(screen.getByRole('columnheader', { name: 'Age' })).toBeTruthy();
+    expect(screen.queryByRole('columnheader', { name: 'Age' })).toBeNull();
     expect(screen.getByRole('columnheader', { name: 'Due by' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: 'open' })).toBeTruthy();
     expect(screen.queryByRole('columnheader', { name: 'Mark' })).toBeNull();
     expect(screen.getByText('26-0007')).toBeTruthy();
     expect(screen.getByText('26.10.2026')).toBeTruthy();
@@ -157,7 +158,8 @@ describe('placeholder page', () => {
         .closest('[data-hint]')
         ?.getAttribute('data-hint'),
     ).toContain('cannot be opened');
-    expect(screen.getByLabelText('Due on').getAttribute('type')).toBe('date');
+    expect(screen.getByLabelText('Due on').getAttribute('type')).toBe('text');
+    expect(screen.getByLabelText('Due on').getAttribute('placeholder')).toBe('dd.MM.yyyy');
     expect(document.body.textContent).not.toContain('secret subject');
   });
 

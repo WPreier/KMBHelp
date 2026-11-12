@@ -30,13 +30,13 @@ Das Dashboard unter `/mitarbeit/dashboard` zeigt die Ticketzahlen. Die Dienste s
 
 ## Aktualisieren
 
-Die auf GitHub gesicherte Fassung ist der Branch `phase/11-app`. Ein `git pull` ohne Branch holt `main` und damit eine ältere Fassung.
+Die auf GitHub gesicherte Fassung ist der Branch `phase/12-haerten`. Ein `git pull` ohne Branch holt `main` und damit eine ältere Fassung.
 
 ```bash
 cd /opt/kmbhelp
 sudo -u kmbhelp git fetch origin
-sudo -u kmbhelp git checkout phase/11-app
-sudo -u kmbhelp git pull --ff-only origin phase/11-app
+sudo -u kmbhelp git checkout phase/12-haerten
+sudo -u kmbhelp git pull --ff-only origin phase/12-haerten
 sudo -u kmbhelp pnpm install --frozen-lockfile
 sudo -u kmbhelp pnpm --filter @kmbhelp/web build
 sudo -u kmbhelp pnpm db:migrate
@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.2.17`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.2.18`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 
