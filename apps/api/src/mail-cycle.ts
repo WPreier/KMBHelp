@@ -7,7 +7,7 @@ import {
 } from '@kmbhelp/ai';
 import { appSetting, type Database } from '@kmbhelp/db';
 import { legacyConfigNames } from '@kmbhelp/shared/env';
-import { inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import {
   calendarDate,
   defaultCalendarDelayP1,
@@ -16,6 +16,7 @@ import {
   defaultCalendarMinutes,
   defaultFallbackCategory,
   defaultWorkerSchedule,
+  resolveMailcheckModel,
   resolvePriority,
   type Priority,
 } from '@kmbhelp/shared';
@@ -51,6 +52,7 @@ import {
   defaultMailErrorTo,
   defaultOllamaModel,
   defaultOllamaUrl,
+  mailcheckAiActive,
   type LocalMailResult,
   type MailAsk,
 } from './ollama-mail.js';
@@ -122,13 +124,17 @@ export async function mailIngestDeps(
     estimatedMinutes: null,
     model: modelProviderFromEnv(env, fetchImpl),
     autoReplyCategories: autoReplyAllowlist(settings.autoReplyCategories),
-    askMail: (mail) =>
-      askOllama({
+    askMail: async (mail) => {
+      if (!(await readMailcheckAiActive(database, env))) return 'unreachable';
+      return askOllama({
         baseUrl: settings.ollamaUrl,
         model: settings.ollamaModel,
         mail,
         fetchImpl,
-      }),
+        env,
+        continueWhen: () => readMailcheckAiActive(database, env),
+      });
+    },
     mailErrorTo: settings.mailErrorTo,
     smtp: settings.smtp,
     syslog: (category, message) => noteExternal(env, category, message),
@@ -189,26 +195,34 @@ export async function runMailCycle(options: {
   const deps = await mailIngestDeps(database, options.env, at, fetchImpl);
   deps.ticketsOnly = true;
   let created = 0;
-  for (const mail of mails) {
-    try {
-      if ((await deps.store.lesson(mail.internetMessageId)) === 'ignored') continue;
-      const result = await ingestMail(mail, deps);
-      if (result === 'created') created += 1;
-      if (result === 'created' || result === 'duplicate') {
-        await mailbox.moveToInboxChild(mail.graphId, 'Tickets');
-        await noteExternal(options.env, 'informational', 'external graph move tickets');
-        await noteMail(deps, mail, 'In den Ordner Tickets verschoben.');
-        continue;
+  if (!settings.ollamaActive) {
+    await noteExternal(options.env, 'informational', 'mailcheck ai inactive');
+  } else {
+    for (const mail of mails) {
+      try {
+        if (!(await readMailcheckAiActive(database, options.env))) {
+          await noteExternal(options.env, 'informational', 'mailcheck ai stopped');
+          break;
+        }
+        if ((await deps.store.lesson(mail.internetMessageId)) === 'ignored') continue;
+        const result = await ingestMail(mail, deps);
+        if (result === 'created') created += 1;
+        if (result === 'created' || result === 'duplicate') {
+          await mailbox.moveToInboxChild(mail.graphId, 'Tickets');
+          await noteExternal(options.env, 'informational', 'external graph move tickets');
+          await noteMail(deps, mail, 'In den Ordner Tickets verschoben.');
+          continue;
+        }
+        if ((result === 'declined' || result === 'skip') && mail.internetMessageId.trim() !== '') {
+          await deps.store.rememberLesson({
+            internetMessageId: mail.internetMessageId,
+            outcome: 'ignored',
+            reason: result,
+          });
+        }
+      } catch (error) {
+        logError(`mail ingest: ${safeErrorText(error)}`, options.env);
       }
-      if ((result === 'declined' || result === 'skip') && mail.internetMessageId.trim() !== '') {
-        await deps.store.rememberLesson({
-          internetMessageId: mail.internetMessageId,
-          outcome: 'ignored',
-          reason: result,
-        });
-      }
-    } catch (error) {
-      logError(`mail ingest: ${safeErrorText(error)}`, options.env);
     }
   }
   await deliverPendingReopens(store, mailer, deps.origin, async (number) => {
@@ -711,6 +725,7 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     'SEARCH_AI_AUTO_REPLY_CATEGORIES',
     'MAILCHECK_AI_URL',
     'MAILCHECK_AI_MODEL',
+    'MAILCHECK_AI_ACTIVE',
     'MAIL_ERROR_TO',
     'MAIL_SMTP_SERVER',
     'MAIL_SMTP_PORT',
@@ -759,7 +774,8 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     oncallEmail: value('ONCALL_EMAIL', ''),
     autoReplyCategories: value('SEARCH_AI_AUTO_REPLY_CATEGORIES', ''),
     ollamaUrl: value('MAILCHECK_AI_URL', defaultOllamaUrl),
-    ollamaModel: value('MAILCHECK_AI_MODEL', defaultOllamaModel),
+    ollamaModel: resolveMailcheckModel(value('MAILCHECK_AI_MODEL', defaultOllamaModel)),
+    ollamaActive: mailcheckAiActive(value('MAILCHECK_AI_ACTIVE', 'on')),
     mailErrorTo: value('MAIL_ERROR_TO', defaultMailErrorTo),
     digestFlag: value('MAIL_NOTICE_DIGEST', ''),
     digestHour: value('MAIL_NOTICE_DIGEST_HOUR', '7'),
@@ -780,6 +796,24 @@ function boundedMinutes(text: string, fallback: number, min: number, max: number
   const parsed = Number(text);
   if (parsed < min || parsed > max) return fallback;
   return parsed;
+}
+
+async function readMailcheckAiActive(
+  database: Database,
+  env: NodeJS.ProcessEnv,
+): Promise<boolean> {
+  try {
+    const rows = await database.db
+      .select({ value: appSetting.value })
+      .from(appSetting)
+      .where(eq(appSetting.key, 'config.MAILCHECK_AI_ACTIVE'))
+      .limit(1);
+    const stored = rows[0]?.value?.trim();
+    if (stored !== undefined && stored !== '') return mailcheckAiActive(stored);
+  } catch {
+    // Missing table uses the environment and the default.
+  }
+  return mailcheckAiActive(env.MAILCHECK_AI_ACTIVE);
 }
 
 async function sendReopen(

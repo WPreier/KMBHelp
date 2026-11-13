@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.2.19`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.2.20`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 
@@ -62,6 +62,8 @@ chmod 751 /opt/kmbhelp
 Ein leeres `SESSION_SECRET` in `/etc/kmbhelp/kmbhelp.env` beendet die API, bevor sie lauscht. `journalctl -u kmbhelp-api` zeigt dann `SESSION_SECRET must be set in production`. Ein neuer Wert entsteht mit `openssl rand -base64 48`. Danach `sudo systemctl restart kmbhelp-api`.
 
 `API_HOST` ist die interne Adresse des Servers, `192.168.36.55`. Dieselbe Adresse steht in `proxy_pass`. `127.0.0.1` öffnet die Verwaltung für jeden Besucher. `192.0.2.10` ist nur der Platzhalter in der Anleitung. Bleibt er in nginx stehen, läuft `/api/` ins Leere.
+
+Unter `location /api/` müssen `proxy_read_timeout` und `proxy_send_timeout` mindestens `360s` sein. Sonst bricht nginx den KI-Mailtest ab, bevor Ollama antwortet, und die Seite zeigt nur „Die Daten konnten nicht geladen werden.“ Die Vorlage steht in `infra/nginx/helpdesk.conf`.
 
 Haben sich nur die Datenbank oder die API geändert, reichen Migration und Neustart:
 
@@ -117,7 +119,7 @@ Geheimnisse schreibt die Konfigurationsseite lokal nach `secrets.json` und auf d
 
 In der zentralen Datei `/etc/kmbhelp/kmbhelp.env` können alle übrigen Einträge stehen. Ein Wert ohne Geheimnis, der auf der Konfigurationsseite gespeichert ist, gilt danach vor der Datei. Das sind:
 
-`ALLOW_TEST_AUTH`, `EMAIL_AUTH_DOMAINS`, `ADMIN_IP_ALLOWLIST`, `API_HOST`, `API_PORT`, `PUBLIC_ORIGIN`, `LDAPS_URL`, `LDAPS_BIND_DN`, `LDAPS_BASE_DN`, `LDAPS_GROUP_DN`, `LDAPS_CA_FILE`, `SYSLOG_HOST`, `SYSLOG_PORT`, `SYSLOG_NAME`, `SYSLOG_FACILITY`, `SYSLOG_UTC_OFFSET`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_MAILBOX`, `ONCALL_EMAIL`, `FALLBACK_CATEGORY`, `CALENDAR_DEFAULT_MINUTES`, `CALENDAR_DELAY_P1`, `CALENDAR_DELAY_P2`, `CALENDAR_DELAY_P3`, `WORKER_SCHEDULE`, `ACCESS_LOG_RETENTION_DAYS`, `LOG_ROTATE_DAYS`, `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGIN`, `SEARCH_AI_PROVIDER`, `INTERNAL_MAIL_DOMAINS`, `MAILCHECK_AI_URL`, `MAILCHECK_AI_MODEL`, `MAIL_ERROR_TO`, `MAIL_SMTP_SERVER`, `MAIL_SMTP_PORT`, `MAIL_SMTP_USER`, `MAIL_SMTP_LOGIN`, `MAIL_SMTP_TO`, `MAIL_NOTICE_DIGEST`, `MAIL_NOTICE_DIGEST_HOUR`, `MAIL_AI_PROMPT`, `SEARCH_AI_ENDPOINT`, `SEARCH_AI_REGION`, `SEARCH_AI_AVV_REFERENCE`, `SEARCH_AI_AUTO_REPLY_CATEGORIES`, `TICKET_FILE_TYPES`, `TICKET_FILE_MAX_BYTES`, `TICKET_ARCHIVE_DIR`, `SEARCH_MODEL_URL`, `SEARCH_MODEL_NAME`, `SEARCH_MODEL_INTERFACE`, `SEARCH_MODEL_CALL`, `SEARCH_MODEL_USER`, `SEARCH_MODEL_API_ID`, `LOCAL_ADMIN_USERNAME`.
+`ALLOW_TEST_AUTH`, `EMAIL_AUTH_DOMAINS`, `ADMIN_IP_ALLOWLIST`, `API_HOST`, `API_PORT`, `PUBLIC_ORIGIN`, `LDAPS_URL`, `LDAPS_BIND_DN`, `LDAPS_BASE_DN`, `LDAPS_GROUP_DN`, `LDAPS_CA_FILE`, `SYSLOG_HOST`, `SYSLOG_PORT`, `SYSLOG_NAME`, `SYSLOG_FACILITY`, `SYSLOG_UTC_OFFSET`, `GRAPH_TENANT_ID`, `GRAPH_CLIENT_ID`, `GRAPH_MAILBOX`, `ONCALL_EMAIL`, `FALLBACK_CATEGORY`, `CALENDAR_DEFAULT_MINUTES`, `CALENDAR_DELAY_P1`, `CALENDAR_DELAY_P2`, `CALENDAR_DELAY_P3`, `WORKER_SCHEDULE`, `ACCESS_LOG_RETENTION_DAYS`, `LOG_ROTATE_DAYS`, `WEBAUTHN_RP_ID`, `WEBAUTHN_ORIGIN`, `SEARCH_AI_PROVIDER`, `INTERNAL_MAIL_DOMAINS`, `MAILCHECK_AI_URL`, `MAILCHECK_AI_MODEL`, `MAILCHECK_AI_ACTIVE`, `MAIL_ERROR_TO`, `MAIL_SMTP_SERVER`, `MAIL_SMTP_PORT`, `MAIL_SMTP_USER`, `MAIL_SMTP_LOGIN`, `MAIL_SMTP_TO`, `MAIL_NOTICE_DIGEST`, `MAIL_NOTICE_DIGEST_HOUR`, `MAIL_AI_PROMPT`, `SEARCH_AI_ENDPOINT`, `SEARCH_AI_REGION`, `SEARCH_AI_AVV_REFERENCE`, `SEARCH_AI_AUTO_REPLY_CATEGORIES`, `TICKET_FILE_TYPES`, `TICKET_FILE_MAX_BYTES`, `TICKET_ARCHIVE_DIR`, `SEARCH_MODEL_URL`, `SEARCH_MODEL_NAME`, `SEARCH_MODEL_INTERFACE`, `SEARCH_MODEL_CALL`, `SEARCH_MODEL_USER`, `SEARCH_MODEL_API_ID`, `LOCAL_ADMIN_USERNAME`.
 
 `VITE_PUBLIC_URL_WWW`, `VITE_PUBLIC_URL_HOME` und `VITE_PUBLIC_URL_WIKI` liest nur der Bau der Webseite aus der `.env` im Projektordner. Auf dem Server ist das `/opt/kmbhelp/.env`. Die zentrale Datei liefert sie dem Bau nicht.
 

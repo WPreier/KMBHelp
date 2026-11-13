@@ -5,6 +5,7 @@ export const mailTestPromptSchema = z
     prompt: z.string(),
     model: z.string(),
     models: z.array(z.string()),
+    active: z.boolean(),
   })
   .strict();
 
@@ -28,6 +29,20 @@ export const mailTestModelRequestSchema = z
 export const mailTestModelResultSchema = z
   .object({
     model: z.string(),
+    textDe: z.string(),
+    textEn: z.string(),
+  })
+  .strict();
+
+export const mailTestActiveRequestSchema = z
+  .object({
+    active: z.boolean(),
+  })
+  .strict();
+
+export const mailTestActiveResultSchema = z
+  .object({
+    active: z.boolean(),
     textDe: z.string(),
     textEn: z.string(),
   })

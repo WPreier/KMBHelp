@@ -236,7 +236,7 @@ describe('ingestMail', () => {
           kind: 'support',
           category: 'ELDA / SV-Meldung',
           priority: null,
-          model: 'qwen2.5:7b',
+          model: 'gemma4:12b',
         }) as const,
       mailErrorTo: 'helpdesk@ppc.at',
     };
@@ -332,7 +332,7 @@ describe('ingestMail', () => {
           kind: 'spam',
           category: null,
           priority: null,
-          model: 'qwen2.5:7b',
+          model: 'gemma4:12b',
         }) as const,
     });
     expect(result).toBe('declined');
@@ -366,7 +366,7 @@ describe('ingestMail', () => {
             kind: 'support',
             category: 'Drucker',
             priority: 'p1',
-            model: 'qwen2.5:7b',
+            model: 'gemma4:12b',
           }) as const,
       },
     );
@@ -390,7 +390,7 @@ describe('ingestMail', () => {
             kind: 'support',
             category: 'Netzwerkdrucker',
             priority: null,
-            model: 'qwen2.5:7b',
+            model: 'gemma4:12b',
           }) as const,
       },
     );
@@ -410,7 +410,7 @@ describe('ingestMail', () => {
             kind: 'foreign',
             category: null,
             priority: null,
-            model: 'qwen2.5:7b',
+            model: 'gemma4:12b',
           } as const;
         },
       },
@@ -510,7 +510,7 @@ describe('ingestMail', () => {
           kind: 'support',
           category: 'Drucker',
           priority: 'p2',
-          model: 'qwen2.5:7b',
+          model: 'gemma4:12b',
         }) as const,
     };
     expect(await ingestMail(mail, base)).toBe('created');
@@ -528,7 +528,7 @@ describe('ingestMail', () => {
             kind: 'reply',
             category: null,
             priority: null,
-            model: 'qwen2.5:7b',
+            model: 'gemma4:12b',
           }) as const,
       },
     );
@@ -553,7 +553,7 @@ describe('ingestMail', () => {
             kind: 'close',
             category: null,
             priority: null,
-            model: 'qwen2.5:7b',
+            model: 'gemma4:12b',
           }) as const,
       },
     );
@@ -582,7 +582,7 @@ describe('ingestMail', () => {
           kind: 'support',
           category: 'Drucker',
           priority: 'p2',
-          model: 'qwen2.5:7b',
+          model: 'gemma4:12b',
         }) as const,
     };
     expect(await ingestMail(mail, base)).toBe('created');
@@ -596,7 +596,7 @@ describe('ingestMail', () => {
       {
         ...base,
         askMail: async () =>
-          ({ kind: 'reply', category: null, priority: null, model: 'qwen2.5:7b' }) as const,
+          ({ kind: 'reply', category: null, priority: null, model: 'gemma4:12b' }) as const,
       },
     );
     expect(reply).toBe('declined');
@@ -606,7 +606,7 @@ describe('ingestMail', () => {
       {
         ...base,
         askMail: async () =>
-          ({ kind: 'close', category: null, priority: null, model: 'qwen2.5:7b' }) as const,
+          ({ kind: 'close', category: null, priority: null, model: 'gemma4:12b' }) as const,
       },
     );
     expect(finish).toBe('declined');

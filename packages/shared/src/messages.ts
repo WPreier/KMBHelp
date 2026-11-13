@@ -303,6 +303,9 @@ export const messages = {
     mailTestModelOk: 'Das Modell ist auf dem KI-Server erreichbar und wurde als Standard gespeichert.',
     mailTestModelMissing: 'Dieses Modell liegt auf dem KI-Server nicht vor.',
     mailTestModelDown: 'Der KI-Server antwortet nicht. Prüfe MAILCHECK_AI_URL.',
+    mailTestAutoActive: 'Automatischer Mail Check aktiv',
+    mailTestAutoHint:
+      'Schaltet den Worker-Mailcheck sofort um. Aus stoppt vor der nächsten Mail und zwischen den KI-Schritten. Der manuelle Test auf dieser Seite bleibt möglich.',
     mailTestDropHint:
       'Ziehe eine Outlook-Mail oder eine .eml-Datei hierher. Der Text wird in das Feld übernommen.',
     mailTestDropMsg:
@@ -699,6 +702,9 @@ export const messages = {
     mailTestModelOk: 'The model is available on the AI server and was saved as the default.',
     mailTestModelMissing: 'This model is not present on the AI server.',
     mailTestModelDown: 'The AI server does not answer. Check MAILCHECK_AI_URL.',
+    mailTestAutoActive: 'Automatic mail check active',
+    mailTestAutoHint:
+      'Switches the worker mail check immediately. Off stops before the next mail and between model steps. The manual test on this page stays available.',
     mailTestDropHint:
       'Drop an Outlook mail or an .eml file here. The text is copied into the field.',
     mailTestDropMsg:

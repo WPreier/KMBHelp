@@ -9,6 +9,7 @@ import {
   classificationPrompt,
   formatMailSource,
   importanceOf,
+  mailcheckAiActive,
   mailcheckInputMax,
   mailExcerpt,
   parseMailAnswer,
@@ -32,6 +33,14 @@ const mail: InboundMail = {
 };
 
 describe('local mail review', () => {
+  it('treats MAILCHECK_AI_ACTIVE off as inactive', () => {
+    expect(mailcheckAiActive(undefined)).toBe(true);
+    expect(mailcheckAiActive('')).toBe(true);
+    expect(mailcheckAiActive('on')).toBe(true);
+    expect(mailcheckAiActive('off')).toBe(false);
+    expect(mailcheckAiActive('OFF')).toBe(false);
+  });
+
   it('reads SUPPORT, ANTWORT, SPAM and P1–P4', () => {
     expect(parseMailAnswer('SUPPORT\nKATEGORIE: Netzwerkdrucker\nWICHTIGKEIT: P1')).toEqual({
       kind: 'support',
@@ -102,7 +111,7 @@ describe('local mail review', () => {
     const calls: string[] = [];
     const answered = await askOllama({
       baseUrl: 'http://192.168.191.131:11434',
-      model: 'qwen2.5:7b',
+      model: 'gemma4:12b',
       mail,
       fetchImpl: async (_url, init) => {
         const body = JSON.parse(String(init?.body ?? '{}')) as {
@@ -121,7 +130,7 @@ describe('local mail review', () => {
       kind: 'support',
       category: 'Drucker',
       priority: null,
-      model: 'qwen2.5:7b',
+      model: 'gemma4:12b',
     });
     expect(calls).toHaveLength(1);
   });
@@ -130,7 +139,7 @@ describe('local mail review', () => {
     const calls: string[] = [];
     const answered = await askOllama({
       baseUrl: 'http://192.168.191.131:11434',
-      model: 'qwen2.5:7b',
+      model: 'gemma4:12b',
       mail,
       fetchImpl: async (_url, init) => {
         const body = JSON.parse(String(init?.body ?? '{}')) as {
@@ -145,13 +154,13 @@ describe('local mail review', () => {
       kind: 'support',
       category: 'Drucker',
       priority: null,
-      model: 'qwen2.5:7b',
+      model: 'gemma4:12b',
     });
     expect(calls).toHaveLength(2);
 
     const timedOut = await askOllama({
       baseUrl: 'http://192.168.191.131:11434',
-      model: 'qwen2.5:7b',
+      model: 'gemma4:12b',
       mail,
       timeoutMs: 5,
       fetchImpl: (_url, init) =>
@@ -182,7 +191,7 @@ describe('local mail review', () => {
     try {
       await askOllama({
         baseUrl: 'http://192.168.191.131:11434',
-        model: 'qwen2.5:7b',
+        model: 'gemma4:12b',
         mail,
         fetchImpl,
       });
@@ -198,7 +207,7 @@ describe('local mail review', () => {
       await flushFileLogs();
       const ki = await readFile(join(directory, 'ki.log'), 'utf8');
       const model = await readFile(join(directory, 'mail.log'), 'utf8');
-      expect(ki).toContain('qwen2.5:7b');
+      expect(ki).toContain('gemma4:12b');
       expect(model).toContain('helpdesk@kmbcloud.at');
     } finally {
       if (previous === undefined) delete process.env.ACTIVITY_LOG_FILE;

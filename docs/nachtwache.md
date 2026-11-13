@@ -57,7 +57,7 @@ Dagegen hält heute: eine unlesbare oder unerreichbare Antwort erzeugt kein Tick
 
 ### 3. KI-Mailtest kann das Modell lange belegen
 
-Ein Administrator schickt einen Text an dieselbe Ollama-Schnittstelle wie der Worker. Eine Abfrage wartet bis zu fünf Minuten, eine Wiederholung und die Wichtigkeitsfrage kommen dazu. Die Route hat kein eigenes Ratenlimit. nginx bricht ohne `proxy_read_timeout 300s` oft nach 60 Sekunden ab. Der Text bleibt aus `activity.log` draußen. Die Zeile nennt nur den Ergebnissatz.
+Ein Administrator schickt einen Text an dieselbe Ollama-Schnittstelle wie der Worker. Eine Abfrage wartet bis zu fünf Minuten, eine Wiederholung und die Wichtigkeitsfrage kommen dazu. Die Route hat kein eigenes Ratenlimit. nginx bricht ohne `proxy_read_timeout 360s` und `proxy_send_timeout 360s` oft nach 60 Sekunden ab; der Browser zeigt dann „Die Daten konnten nicht geladen werden.“ Der Text bleibt aus `activity.log` draußen. Die Zeile nennt nur den Ergebnissatz. Die Installationsvorlage und `docs/installation-linux.md` verlangen diese Timeouts.
 
 Dagegen hält: nur Administratoren, und der Logger schwärzt den Körper. Es fehlt eine kleine Obergrenze je Stunde, damit ein offener Test die Mailprüfung der Kanzlei nicht ausbremst.
 
@@ -100,7 +100,7 @@ Kein zusätzlicher Dienst, der Tickettexte entgegennimmt, wird hier freigegeben.
 ## Nächste Riegel, noch nicht gebaut
 
 1. Auf dem Server prüfen, dass nginx die beiden Proxy-Köpfe ersetzt und nicht anhängt. Danach die API neu starten ist dafür nicht nötig.
-2. `proxy_read_timeout 300s` in der bestehenden `location /api/`, falls ein Mailtest abreißt.
+2. `proxy_read_timeout 360s` und `proxy_send_timeout 360s` in der bestehenden `location /api/` (Apache: `ProxyTimeout 360`), falls ein Mailtest abreißt.
 3. Eine Obergrenze, wie viele SUPPORT-Mails ein Absender am Tag anstoßen darf.
 4. Eine Obergrenze für KI-Mailtest.
 5. Am Feld Betreff der Satz: keine Mandantennamen.

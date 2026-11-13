@@ -46,7 +46,7 @@ describe('admin mail test', () => {
       payload: {
         prompt: 'Lies diese E-Mail.',
         email: `From: Ada <ada@example.com>\nSubject: Hallo\n\n${'x'.repeat(30_000)}`,
-        model: 'gemma3:4b',
+        model: 'gemma4:12b',
       },
     });
     expect(response.statusCode).toBe(200);

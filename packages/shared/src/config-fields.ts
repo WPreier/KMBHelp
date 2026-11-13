@@ -30,7 +30,8 @@ const shownWhenEmpty: Record<string, string> = {
   INTERNAL_MAIL_DOMAINS: defaultInternalMailDomains,
   MAIL_AI_PROMPT: defaultMailPrompt,
   MAILCHECK_AI_URL: 'http://192.168.191.131:11434',
-  MAILCHECK_AI_MODEL: 'qwen2.5:7b',
+  MAILCHECK_AI_MODEL: 'gemma4:12b',
+  MAILCHECK_AI_ACTIVE: 'on',
   MAIL_ERROR_TO: 'helpdesk@ppc.at',
   MAIL_SMTP_SERVER: '127.0.0.1',
   MAIL_SMTP_PORT: '25',
@@ -338,9 +339,17 @@ export const configFields: readonly ConfigField[] = [
     key: 'MAILCHECK_AI_MODEL',
     secret: false,
     textDe:
-      'Name des lokalen Modells für die Mailprüfung. Möglich: qwen2.5:7b, gemma3:4b, gemma4:12b, gemma4:26b, qwen3.8:27b. Auslieferung qwen2.5:7b.',
+      'Name des lokalen Modells für die Mailprüfung. Möglich: gemma4:12b, gemma4:26b, qwen3.8:27b. Auslieferung gemma4:12b. An die KI geht immer nur eine Anfrage gleichzeitig; der Zyklus arbeitet die ungelesenen Mails nacheinander ab.',
     textEn:
-      'Name of the local model for mail review. Allowed: qwen2.5:7b, gemma3:4b, gemma4:12b, gemma4:26b, qwen3.8:27b. The delivered value is qwen2.5:7b.',
+      'Name of the local model for mail review. Allowed: gemma4:12b, gemma4:26b, qwen3.8:27b. The delivered value is gemma4:12b. The model gets only one request at a time; the cycle processes unread mail one after another.',
+  },
+  {
+    key: 'MAILCHECK_AI_ACTIVE',
+    secret: false,
+    textDe:
+      'Automatischer Mailcheck über die lokale KI. on (Auslieferung) lässt den Worker Mails prüfen. off stoppt ihn vor der nächsten Mail und zwischen den KI-Schritten; der manuelle KI-Mailtest bleibt nutzbar. Es läuft höchstens ein KI-Job gleichzeitig.',
+    textEn:
+      'Automatic mail check through the local model. on (default) lets the worker review mail. off stops it before the next mail and between model steps; the manual model mail test stays usable. At most one model job runs at a time.',
   },
   {
     key: 'MAIL_ERROR_TO',
@@ -529,9 +538,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'SEARCH_MODEL_NAME',
     secret: false,
     textDe:
-      'Name des Suchmodells. Möglich: qwen2.5:7b, gemma3:4b, gemma4:12b, gemma4:26b, qwen3.8:27b. Noch nicht angebunden.',
+      'Name des Suchmodells. Möglich: gemma4:12b, gemma4:26b, qwen3.8:27b. Noch nicht angebunden.',
     textEn:
-      'Name of the search model. Allowed: qwen2.5:7b, gemma3:4b, gemma4:12b, gemma4:26b, qwen3.8:27b. Not connected yet.',
+      'Name of the search model. Allowed: gemma4:12b, gemma4:26b, qwen3.8:27b. Not connected yet.',
   },
 
   {

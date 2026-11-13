@@ -195,6 +195,8 @@ export {
   mailTestResultSchema,
   mailTestModelRequestSchema,
   mailTestModelResultSchema,
+  mailTestActiveRequestSchema,
+  mailTestActiveResultSchema,
   mailTestPromptMax,
   mailTestEmailMax,
   type MailboxMessage,

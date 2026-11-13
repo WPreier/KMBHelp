@@ -8,6 +8,8 @@ import {
   mailboxReadSchema,
   mailcheckInputMax,
   mailcheckModels,
+  mailTestActiveRequestSchema,
+  mailTestActiveResultSchema,
   mailTestEmailMax,
   mailTestModelRequestSchema,
   mailTestModelResultSchema,
@@ -30,6 +32,7 @@ import {
   defaultOllamaModel,
   defaultOllamaUrl,
   formatMailSource,
+  mailcheckAiActive,
   parsePastedMail,
   probeOllamaModel,
   type MailAsk,
@@ -69,6 +72,7 @@ export function registerAdminTests(
       prompt: classificationInstructions(),
       model: resolveMailcheckModel(env.MAILCHECK_AI_MODEL),
       models: [...mailcheckModels],
+      active: mailcheckAiActive(env.MAILCHECK_AI_ACTIVE),
     });
   });
 
@@ -160,6 +164,46 @@ export function registerAdminTests(
       model: parsed.data.model,
       textDe: `Das Modell ${parsed.data.model} ist erreichbar und wurde als Standard gespeichert.`,
       textEn: `The model ${parsed.data.model} is available and was saved as the default.`,
+    });
+  });
+
+  app.post('/api/v1/admin/mail-test/active', async (request) => {
+    const actor = await administrator(request, true);
+    const parsed = mailTestActiveRequestSchema.safeParse(request.body);
+    if (!parsed.success) {
+      throw new PublicError(400, 'invalid_input', {
+        de: 'Der Schalter für den automatischen Mailcheck ist ungültig.',
+        en: 'The automatic mail check switch is invalid.',
+      });
+    }
+    if (!options.database) {
+      throw new PublicError(503, 'database_down', publicErrors.databaseDown);
+    }
+    const stored = parsed.data.active ? 'on' : 'off';
+    try {
+      await saveConfigValue(options.database, 'MAILCHECK_AI_ACTIVE', stored);
+    } catch (error) {
+      throw new PublicError(500, 'config_save_failed', {
+        de: `MAILCHECK_AI_ACTIVE konnte nicht gespeichert werden: ${error instanceof Error ? error.message : 'unbekannt'}.`,
+        en: `MAILCHECK_AI_ACTIVE could not be saved: ${error instanceof Error ? error.message : 'unknown'}.`,
+      });
+    }
+    env.MAILCHECK_AI_ACTIVE = stored;
+    await writeActivity(options.database, {
+      actor: actor.email,
+      kind: 'mail',
+      target: 'MAILCHECK_AI_ACTIVE',
+      detail: stored,
+      ip: clientAddress(request),
+    }).catch(() => undefined);
+    return mailTestActiveResultSchema.parse({
+      active: parsed.data.active,
+      textDe: parsed.data.active
+        ? 'Automatischer Mailcheck ist aktiv.'
+        : 'Automatischer Mailcheck ist aus. Der Worker stoppt vor der nächsten Mail.',
+      textEn: parsed.data.active
+        ? 'Automatic mail check is on.'
+        : 'Automatic mail check is off. The worker stops before the next mail.',
     });
   });
 

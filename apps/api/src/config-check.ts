@@ -459,6 +459,26 @@ export async function checkConfigField(
           'The address must be http or https and must not contain a password.',
         );
   }
+  if (key === 'MAILCHECK_AI_ACTIVE') {
+    const flag = value.trim().toLowerCase();
+    return flag === '' || flag === 'on' || flag === 'off'
+      ? line(
+          key,
+          'ok',
+          flag === 'off'
+            ? 'Der automatische Mailcheck ist aus. Der manuelle KI-Mailtest bleibt nutzbar.'
+            : 'Der automatische Mailcheck ist ein.',
+          flag === 'off'
+            ? 'Automatic mail check is off. The manual model mail test stays usable.'
+            : 'Automatic mail check is on.',
+        )
+      : line(
+          key,
+          'warning',
+          'MAILCHECK_AI_ACTIVE muss leer, on oder off sein.',
+          'MAILCHECK_AI_ACTIVE must be empty, on or off.',
+        );
+  }
   if (key === 'MAILCHECK_AI_MODEL' || key === 'SEARCH_MODEL_NAME') {
     const model = value.trim();
     if (key === 'SEARCH_MODEL_NAME' && model === '') {
@@ -469,7 +489,7 @@ export async function checkConfigField(
         'No search model is set yet.',
       );
     }
-    const chosen = model || 'qwen2.5:7b';
+    const chosen = model || 'gemma4:12b';
     const listed = mailcheckModels.join(', ');
     return isMailcheckModel(chosen)
       ? line(key, 'ok', `Das Modell heißt ${chosen}.`, `The model is named ${chosen}.`)

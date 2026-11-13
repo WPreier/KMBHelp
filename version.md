@@ -1,6 +1,6 @@
 # Version
 
-Aktueller Stand: **V 0.2.19**
+Aktueller Stand: **V 0.2.20**
 
 | | |
 |---|---|
@@ -17,18 +17,21 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 |---|---|---|
 | 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
 | 2 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. Am 07.11.2026 hat er die Minor 2 freigegeben. |
-| 19 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
+| 20 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.20**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.21**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
 
+### V 0.2.20 — 13.11.2026
+
+Die KI-Schnittstelle führt höchstens einen Job gleichzeitig aus; API und Worker warten in einer gemeinsamen Warteschlange. `MAILCHECK_AI_ACTIVE` schaltet den automatischen Mailcheck ein und aus; die Checkbox auf KI-Mailtest speichert den Wert sofort. Freigegebene Modelle sind `gemma4:12b` (Auslieferung), `gemma4:26b` und `qwen3.8:27b`. Ungelesene Mails eines Zyklus werden nacheinander geprüft. nginx/Apache brauchen unter `/api/` Timeouts von mindestens 360 Sekunden für den KI-Mailtest.
+
 ### V 0.2.19 — 13.11.2026
 
 Helpdesk-Mailbox zeigt ausführliche Graph-Fehler, Wartecursor und Neu einlesen. Die Mailprüfung antwortet nur noch mit SUPPORT, ANTWORT oder SPAM; Wichtigkeit ist P1 sehr wichtig, P2 wichtig, P3 bei Gelegenheit, P4 nicht eingeordnet. An die KI gehen höchstens 5000 Zeichen der Mail. KI-Mailtest hat Modellauswahl mit Prüfung am Ollama-Server und speichert `MAILCHECK_AI_MODEL`. Mögliche Modelle: `qwen2.5:7b`, `gemma3:4b`, `gemma4:12b`, `gemma4:26b`, `qwen3.8:27b`. Outlook-Drag-and-Drop übernimmt den Mailtext. Prioritätsbezeichnung P2 heißt wichtig. Dokumentation und Betriebsskizze sind angepasst.
-
 ### V 0.2.18 — 13.11.2026
 
 Die Oberfläche folgt fest der Designsprache Leitstand. Die Seitenleiste zeigt das Helpdesk-Zeichen, die aktive Seite und den Hover. Ticket erfassen ist die Startseite und steht zuerst im Menü. Die offenen Tickets haben feste Spalten ohne Alter, die Checkbox heißt offen. Datum ist `dd.MM.yyyy`. IBM Plex Sans liegt lokal unter `apps/web/public/fonts/`. Der große Titel und der Untertitel unter der Kopfzeile entfallen.
@@ -137,4 +140,3 @@ Darin enthalten ist die bisherige Arbeit seit dem 26.10.2026:
 | 03.11.2026 | `e8f4354` | Katalogimport nimmt den Dateipfad nach `--` an |
 | 04.11.2026 | `3ed5890` | Mitarbeiterliste nur noch mit Anmeldung, localhost oder Diensttoken |
 | 06.11.2026 | `e2cad45` | Postfachzugriff in `mail.log`, Modellanfrage ausführlich in `ki.log` |
-

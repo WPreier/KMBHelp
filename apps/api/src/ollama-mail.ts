@@ -2,6 +2,7 @@ import { maskPersonalData } from '@kmbhelp/ai';
 import { defaultMailcheckModel, mailcheckInputMax, type Priority } from '@kmbhelp/shared';
 import { enqueueFileLog } from './file-log.js';
 import type { InboundMail } from './graph.js';
+import { withOllamaJob } from './ollama-gate.js';
 
 export const mailQueryLimitMs = 5 * 60 * 1000;
 export const defaultOllamaUrl = 'http://192.168.191.131:11434';
@@ -133,6 +134,11 @@ export function readImportance(text: string): { priority: Priority | null; settl
   return { priority: null, settled: false };
 }
 
+/** Default on. Only the value `off` disables the automatic mail check. */
+export function mailcheckAiActive(value: string | undefined): boolean {
+  return (value ?? 'on').trim().toLowerCase() !== 'off';
+}
+
 export async function askOllama(options: {
   baseUrl: string;
   model: string;
@@ -141,18 +147,36 @@ export async function askOllama(options: {
   trace?: MailExchange[] | undefined;
   fetchImpl?: typeof fetch;
   timeoutMs?: number;
+  env?: NodeJS.ProcessEnv;
+  /** When this returns false, stop before the next model call and leave the mail unread. */
+  continueWhen?: (() => Promise<boolean>) | undefined;
+}): Promise<MailAsk> {
+  return withOllamaJob(() => runAskOllama(options), options.env ?? process.env);
+}
+
+async function runAskOllama(options: {
+  baseUrl: string;
+  model: string;
+  mail: InboundMail;
+  instructions?: string | undefined;
+  trace?: MailExchange[] | undefined;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+  continueWhen?: (() => Promise<boolean>) | undefined;
 }): Promise<MailAsk> {
   const base = options.baseUrl.trim().replace(/\/$/u, '');
   if (!/^https?:\/\/[^/\s]+/u.test(base) || base.includes('@')) return 'unreachable';
   const fetchImpl = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? mailQueryLimitMs;
   const model = options.model.trim() || defaultOllamaModel;
+  if (!(await stillActive(options.continueWhen))) return 'unreachable';
   const classify = classificationPrompt(options.mail, options.instructions);
   const first = await chat(fetchImpl, base, model, classify, timeoutMs, 'classify');
   options.trace?.push({ kind: 'classify', prompt: classify, answer: shown(first) });
   if (first === 'timeout' || first === 'unreachable') return first;
   let parsed = parseMailAnswer(first);
   if (!parsed) {
+    if (!(await stillActive(options.continueWhen))) return 'unreachable';
     const retry = `${classify}\n\nDie letzte Antwort war nicht lesbar. Antworte jetzt mit genau einem Wort: SUPPORT, ANTWORT oder SPAM.`;
     const again = await chat(fetchImpl, base, model, retry, timeoutMs, 'retry');
     options.trace?.push({ kind: 'retry', prompt: retry, answer: shown(again) });
@@ -161,6 +185,7 @@ export async function askOllama(options: {
   }
   if (!parsed) return 'unclear';
   if (parsed.kind === 'support' && !parsed.priority && !parsed.importanceSettled) {
+    if (!(await stillActive(options.continueWhen))) return 'unreachable';
     const importanceText = importancePrompt(options.mail);
     const importance = await chat(fetchImpl, base, model, importanceText, timeoutMs, 'importance');
     options.trace?.push({ kind: 'importance', prompt: importanceText, answer: shown(importance) });
@@ -177,6 +202,16 @@ export async function askOllama(options: {
 }
 
 export async function probeOllamaModel(options: {
+  baseUrl: string;
+  model: string;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+  env?: NodeJS.ProcessEnv;
+}): Promise<'ok' | 'missing' | 'unreachable'> {
+  return withOllamaJob(() => runProbeOllamaModel(options), options.env ?? process.env);
+}
+
+async function runProbeOllamaModel(options: {
   baseUrl: string;
   model: string;
   fetchImpl?: typeof fetch;
@@ -201,6 +236,15 @@ export async function probeOllamaModel(options: {
       : 'missing';
   } catch {
     return 'unreachable';
+  }
+}
+
+async function stillActive(continueWhen?: (() => Promise<boolean>) | undefined): Promise<boolean> {
+  if (!continueWhen) return true;
+  try {
+    return await continueWhen();
+  } catch {
+    return true;
   }
 }
 

@@ -1,6 +1,7 @@
 import {
   mailboxListSchema,
   mailboxMessageSchema,
+  mailTestActiveResultSchema,
   mailTestModelResultSchema,
   mailTestPromptSchema,
   mailTestResultSchema,
@@ -44,10 +45,12 @@ export function MailTestPage() {
   const [email, setEmail] = useState('');
   const [model, setModel] = useState('');
   const [models, setModels] = useState<string[]>([]);
+  const [active, setActive] = useState(true);
   const [result, setResult] = useState<MailTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [pendingActive, setPendingActive] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +61,7 @@ export function MailTestPage() {
         setPrompt(loaded.prompt);
         setModel(loaded.model);
         setModels(loaded.models);
+        setActive(loaded.active);
       })
       .catch((caught: unknown) => {
         if (!cancelled) setError(failure(caught, lang, copy.loadFailed));
@@ -121,6 +125,26 @@ export function MailTestPage() {
     }
   }
 
+  async function onActiveChange(next: boolean) {
+    if (next === active || pendingActive) return;
+    setPendingActive(true);
+    setError(null);
+    setNote(null);
+    try {
+      const saved = await postJson(
+        '/api/v1/admin/mail-test/active',
+        { active: next },
+        mailTestActiveResultSchema.parse,
+      );
+      setActive(saved.active);
+      setNote(lang === 'de' ? saved.textDe : saved.textEn);
+    } catch (caught) {
+      setError(failure(caught, lang, copy.loadFailed));
+    } finally {
+      setPendingActive(false);
+    }
+  }
+
   async function onModelChange(next: string) {
     if (next === '' || next === model) return;
     setPending(true);
@@ -166,6 +190,16 @@ export function MailTestPage() {
   return (
     <section>
       <h2>{copy.mailTestTitle}</h2>
+      <label>
+        <input
+          type="checkbox"
+          checked={active}
+          disabled={pendingActive}
+          onChange={(event) => void onActiveChange(event.target.checked)}
+        />{' '}
+        {copy.mailTestAutoActive}
+      </label>
+      <p>{copy.mailTestAutoHint}</p>
       <form onSubmit={(event) => void onTest(event)}>
         <label>
           {copy.mailTestModel}

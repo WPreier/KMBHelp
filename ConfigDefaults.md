@@ -84,7 +84,7 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `SEARCH_AI_PROVIDER` | `grok` | Nur der Name. Erlaubt sind grok, gemini, deepseek, other. Die Adresse ist `SEARCH_AI_ENDPOINT`. |
 | `INTERNAL_MAIL_DOMAINS` | `kmb-steuerberatung.at,ght.at,koller-rohrschach.at` | Frühere Absenderliste. Die Mailprüfung sperrt damit niemanden mehr. |
 | `MAILCHECK_AI_URL` | `http://192.168.191.131:11434` | Lokaler Ollama-Server. Eine Abfrage wartet höchstens 5 Minuten. |
-| `MAILCHECK_AI_MODEL` | `qwen2.5:7b` | Modellname für die Mailprüfung. Möglich: `qwen2.5:7b`, `gemma3:4b`, `gemma4:12b`, `gemma4:26b`, `qwen3.8:27b`. |
+| `MAILCHECK_AI_MODEL` | `gemma4:12b` | Modellname für die Mailprüfung. Möglich: `gemma4:12b`, `gemma4:26b`, `qwen3.8:27b`. An die KI geht immer nur eine Anfrage gleichzeitig. |
 | `MAIL_ERROR_TO` | `helpdesk@ppc.at` | Empfänger der Fehlermail über Graph, wenn eine Abfrage zu lange dauert. Die Mail wird verschickt. |
 | `MAIL_SMTP_SERVER` | `127.0.0.1` | Lokaler Postfix. Nur diese Adresse. |
 | `MAIL_SMTP_PORT` | `25` | TCP. |

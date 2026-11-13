@@ -24,7 +24,7 @@ describe('file log', () => {
     enqueueFileLog('activity', 'page\t/anmelden', env);
     logError('directory.bind_failed: Das Dienstkonto kann nicht suchen.', env);
     enqueueFileLog('mail', 'worker\treply', env);
-    enqueueFileLog('ki', 'ollama\tclassify\tkmblmt1\tqwen2.5:7b', env);
+    enqueueFileLog('ki', 'ollama\tclassify\tkmblmt1\tgemma4:12b', env);
     await flushFileLogs();
     const activity = await readFile(logFilePath('activity', env), 'utf8');
     const error = await readFile(logFilePath('error', env), 'utf8');

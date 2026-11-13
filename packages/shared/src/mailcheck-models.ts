@@ -1,15 +1,9 @@
-export const defaultMailcheckModel = 'qwen2.5:7b';
+export const defaultMailcheckModel = 'gemma4:12b';
 
 /** Max characters of the mail (headers + body) sent to the MAILCHECK model. */
 export const mailcheckInputMax = 5000;
 
-export const mailcheckModels = [
-  'qwen2.5:7b',
-  'gemma3:4b',
-  'gemma4:12b',
-  'gemma4:26b',
-  'qwen3.8:27b',
-] as const;
+export const mailcheckModels = ['gemma4:12b', 'gemma4:26b', 'qwen3.8:27b'] as const;
 
 export type MailcheckModel = (typeof mailcheckModels)[number];
 
