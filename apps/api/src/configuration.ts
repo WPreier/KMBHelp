@@ -47,8 +47,8 @@ const shownKeys = [
   'SEARCH_AI_REGION',
   'SEARCH_AI_AVV_REFERENCE',
   'SEARCH_AI_AUTO_REPLY_CATEGORIES',
-  'MAILCHECK_KI_URL',
-  'MAILCHECK_KI_MODEL',
+  'MAILCHECK_AI_URL',
+  'MAILCHECK_AI_MODEL',
   'MAIL_ERROR_TO',
   'MAIL_SMTP_SERVER',
   'MAIL_SMTP_PORT',
@@ -459,14 +459,14 @@ export async function inspectConfiguration(
       ? check(
           'ai',
           'ok',
-          'Ein externer KI-Endpunkt ist gesetzt. Die Mailprüfung spricht davon unabhängig MAILCHECK_KI_URL.',
-          'An external model endpoint is set. Mail review calls MAILCHECK_KI_URL independently of it.',
+          'Ein externer KI-Endpunkt ist gesetzt. Die Mailprüfung spricht davon unabhängig MAILCHECK_AI_URL.',
+          'An external model endpoint is set. Mail review calls MAILCHECK_AI_URL independently of it.',
         )
       : check(
           'ai.not_configured',
           'informational',
-          'Kein externer KI-Endpunkt. Die Mailprüfung spricht MAILCHECK_KI_URL. Die Suche bleibt beim Satz aus Phase 2.',
-          'No external model endpoint. Mail review calls MAILCHECK_KI_URL. Search keeps the phase 2 sentence.',
+          'Kein externer KI-Endpunkt. Die Mailprüfung spricht MAILCHECK_AI_URL. Die Suche bleibt beim Satz aus Phase 2.',
+          'No external model endpoint. Mail review calls MAILCHECK_AI_URL. Search keeps the phase 2 sentence.',
         ),
   );
 

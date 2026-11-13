@@ -43,8 +43,10 @@ export function fillBlankEnvFromJson(fileUrl: URL): void {
 }
 
 export const legacyConfigNames: Readonly<Record<string, string>> = {
-  OLLAMA_URL: 'MAILCHECK_KI_URL',
-  OLLAMA_MODEL: 'MAILCHECK_KI_MODEL',
+  OLLAMA_URL: 'MAILCHECK_AI_URL',
+  OLLAMA_MODEL: 'MAILCHECK_AI_MODEL',
+  MAILCHECK_KI_URL: 'MAILCHECK_AI_URL',
+  MAILCHECK_KI_MODEL: 'MAILCHECK_AI_MODEL',
   SMTP_SERVER: 'MAIL_SMTP_SERVER',
   SMTP_PORT: 'MAIL_SMTP_PORT',
   SMTP_USER: 'MAIL_SMTP_USER',

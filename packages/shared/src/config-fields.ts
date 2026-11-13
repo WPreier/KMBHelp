@@ -29,8 +29,8 @@ const shownWhenEmpty: Record<string, string> = {
   SEARCH_AI_PROVIDER: defaultAiProvider,
   INTERNAL_MAIL_DOMAINS: defaultInternalMailDomains,
   MAIL_AI_PROMPT: defaultMailPrompt,
-  MAILCHECK_KI_URL: 'http://192.168.191.131:11434',
-  MAILCHECK_KI_MODEL: 'qwen2.5:7b',
+  MAILCHECK_AI_URL: 'http://192.168.191.131:11434',
+  MAILCHECK_AI_MODEL: 'qwen2.5:7b',
   MAIL_ERROR_TO: 'helpdesk@ppc.at',
   MAIL_SMTP_SERVER: '127.0.0.1',
   MAIL_SMTP_PORT: '25',
@@ -327,18 +327,20 @@ export const configFields: readonly ConfigField[] = [
       'The earlier list of internal senders. The local mail check asks about every sender. The field stays visible and no longer blocks a mail.',
   },
   {
-    key: 'MAILCHECK_KI_URL',
+    key: 'MAILCHECK_AI_URL',
     secret: false,
     textDe:
-      'Adresse des lokalen Ollama-Servers für die Mailprüfung. Auslieferung http://192.168.191.131:11434. Eine Abfrage dauert höchstens 5 Minuten.',
+      'Adresse des lokalen Ollama-Servers für die Mailprüfung. Auslieferung http://192.168.191.131:11434. Eine Abfrage dauert höchstens 5 Minuten. An das Modell gehen höchstens 5000 Zeichen der Mail.',
     textEn:
-      'Address of the local Ollama server for mail review. The delivered value is http://192.168.191.131:11434. One query waits at most 5 minutes.',
+      'Address of the local Ollama server for mail review. The delivered value is http://192.168.191.131:11434. One query waits at most 5 minutes. At most 5000 characters of the mail go to the model.',
   },
   {
-    key: 'MAILCHECK_KI_MODEL',
+    key: 'MAILCHECK_AI_MODEL',
     secret: false,
-    textDe: 'Name des lokalen Modells. Auslieferung qwen2.5:7b.',
-    textEn: 'Name of the local model. The delivered value is qwen2.5:7b.',
+    textDe:
+      'Name des lokalen Modells für die Mailprüfung. Möglich: qwen2.5:7b, gemma3:4b, gemma4:12b, gemma4:26b, qwen3.8:27b. Auslieferung qwen2.5:7b.',
+    textEn:
+      'Name of the local model for mail review. Allowed: qwen2.5:7b, gemma3:4b, gemma4:12b, gemma4:26b, qwen3.8:27b. The delivered value is qwen2.5:7b.',
   },
   {
     key: 'MAIL_ERROR_TO',
@@ -411,17 +413,17 @@ export const configFields: readonly ConfigField[] = [
     key: 'MAIL_AI_PROMPT',
     secret: false,
     textDe:
-      'Früherer Auftrag für die externe JA/NEIN-Prüfung. Die Mailprüfung nutzt ihn nicht mehr. Der Auftrag an das lokale Modell steht im Worker.',
+      'Vorgabe-Text SUPPORT/ANTWORT/SPAM mit Wichtigkeit P1–P4. Die laufende Mailprüfung nimmt denselben Auftrag aus dem Worker; dieses Feld dient der Konfiguration und älteren Pfaden.',
     textEn:
-      'Earlier instruction for the external JA/NEIN review. Mail review no longer uses it. The instruction for the local model lives in the worker.',
+      'Default SUPPORT/ANTWORT/SPAM text with importance P1–P4. Live mail review uses the same instruction from the worker; this field serves configuration and older paths.',
   },
   {
     key: 'SEARCH_AI_ENDPOINT',
     secret: false,
     textDe:
-      'Die https-Adresse eines Anbieters mit eigenem Schlüssel für Suche und Kenntnisse. Die Mailprüfung nutzt diese Adresse nicht. Sie spricht MAILCHECK_KI_URL.',
+      'Die https-Adresse eines Anbieters mit eigenem Schlüssel für Suche und Kenntnisse. Die Mailprüfung nutzt diese Adresse nicht. Sie spricht MAILCHECK_AI_URL.',
     textEn:
-      'The https address of a provider that issues its own key, used for search and skills. Mail review does not use this address. It calls MAILCHECK_KI_URL.',
+      'The https address of a provider that issues its own key, used for search and skills. Mail review does not use this address. It calls MAILCHECK_AI_URL.',
   },
   {
     key: 'SEARCH_AI_REGION',
@@ -526,9 +528,12 @@ export const configFields: readonly ConfigField[] = [
   {
     key: 'SEARCH_MODEL_NAME',
     secret: false,
-    textDe: 'Name des Suchmodells, zum Beispiel qwen2.5:7b. Noch nicht angebunden.',
-    textEn: 'Name of the search model, for example qwen2.5:7b. Not connected yet.',
+    textDe:
+      'Name des Suchmodells. Möglich: qwen2.5:7b, gemma3:4b, gemma4:12b, gemma4:26b, qwen3.8:27b. Noch nicht angebunden.',
+    textEn:
+      'Name of the search model. Allowed: qwen2.5:7b, gemma3:4b, gemma4:12b, gemma4:26b, qwen3.8:27b. Not connected yet.',
   },
+
   {
     key: 'SEARCH_MODEL_INTERFACE',
     secret: false,

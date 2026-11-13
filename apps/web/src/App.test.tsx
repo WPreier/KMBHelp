@@ -474,7 +474,11 @@ describe('placeholder page', () => {
       vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
         if (url.endsWith('/api/v1/admin/mail-test') && init?.method !== 'POST') {
-          return json({ prompt: 'Lies diese E-Mail.' });
+          return json({
+            prompt: 'Lies diese E-Mail.',
+            model: 'qwen2.5:7b',
+            models: ['qwen2.5:7b', 'gemma3:4b', 'gemma4:12b', 'gemma4:26b', 'qwen3.8:27b'],
+          });
         }
         if (url.endsWith('/api/v1/admin/mail-test')) {
           return json({

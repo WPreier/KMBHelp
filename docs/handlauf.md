@@ -8,7 +8,7 @@ Der Handlauf ist das, woran man sich festhält, wenn der Gang lang wird. Für KM
 
 ## Was sich schon durchgängig anfühlt
 
-Die öffentliche Seite und die App sprechen dieselbe API. Ticket erfassen, die Liste, die Suche, FAQ, Sprache und Hell/Dunkel sitzen an festen Orten. Datum ist `dd.MM.yyyy`. Die Priorität heißt im Alltag „Sehr wichtig“, „bitte heute noch“ und „bei Gelegenheit“. Die sichtbare Nummer, zum Beispiel `26-0091`, bleibt.
+Die öffentliche Seite und die App sprechen dieselbe API. Ticket erfassen, die Liste, die Suche, FAQ, Sprache und Hell/Dunkel sitzen an festen Orten. Datum ist `dd.MM.yyyy`. Die Priorität heißt im Alltag „Sehr wichtig“, „wichtig“, „bei Gelegenheit“ und „nicht eingeordnet“ (P4). Die sichtbare Nummer, zum Beispiel `26-0091`, bleibt.
 
 Nach der Anmeldung steht Rolle und E-Mail oben, darunter Abmelden. Das Menü beginnt mit Ticket erfassen, dann eigene offene Tickets, alle offenen Tickets, abgeschlossene Tickets und Dashboard. Ein Benutzer sieht nur das Eigene und schließt nichts. Ein Helpdesk-Konto sieht die Kanzlei.
 

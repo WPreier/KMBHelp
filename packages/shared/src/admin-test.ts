@@ -3,13 +3,33 @@ import { z } from 'zod';
 export const mailTestPromptSchema = z
   .object({
     prompt: z.string(),
+    model: z.string(),
+    models: z.array(z.string()),
   })
   .strict();
 
+export const mailTestPromptMax = 50_000;
+export const mailTestEmailMax = 200_000;
+
 export const mailTestRequestSchema = z
   .object({
-    prompt: z.string().max(20_000),
-    email: z.string().max(20_000),
+    prompt: z.string().max(mailTestPromptMax),
+    email: z.string().max(mailTestEmailMax),
+    model: z.string().max(200).optional(),
+  })
+  .strict();
+
+export const mailTestModelRequestSchema = z
+  .object({
+    model: z.string().trim().min(1).max(200),
+  })
+  .strict();
+
+export const mailTestModelResultSchema = z
+  .object({
+    model: z.string(),
+    textDe: z.string(),
+    textEn: z.string(),
   })
   .strict();
 

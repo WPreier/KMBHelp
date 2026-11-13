@@ -1,12 +1,13 @@
 import {
   mailboxListSchema,
   mailboxMessageSchema,
+  mailTestModelResultSchema,
   mailTestPromptSchema,
   mailTestResultSchema,
   type MailboxRow,
   type MailTestResult,
 } from '@kmbhelp/shared';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type DragEvent, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getJson, postJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
@@ -41,21 +42,32 @@ export function MailTestPage() {
   const mailId = params.get('id') ?? '';
   const [prompt, setPrompt] = useState('');
   const [email, setEmail] = useState('');
+  const [model, setModel] = useState('');
+  const [models, setModels] = useState<string[]>([]);
   const [result, setResult] = useState<MailTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    document.body.classList.add('wait');
     getJson('/api/v1/admin/mail-test', mailTestPromptSchema.parse)
       .then((loaded) => {
-        if (!cancelled) setPrompt(loaded.prompt);
+        if (cancelled) return;
+        setPrompt(loaded.prompt);
+        setModel(loaded.model);
+        setModels(loaded.models);
       })
       .catch((caught: unknown) => {
         if (!cancelled) setError(failure(caught, lang, copy.loadFailed));
+      })
+      .finally(() => {
+        document.body.classList.remove('wait');
       });
     return () => {
       cancelled = true;
+      document.body.classList.remove('wait');
     };
   }, [copy.loadFailed, lang]);
 
@@ -67,6 +79,7 @@ export function MailTestPage() {
       setEmail(stored);
       return;
     }
+    document.body.classList.add('wait');
     getJson(
       `/api/v1/admin/mailbox/message?id=${encodeURIComponent(mailId)}`,
       mailboxMessageSchema.parse,
@@ -76,9 +89,13 @@ export function MailTestPage() {
       })
       .catch((caught: unknown) => {
         if (!cancelled) setError(failure(caught, lang, copy.loadFailed));
+      })
+      .finally(() => {
+        document.body.classList.remove('wait');
       });
     return () => {
       cancelled = true;
+      document.body.classList.remove('wait');
     };
   }, [copy.loadFailed, lang, mailId]);
 
@@ -86,12 +103,13 @@ export function MailTestPage() {
     event.preventDefault();
     setPending(true);
     setError(null);
+    setNote(null);
     setResult(null);
     document.body.classList.add('wait');
     try {
       const loaded = await postJson(
         '/api/v1/admin/mail-test',
-        { prompt, email },
+        { prompt, email, model },
         mailTestResultSchema.parse,
       );
       setResult(loaded);
@@ -103,15 +121,66 @@ export function MailTestPage() {
     }
   }
 
+  async function onModelChange(next: string) {
+    if (next === '' || next === model) return;
+    setPending(true);
+    setError(null);
+    setNote(null);
+    document.body.classList.add('wait');
+    try {
+      const saved = await postJson(
+        '/api/v1/admin/mail-test/model',
+        { model: next },
+        mailTestModelResultSchema.parse,
+      );
+      setModel(saved.model);
+      setNote(lang === 'de' ? saved.textDe : saved.textEn);
+    } catch (caught) {
+      setError(failure(caught, lang, copy.mailTestModelDown));
+    } finally {
+      document.body.classList.remove('wait');
+      setPending(false);
+    }
+  }
+
   async function onFile(file: File | undefined) {
     if (!file) return;
-    setEmail(await file.text());
+    setError(null);
+    try {
+      setEmail(await readMailFile(file));
+    } catch {
+      setError(copy.mailTestDropMsg);
+    }
+  }
+
+  async function onDrop(event: DragEvent<HTMLTextAreaElement>) {
+    event.preventDefault();
+    setError(null);
+    try {
+      setEmail(await readDroppedMail(event));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : copy.mailTestDropMsg);
+    }
   }
 
   return (
     <section>
       <h2>{copy.mailTestTitle}</h2>
       <form onSubmit={(event) => void onTest(event)}>
+        <label>
+          {copy.mailTestModel}
+          <select
+            value={model}
+            disabled={pending || models.length === 0}
+            onChange={(event) => void onModelChange(event.target.value)}
+          >
+            {models.map((entry) => (
+              <option key={entry} value={entry}>
+                {entry}
+              </option>
+            ))}
+          </select>
+        </label>
         <label>
           {copy.mailTestPrompt}
           <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />
@@ -130,13 +199,18 @@ export function MailTestPage() {
             className="mail-test-mail"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => void onDrop(event)}
+            title={copy.mailTestDropHint}
           />
         </label>
+        <p>{copy.mailTestDropHint}</p>
         <button type="submit" disabled={pending}>
           {copy.mailTestRun}
         </button>
       </form>
       {error ? <p role="alert">{error}</p> : null}
+      {note ? <p>{note}</p> : null}
       {result ? (
         <>
           {result.exchanges.map((exchange, index) => (
@@ -162,27 +236,57 @@ export function MailboxAdminPage() {
   const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function loadMailbox() {
+    setLoading(true);
+    setError(null);
+    document.body.classList.add('wait');
+    try {
+      const loaded = await getJson('/api/v1/admin/mailbox', mailboxListSchema.parse);
+      setMessages(loaded.messages);
+      setTruncated(loaded.truncated);
+    } catch (caught) {
+      setMessages(null);
+      setTruncated(false);
+      setError(failure(caught, lang, copy.loadFailed));
+    } finally {
+      document.body.classList.remove('wait');
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(null);
+    document.body.classList.add('wait');
     getJson('/api/v1/admin/mailbox', mailboxListSchema.parse)
       .then((loaded) => {
-        if (!cancelled) {
-          setMessages(loaded.messages);
-          setTruncated(loaded.truncated);
-        }
+        if (cancelled) return;
+        setMessages(loaded.messages);
+        setTruncated(loaded.truncated);
       })
       .catch((caught: unknown) => {
-        if (!cancelled) setError(failure(caught, lang, copy.loadFailed));
+        if (cancelled) return;
+        setMessages(null);
+        setTruncated(false);
+        setError(failure(caught, lang, copy.loadFailed));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+        document.body.classList.remove('wait');
       });
     return () => {
       cancelled = true;
+      document.body.classList.remove('wait');
     };
-  }, [copy.loadFailed, lang]);
+  }, [lang, copy.loadFailed]);
 
   async function openTest(mail: MailboxRow) {
     setBusy(mail.graphId);
     setError(null);
+    document.body.classList.add('wait');
     try {
       const full = await getJson(
         `/api/v1/admin/mailbox/message?id=${encodeURIComponent(mail.graphId)}`,
@@ -197,6 +301,7 @@ export function MailboxAdminPage() {
     } catch (caught) {
       setError(failure(caught, lang, copy.loadFailed));
     } finally {
+      document.body.classList.remove('wait');
       setBusy(null);
     }
   }
@@ -205,6 +310,7 @@ export function MailboxAdminPage() {
     const unread = !mail.unread;
     setBusy(mail.graphId);
     setError(null);
+    document.body.classList.add('wait');
     try {
       await postJson(
         '/api/v1/admin/mailbox/read',
@@ -219,6 +325,7 @@ export function MailboxAdminPage() {
     } catch (caught) {
       setError(failure(caught, lang, copy.loadFailed));
     } finally {
+      document.body.classList.remove('wait');
       setBusy(null);
     }
   }
@@ -227,6 +334,11 @@ export function MailboxAdminPage() {
     <section>
       <h2>{copy.mailboxAdminTitle}</h2>
       <p>{copy.mailboxAdminLead}</p>
+      <p>
+        <button type="button" disabled={loading || busy !== null} onClick={() => void loadMailbox()}>
+          {copy.mailboxReload}
+        </button>
+      </p>
       {error ? <p role="alert">{error}</p> : null}
       {truncated && messages ? (
         <p>{copy.mailboxTruncated.replace('{count}', String(messages.length))}</p>
@@ -258,7 +370,7 @@ export function MailboxAdminPage() {
                       className="service-test"
                       title={copy.mailboxTestMail}
                       aria-label={copy.mailboxTestMail}
-                      disabled={busy === mail.graphId}
+                      disabled={busy === mail.graphId || loading}
                       onClick={() => void openTest(mail)}
                     >
                       T
@@ -272,7 +384,7 @@ export function MailboxAdminPage() {
                       }
                       title={mail.unread ? copy.mailboxMarkRead : copy.mailboxMarkUnread}
                       aria-label={mail.unread ? copy.mailboxMarkRead : copy.mailboxMarkUnread}
-                      disabled={busy === mail.graphId}
+                      disabled={busy === mail.graphId || loading}
                       onClick={() => void toggle(mail)}
                     >
                       {mail.unread ? 'G' : 'U'}
@@ -299,4 +411,72 @@ export function MailboxAdminPage() {
 
 function failure(caught: unknown, lang: 'de' | 'en', fallback: string): string {
   return caught instanceof RequestFailed ? (caught.text?.[lang] ?? fallback) : fallback;
+}
+
+async function readDroppedMail(event: DragEvent<HTMLTextAreaElement>): Promise<string> {
+  const transfer = event.dataTransfer;
+  if (!transfer) return '';
+  const html = transfer.getData('text/html');
+  const plain = transfer.getData('text/plain');
+  const file = transfer.files?.[0];
+  if (file) {
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.msg') || file.type === 'application/vnd.ms-outlook') {
+      const fromTransfer = combineOutlookTransfer(html, plain);
+      if (fromTransfer.trim() !== '') return fromTransfer;
+      throw new Error(
+        'Outlook hat die Mail als .msg übergeben. Speichere sie in Outlook als .eml und lege diese Datei hier ab, oder kopiere den Mailtext.',
+      );
+    }
+    return readMailFile(file);
+  }
+  const combined = combineOutlookTransfer(html, plain);
+  if (combined.trim() === '') {
+    throw new Error(
+      'Die abgelegte Mail enthielt keinen lesbaren Text. Speichere sie in Outlook als .eml und lege die Datei hier ab.',
+    );
+  }
+  return combined;
+}
+
+async function readMailFile(file: File): Promise<string> {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.msg') || file.type === 'application/vnd.ms-outlook') {
+    throw new Error(
+      'Outlook hat die Mail als .msg übergeben. Speichere sie in Outlook als .eml und lege diese Datei hier ab, oder kopiere den Mailtext.',
+    );
+  }
+  const text = await file.text();
+  if (looksLikeHeadersOnly(text)) {
+    return text;
+  }
+  return text;
+}
+
+function combineOutlookTransfer(html: string, plain: string): string {
+  const bodyFromHtml = htmlToPlain(html);
+  const plainTrim = plain.trim();
+  if (plainTrim !== '' && !looksLikeHeadersOnly(plainTrim)) return plainTrim;
+  if (looksLikeHeadersOnly(plainTrim) && bodyFromHtml !== '') {
+    return `${plainTrim}\n\n${bodyFromHtml}`;
+  }
+  if (bodyFromHtml !== '') return bodyFromHtml;
+  return plainTrim;
+}
+
+function looksLikeHeadersOnly(text: string): boolean {
+  const normalized = text.replace(/\r\n/gu, '\n');
+  if (!/\n\n/u.test(normalized)) {
+    return /^(from|to|cc|date|subject|message-id|in-reply-to|references)\s*:/imu.test(normalized);
+  }
+  const body = normalized.slice(normalized.indexOf('\n\n') + 2).trim();
+  return body === '';
+}
+
+function htmlToPlain(html: string): string {
+  if (html.trim() === '') return '';
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  doc.querySelectorAll('script,style').forEach((node) => node.remove());
+  const text = doc.body?.textContent ?? '';
+  return text.replace(/\u00a0/gu, ' ').replace(/[ \t]+\n/gu, '\n').replace(/\n{3,}/gu, '\n\n').trim();
 }

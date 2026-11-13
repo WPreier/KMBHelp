@@ -46,7 +46,7 @@ Start: `pnpm db:migrate`, danach `pnpm db:seed`. Die Datenbank heißt `kmbhelp`.
 - [x] Ticket anlegen, Priorität aus Frist und Wirkung. Kein Geheimlink und keine E-Mail dafür
 - [x] Öffentliche Liste als einzeilige Tabelle mit Köpfen ID, Text, Alter, Ablauf bis, dazu Offen, Priorität, Erledigt. Zeilen hell und dunkel, Rahmen wie die Eingabefelder
 - [x] Zurücksetzen leert das Formular. Sprache und Darstellung sitzen als Flagge, Sonne und Mond in der Kopfzeile
-- [x] Datum `dd.MM.yyyy`. Priorität: Sehr wichtig, bitte heute noch, bei Gelegenheit
+- [x] Datum `dd.MM.yyyy`. Priorität: Sehr wichtig, wichtig, bei Gelegenheit; P4 nicht eingeordnet
 - [x] Offen, inaktiv, abgelaufen, geschlossen. Geschlossen bleibt geschlossen. Wiederöffnen informiert alle als Ereignis
 - [x] Links www, Home, Wiki und übrige externe Links in einem neuen Fenster. Suche rechts von Wiki
 - [x] FAQ-Seiten, leer bis die Kanzlei veröffentlicht
@@ -110,7 +110,7 @@ Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Die Vorgänge ruft die API
 - [x] SVNR, IBAN, Kreditkartenmuster und Geburtsdatum werden vor dem Modell maskiert
 - [x] Entscheidung als JSON: Kategorie, Priorität, Kenntnis, Konfidenz, `auto_reply_allowed`, `is_support`
 - [x] Helpdesk-Mail wird ein Ticket, wenn Ollama SUPPORT antwortet. Ohne erreichbaren Server bleibt sie ungelesen und erzeugt nichts
-- [x] Die externe Prüfung über `POST /api/v1/mail/review` und MCP `review_mail` ist entfernt. Der Worker fragt Ollama unter `MAILCHECK_KI_URL`
+- [x] Die externe Prüfung über `POST /api/v1/mail/review` und MCP `review_mail` ist entfernt. Der Worker fragt Ollama unter `MAILCHECK_AI_URL`
 - [x] Jeder Absender wird geprüft. `INTERNAL_MAIL_DOMAINS`, das Postfach und die Mitarbeiter sperren keine Mail mehr
 - [x] Syslog für jeden externen Schritt. Zugriffsprotokoll in `activity_log` und `%LOCALAPPDATA%\kmbhelp\activity.log`, sichtbar unter `/verwaltung/protokoll`, filterbar und als Text, CSV oder PDF
 - [x] Automatisch schließen nur bei Allowlist, Konfidenz ab 0,85, ohne personenbezogene Muster und mit veröffentlichter FAQ. Sonst Mensch
@@ -118,7 +118,7 @@ Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. Die Vorgänge ruft die API
 - [x] Staff-Suche mit Begründung und Link. Öffentliche Suche ohne Modell und ohne Klartext im Protokoll
 - [x] `pnpm test` und `pnpm typecheck`
 
-Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:worker`. Die Suche bleibt auf `http://127.0.0.1:5173`. Solange die vier KI-Felder leer sind, gilt der Satz „Treffer wegen Kategorie/Titel“. Die Mailprüfung nutzt `MAILCHECK_KI_URL` und bleibt davon unabhängig. Ist dieser Server nicht erreichbar, bleibt die Mail ungelesen. `SEARCH_AI_AUTO_REPLY_CATEGORIES` bleibt leer, bis die Kanzlei Kategorien freigibt.
+Start: `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`, zusätzlich `pnpm dev:worker`. Die Suche bleibt auf `http://127.0.0.1:5173`. Solange die vier KI-Felder leer sind, gilt der Satz „Treffer wegen Kategorie/Titel“. Die Mailprüfung nutzt `MAILCHECK_AI_URL` und bleibt davon unabhängig. Ist dieser Server nicht erreichbar, bleibt die Mail ungelesen. `SEARCH_AI_AUTO_REPLY_CATEGORIES` bleibt leer, bis die Kanzlei Kategorien freigibt.
 
 ## Phase 7 — Abnahme
 
@@ -198,14 +198,17 @@ Start: `pnpm --filter @kmbhelp/mobile start`. Produktion spricht `https://helpde
 Die App ist in Betrieb. Diese Phase härtet sie, prüft sie an echten Vorgängen und hält das Notfallblatt fest. Der Zweig ist `phase/12-haerten`.
 
 - [x] `/verwaltung/tests` nur für Administratoren. Die Dienste sind von der Konfiguration dorthin gezogen. Der Knopf T prüft weiter nur den jeweiligen Dienst
-- [x] `/verwaltung/ki-mailtest` zeigt den Abfragetext, nimmt eine E-Mail im Textfeld oder als Datei an und prüft sie mit derselben Ollama-Schnittstelle wie der Worker. Darunter stehen der gesendete Text, die Antwort und die Dauer in Sekunden
-- [x] `/verwaltung/mailbox` listet den ganzen Posteingang der Helpdesk-Mailbox, gelesen und ungelesen, mit den Feldern, die an die KI gehen. T öffnet KI-Mailtest in einem neuen Fenster und füllt die E-Mail. Eine ungelesene Zeile trägt G auf dunklem Grund, eine gelesene U auf hellem Grund. Mehr als 500 Nachrichten zeigen die neuesten 500. Während KI-Mailtest rechnet, ist der Mauszeiger ein Wartecursor
+- [x] `/verwaltung/ki-mailtest` zeigt den Abfragetext, nimmt eine E-Mail im Textfeld, per Datei oder per Drag-and-Drop an und prüft sie mit derselben Ollama-Schnittstelle wie der Worker. Die Modellauswahl prüft `MAILCHECK_AI_URL` und speichert bei Erfolg `MAILCHECK_AI_MODEL` (`qwen2.5:7b`, `gemma3:4b`, `gemma4:12b`, `gemma4:26b`, `qwen3.8:27b`). Darunter stehen der gesendete Text, die Antwort und die Dauer in Sekunden
+- [x] `/verwaltung/mailbox` listet den ganzen Posteingang der Helpdesk-Mailbox, gelesen und ungelesen, mit den Feldern, die an die KI gehen. Neu einlesen und der Erstaufruf zeigen den Wartecursor. Graph-Fehler liefern eine ausführliche Meldung statt nur „internal“. T öffnet KI-Mailtest in einem neuen Fenster und füllt die E-Mail. Eine ungelesene Zeile trägt G auf dunklem Grund, eine gelesene U auf hellem Grund. Mehr als 500 Nachrichten zeigen die neuesten 500
+- [x] Mailprüfung antwortet nur mit SUPPORT, ANTWORT oder SPAM. Wichtigkeit P1 sehr wichtig, P2 wichtig, P3 bei Gelegenheit, P4 nicht eingeordnet
+- [x] An die MAILCHECK-KI gehen höchstens 5000 Zeichen der Mail (Kopfzeilen und Text); der Rest wird vorher abgeschnitten
 - [x] `docs/nachtwache.md` hält das Sicherheitsbild fest. `docs/handlauf.md` hält fest, wo die Arbeit flüssiger werden kann. Beides ist beschrieben und noch nicht als Änderung eingebaut
 - [x] Der Worker auf dem Entwicklungsrechner liest die Helpdesk-Mailbox und lässt jede Mail liegen. Auf kmbhelp wird eine als Ticket erkannte Mail nach der Verarbeitung in den Unterordner Tickets verschoben. Andere Mails bleiben ungelesen und werden nicht noch einmal an die KI gegeben
 - [x] Auf `/ticket/{code}` heißt das Feld Beschreibung und zeigt höchstens drei Zeilen. Darunter steht die Historie mit Datum, Person und Text. PDF und CSV enthalten das komplette Ticket
 - [x] Der Knopf M steht links neben der Mitarbeiterliste. Nur ein Administrator ändert sie, nach Rückfrage. Die Übergabemail wird verschickt. Die Priorität ist eine Auswahlliste für Administratoren und angemeldete Mitarbeiter, mit Rückfrage und sofortigem Speichern. Der Verlauf steht unter der Dateiliste. Die Formatleiste zeigt Strichsymbole
 - [x] `mail_lesson` speichert `ignored`. `mail.log` nennt Absender, Empfänger, Betreff und das Ergebnis auf Deutsch. `activity.log` nennt die Seite auf Deutsch und lässt die Adresse am Zeilenende weg
 - [x] Designsprache Leitstand fest. Dokumentation in `docs/design/`. IBM Plex Sans lokal unter `apps/web/public/fonts/`
+- [x] Konfiguration: `MAILCHECK_AI_*` statt `MAILCHECK_KI_*`, Gruppen nach Präfix mit Rahmen und Auf-/Zuklappen
 - [ ] Härtung, Praxistest und Notfallblatt
 
 Start: `pnpm dev`. Die Seiten stehen auf `http://127.0.0.1:5173/verwaltung/tests`. Ein Benutzer ohne Helpdesk-Gruppe erhält von der API 401.

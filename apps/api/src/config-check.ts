@@ -1,6 +1,6 @@
 import { regionAllowsProcessing, endpointAllowsProcessing } from '@kmbhelp/ai';
 import { createDatabase } from '@kmbhelp/db';
-import { configField, describeConfig } from '@kmbhelp/shared';
+import { configField, describeConfig, isMailcheckModel, mailcheckModels } from '@kmbhelp/shared';
 import { directoryCertificate, ldapsConfigFromEnv, serviceBindWorks } from './directory.js';
 import { parseWorkerSchedule } from './worker-schedule.js';
 import { ldapsHost, peerFingerprint, tcpOpen } from './probes.js';
@@ -448,7 +448,7 @@ export async function checkConfigField(
           'The instruction should contain JA and NEIN.',
         );
   }
-  if (key === 'MAILCHECK_KI_URL') {
+  if (key === 'MAILCHECK_AI_URL') {
     const url = value.trim() || 'http://192.168.191.131:11434';
     return /^https?:\/\/[^/\s]+/u.test(url) && !url.includes('@')
       ? line(key, 'ok', `Die Mailprüfung spricht ${url}.`, `Mail review calls ${url}.`)
@@ -459,9 +459,26 @@ export async function checkConfigField(
           'The address must be http or https and must not contain a password.',
         );
   }
-  if (key === 'MAILCHECK_KI_MODEL') {
-    const model = value.trim() || 'qwen2.5:7b';
-    return line(key, 'ok', `Das Modell heißt ${model}.`, `The model is named ${model}.`);
+  if (key === 'MAILCHECK_AI_MODEL' || key === 'SEARCH_MODEL_NAME') {
+    const model = value.trim();
+    if (key === 'SEARCH_MODEL_NAME' && model === '') {
+      return line(
+        key,
+        'ok',
+        'Noch kein Suchmodell gesetzt.',
+        'No search model is set yet.',
+      );
+    }
+    const chosen = model || 'qwen2.5:7b';
+    const listed = mailcheckModels.join(', ');
+    return isMailcheckModel(chosen)
+      ? line(key, 'ok', `Das Modell heißt ${chosen}.`, `The model is named ${chosen}.`)
+      : line(
+          key,
+          'warning',
+          `Unbekanntes Modell ${chosen}. Erwartet werden ${listed}.`,
+          `Unknown model ${chosen}. Expected ${listed}.`,
+        );
   }
   if (key === 'MAIL_SMTP_SERVER') {
     const host = value.trim() || '127.0.0.1';
@@ -595,8 +612,8 @@ export async function checkConfigField(
       return line(
         key,
         'informational',
-        'Kein externer Anbieter. Die Mailprüfung spricht MAILCHECK_KI_URL. Die Suche bleibt beim Satz aus Phase 2.',
-        'No external provider. Mail review calls MAILCHECK_KI_URL. Search keeps the phase 2 sentence.',
+        'Kein externer Anbieter. Die Mailprüfung spricht MAILCHECK_AI_URL. Die Suche bleibt beim Satz aus Phase 2.',
+        'No external provider. Mail review calls MAILCHECK_AI_URL. Search keeps the phase 2 sentence.',
       );
     }
     return endpointAllowsProcessing(value)

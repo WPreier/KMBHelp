@@ -8,7 +8,7 @@ Lohnlauf, UVA, FinanzOnline, ELDA und Scanner dürfen nicht liegen bleiben, nur 
 
 ## Auslöser
 
-Mail, Web, App, Anruf oder Zuruf. Eine Mail an das Helpdesk prüft der lokale Ollama-Server. Jeder Absender wird gefragt. SUPPORT wird ein Ticket, ANTWORT hängt sich an ein bestehendes Ticket, ABSCHLUSS schließt das letzte offene Ticket des Absenders, FREMD und SPAM werden nur gelesen markiert. Ist der Server nicht erreichbar, bleibt die Mail ungelesen. Dauert die Abfrage länger als 5 Minuten, entsteht ein Ticket mit niedriger Wichtigkeit und der Standardkategorie. `helpdesk@ppc.at` erhält die Fehlermail zuerst über Graph und sonst über den lokalen Postfix. Dieselbe Adresse erhält ab 7 Uhr einmal am Tag die offenen Warnungen, sofern welche offen sind. Anruf und Zuruf erfasst der Mitarbeiter, der den Anruf hat, unter Quelle `phone` oder `walkin`.
+Mail, Web, App, Anruf oder Zuruf. Eine Mail an das Helpdesk prüft der lokale Ollama-Server. Jeder Absender wird gefragt. SUPPORT wird ein Ticket, ANTWORT hängt sich an ein bestehendes Ticket, SPAM wird nur gelesen markiert. Die Wichtigkeit ist P1 sehr wichtig, P2 wichtig, P3 bei Gelegenheit oder P4 nicht eingeordnet. Ist der Server nicht erreichbar, bleibt die Mail ungelesen. Dauert die Abfrage länger als 5 Minuten, entsteht ein Ticket mit niedriger Wichtigkeit und der Standardkategorie. `helpdesk@ppc.at` erhält die Fehlermail zuerst über Graph und sonst über den lokalen Postfix. Dieselbe Adresse erhält ab 7 Uhr einmal am Tag die offenen Warnungen, sofern welche offen sind. Anruf und Zuruf erfasst der Mitarbeiter, der den Anruf hat, unter Quelle `phone` oder `walkin`.
 
 ## Schritte
 

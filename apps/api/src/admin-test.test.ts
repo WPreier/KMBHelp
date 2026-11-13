@@ -36,4 +36,21 @@ describe('admin mail test', () => {
     expect(body.seconds).toBeGreaterThanOrEqual(0);
     await app.close();
   });
+
+  it('accepts a long pasted mail that used to fail at 20000 characters', async () => {
+    vi.stubGlobal('fetch', async () => Response.json({ message: { content: 'SPAM' } }));
+    const app = buildApp();
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/mail-test',
+      payload: {
+        prompt: 'Lies diese E-Mail.',
+        email: `From: Ada <ada@example.com>\nSubject: Hallo\n\n${'x'.repeat(30_000)}`,
+        model: 'gemma3:4b',
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ textDe: 'Ergebnis: spam.' });
+    await app.close();
+  });
 });

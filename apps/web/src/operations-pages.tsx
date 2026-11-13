@@ -203,10 +203,27 @@ function ConfigField({ entry }: { entry: ConfigurationReport['entries'][number] 
   );
 }
 
+function configCategory(key: string): string {
+  const mark = key.indexOf('_');
+  return mark === -1 ? key : key.slice(0, mark);
+}
+
+function groupConfigEntries(entries: ConfigurationReport['entries']) {
+  const groups = new Map<string, ConfigurationReport['entries']>();
+  for (const entry of entries) {
+    const category = configCategory(entry.key);
+    const list = groups.get(category) ?? [];
+    list.push(entry);
+    groups.set(category, list);
+  }
+  return [...groups.entries()].sort(([left], [right]) => left.localeCompare(right, 'en'));
+}
+
 export function ConfigurationPage() {
   const { lang, copy } = useLocale();
   const [data, setData] = useState<ConfigurationReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [closed, setClosed] = useState<Set<string>>(() => new Set());
 
   async function load(report: boolean) {
     setError(null);
@@ -215,6 +232,7 @@ export function ConfigurationPage() {
         ? await postJson('/api/v1/admin/configuration/check', {}, configurationSchema.parse)
         : await getJson('/api/v1/admin/configuration', configurationSchema.parse);
       setData(next);
+      setClosed(new Set());
     } catch (caught) {
       setError(
         caught instanceof RequestFailed
@@ -228,7 +246,10 @@ export function ConfigurationPage() {
     let cancelled = false;
     getJson('/api/v1/admin/configuration', configurationSchema.parse)
       .then((loaded) => {
-        if (!cancelled) setData(loaded);
+        if (!cancelled) {
+          setData(loaded);
+          setClosed(new Set());
+        }
       })
       .catch((caught: unknown) => {
         if (!cancelled) {
@@ -244,6 +265,8 @@ export function ConfigurationPage() {
     };
   }, [copy.loadFailed, lang]);
 
+  const groups = data ? groupConfigEntries(data.entries) : [];
+
   return (
     <section>
       <h2>{copy.configurationTitle}</h2>
@@ -256,10 +279,54 @@ export function ConfigurationPage() {
       {error ? <p role="alert">{error}</p> : null}
       {data ? (
         <>
-          <h3>{copy.configurationTitle}</h3>
-          {data.entries.map((entry) => (
-            <ConfigField key={entry.key} entry={entry} />
-          ))}
+          {groups.map(([category, entries]) => {
+            const open = !closed.has(category);
+            return (
+              <section key={category} className="config-group">
+                <header className="config-group-head">
+                  <h3>{category}</h3>
+                  <div className="config-group-actions">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={copy.configurationExpand}
+                      title={copy.configurationExpand}
+                      aria-expanded={open}
+                      onClick={() =>
+                        setClosed((current) => {
+                          const next = new Set(current);
+                          next.delete(category);
+                          return next;
+                        })
+                      }
+                    >
+                      <ArrowDownIcon />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={copy.configurationCollapse}
+                      title={copy.configurationCollapse}
+                      aria-expanded={open}
+                      onClick={() =>
+                        setClosed((current) => {
+                          const next = new Set(current);
+                          next.add(category);
+                          return next;
+                        })
+                      }
+                    >
+                      <ArrowUpIcon />
+                    </button>
+                  </div>
+                </header>
+                <hr className="config-group-rule" />
+                {open
+                  ? entries.map((entry) => <ConfigField key={entry.key} entry={entry} />)
+                  : null}
+              </section>
+            );
+          })}
           <h3>{copy.checkAgain}</h3>
           <ul>
             {data.checks.map((entry) => (
@@ -271,6 +338,36 @@ export function ConfigurationPage() {
         </>
       ) : null}
     </section>
+  );
+}
+
+function ArrowDownIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        d="M6 9l6 6 6-6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ArrowUpIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        d="M6 15l6-6 6 6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

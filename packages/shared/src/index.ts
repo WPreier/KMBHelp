@@ -193,6 +193,10 @@ export {
   mailTestPromptSchema,
   mailTestRequestSchema,
   mailTestResultSchema,
+  mailTestModelRequestSchema,
+  mailTestModelResultSchema,
+  mailTestPromptMax,
+  mailTestEmailMax,
   type MailboxMessage,
   type MailboxRow,
   type MailTestResult,
@@ -221,6 +225,14 @@ export {
   mailPromptText,
   type AiProviderName,
 } from './mail-prompt.js';
+export {
+  defaultMailcheckModel,
+  isMailcheckModel,
+  mailcheckInputMax,
+  mailcheckModels,
+  resolveMailcheckModel,
+  type MailcheckModel,
+} from './mailcheck-models.js';
 export {
   adminAccessSchema,
   adminPasswordSchema,

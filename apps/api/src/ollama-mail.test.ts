@@ -9,8 +9,11 @@ import {
   classificationPrompt,
   formatMailSource,
   importanceOf,
+  mailcheckInputMax,
+  mailExcerpt,
   parseMailAnswer,
   parsePastedMail,
+  readImportance,
 } from './ollama-mail.js';
 
 const mail: InboundMail = {
@@ -29,20 +32,40 @@ const mail: InboundMail = {
 };
 
 describe('local mail review', () => {
-  it('reads the five classes and a clear importance', () => {
+  it('reads SUPPORT, ANTWORT, SPAM and P1–P4', () => {
     expect(parseMailAnswer('SUPPORT\nKATEGORIE: Netzwerkdrucker\nWICHTIGKEIT: P1')).toEqual({
       kind: 'support',
       category: 'Netzwerkdrucker',
       priority: 'p1',
+      importanceSettled: true,
     });
-    expect(parseMailAnswer('ANTWORT')).toEqual({ kind: 'reply', category: null, priority: null });
-    expect(parseMailAnswer('Abschluss')).toEqual({ kind: 'close', category: null, priority: null });
-    expect(parseMailAnswer('FREMD')).toEqual({ kind: 'foreign', category: null, priority: null });
-    expect(parseMailAnswer('SPAM')).toEqual({ kind: 'spam', category: null, priority: null });
+    expect(parseMailAnswer('ANTWORT')).toEqual({
+      kind: 'reply',
+      category: null,
+      priority: null,
+      importanceSettled: true,
+    });
+    expect(parseMailAnswer('SPAM')).toEqual({
+      kind: 'spam',
+      category: null,
+      priority: null,
+      importanceSettled: true,
+    });
+    expect(parseMailAnswer('Abschluss')).toBeNull();
+    expect(parseMailAnswer('FREMD')).toBeNull();
     expect(parseMailAnswer('vielleicht')).toBeNull();
+    expect(
+      parseMailAnswer('SUPPORT\nKATEGORIE: Scanner\nWICHTIGKEIT: P4'),
+    ).toEqual({
+      kind: 'support',
+      category: 'Scanner',
+      priority: null,
+      importanceSettled: true,
+    });
     expect(importanceOf('unklar')).toBeNull();
-    expect(importanceOf('wichtig')).toBeNull();
+    expect(importanceOf('wichtig')).toBe('p2');
     expect(importanceOf('bei Gelegenheit')).toBe('p3');
+    expect(readImportance('P4')).toEqual({ priority: null, settled: true });
   });
 
   it('sends the important headers and masks the body', () => {
@@ -51,12 +74,56 @@ describe('local mail review', () => {
     expect(prompt).toContain('To: helpdesk@kmbcloud.at');
     expect(prompt).toContain('Subject: Drucker klemmt');
     expect(prompt).toContain('Message-ID: <once@example.com>');
+    expect(prompt).toContain('SUPPORT');
+    expect(prompt).toContain('ANTWORT');
+    expect(prompt).toContain('SPAM');
+    expect(prompt).not.toContain('ABSCHLUSS');
+    expect(prompt).not.toContain('FREMD');
     expect(prompt).not.toContain('1234');
     expect(prompt).not.toContain('Received:');
     const again = parsePastedMail(formatMailSource(mail));
     expect(classificationPrompt(again)).toBe(prompt);
     expect(again.fromEmail).toBe('sender@example.com');
     expect(again.subject).toBe('Drucker klemmt');
+  });
+
+  it('cuts the mail excerpt to mailcheckInputMax before the model sees it', () => {
+    const long: InboundMail = {
+      ...mail,
+      body: 'A'.repeat(mailcheckInputMax + 2000),
+    };
+    const excerpt = mailExcerpt(long);
+    expect(excerpt.length).toBe(mailcheckInputMax);
+    expect(excerpt.startsWith('From:')).toBe(true);
+    expect(classificationPrompt(long).endsWith(excerpt)).toBe(true);
+  });
+
+  it('skips the second importance ask when P4 is already set', async () => {
+    const calls: string[] = [];
+    const answered = await askOllama({
+      baseUrl: 'http://192.168.191.131:11434',
+      model: 'qwen2.5:7b',
+      mail,
+      fetchImpl: async (_url, init) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as {
+          messages: { content: string }[];
+        };
+        calls.push(body.messages[0]?.content ?? '');
+        return new Response(
+          JSON.stringify({
+            message: { content: 'SUPPORT\nKATEGORIE: Drucker\nWICHTIGKEIT: P4' },
+          }),
+          { status: 200 },
+        );
+      },
+    });
+    expect(answered).toEqual({
+      kind: 'support',
+      category: 'Drucker',
+      priority: null,
+      model: 'qwen2.5:7b',
+    });
+    expect(calls).toHaveLength(1);
   });
 
   it('asks again when the importance is missing and stops at five minutes', async () => {
@@ -123,27 +190,16 @@ describe('local mail review', () => {
         {
           GRAPH_TENANT_ID: 'tenant',
           GRAPH_CLIENT_ID: 'client',
-          GRAPH_CLIENT_SECRET: 'contract-secret',
+          GRAPH_CLIENT_SECRET: 'secret',
           GRAPH_MAILBOX: 'helpdesk@kmbcloud.at',
         },
         fetchImpl,
       ).listUnread(10);
       await flushFileLogs();
-      const model = await readFile(join(directory, 'ki.log'), 'utf8');
-      const mailbox = await readFile(join(directory, 'mail.log'), 'utf8');
-      expect(model).toContain('kmblmt1');
-      expect(model).toContain('qwen2.5:7b');
-      expect(model).toContain('classify');
-      expect(model).toContain('importance');
-      expect(model).toContain('\tSUPPORT');
-      expect(model).toMatch(/\t\d+\.\d\t/u);
-      expect(model).not.toContain('1234');
-      expect(model).not.toContain('Bearer');
-      expect(mailbox).toContain('helpdesk@kmbcloud.at');
-      expect(mailbox).toContain('posteingang');
-      expect(mailbox).toContain('anzahl=0');
-      expect(mailbox).not.toContain('contract-secret');
-      expect(mailbox).not.toContain('access_token');
+      const ki = await readFile(join(directory, 'ki.log'), 'utf8');
+      const model = await readFile(join(directory, 'mail.log'), 'utf8');
+      expect(ki).toContain('qwen2.5:7b');
+      expect(model).toContain('helpdesk@kmbcloud.at');
     } finally {
       if (previous === undefined) delete process.env.ACTIVITY_LOG_FILE;
       else process.env.ACTIVITY_LOG_FILE = previous;

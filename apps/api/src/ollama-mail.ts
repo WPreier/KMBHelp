@@ -1,12 +1,13 @@
 import { maskPersonalData } from '@kmbhelp/ai';
-import type { Priority } from '@kmbhelp/shared';
+import { defaultMailcheckModel, mailcheckInputMax, type Priority } from '@kmbhelp/shared';
 import { enqueueFileLog } from './file-log.js';
 import type { InboundMail } from './graph.js';
 
 export const mailQueryLimitMs = 5 * 60 * 1000;
 export const defaultOllamaUrl = 'http://192.168.191.131:11434';
-export const defaultOllamaModel = 'qwen2.5:7b';
+export const defaultOllamaModel = defaultMailcheckModel;
 export const defaultMailErrorTo = 'helpdesk@ppc.at';
+export { mailcheckInputMax };
 
 export type LocalMailResult = {
   kind: 'support' | 'reply' | 'close' | 'foreign' | 'spam';
@@ -23,11 +24,11 @@ export type MailExchange = {
   answer: string;
 };
 
+type ParsedMail = Omit<LocalMailResult, 'model'> & { importanceSettled: boolean };
+
 const classWord: Record<string, LocalMailResult['kind']> = {
   support: 'support',
   antwort: 'reply',
-  abschluss: 'close',
-  fremd: 'foreign',
   spam: 'spam',
 };
 
@@ -42,31 +43,30 @@ export function mailExcerpt(mail: InboundMail): string {
     mail.inReplyTo ? `In-Reply-To: ${mail.inReplyTo}` : '',
     mail.references ? `References: ${mail.references}` : '',
     '',
-    maskPersonalData(mail.body).slice(0, 8000),
+    maskPersonalData(mail.body),
   ];
-  return lines.filter((line, index) => line !== '' || index === lines.length - 2).join('\n');
+  return lines
+    .filter((line, index) => line !== '' || index === lines.length - 2)
+    .join('\n')
+    .slice(0, mailcheckInputMax);
 }
 
 export function classificationInstructions(): string {
   return [
-    'Lies diese E-Mail. Antworte mit genau einer ersten Zeile und einem dieser Wörter:',
+    'Lies diese E-Mail. Antworte mit einem dieser Wörter:',
     'SUPPORT',
     'ANTWORT',
-    'ABSCHLUSS',
-    'FREMD',
     'SPAM',
     '',
-    'SUPPORT ist eine neue Support-Anfrage.',
+    'SUPPORT ist eine neue Support-Anfrage von einem Kunden.',
     'ANTWORT ist eine Antwort auf ein bestehendes Ticket.',
-    'ABSCHLUSS heißt, der Absender schließt ein Ticket ab und nennt keine Ticketnummer.',
-    'FREMD ist eine fremde Mail und kein Helpdesk-Anliegen.',
     'SPAM ist Spam, Werbung, ein Newsletter oder eine automatische Nachricht.',
     '',
     'Nur wenn die erste Zeile SUPPORT ist, schreibe danach:',
     'KATEGORIE: eine kurze Bezeichnung der Anfrage',
     'WICHTIGKEIT: P1 oder P2 oder P3, und nur wenn die Wichtigkeit eindeutig ist.',
-    'P1 ist sehr wichtig. P2 heißt bitte heute noch. P3 heißt bei Gelegenheit.',
-    'Wenn die Wichtigkeit nicht eindeutig ist, lasse die Zeile WICHTIGKEIT weg.',
+    'P1 ist sehr wichtig. P2 heißt wichtig. P3 heißt bei Gelegenheit.',
+    'Wenn die Wichtigkeit nicht eindeutig ist, schreibe P4',
   ].join('\n');
 }
 
@@ -77,16 +77,16 @@ export function classificationPrompt(mail: InboundMail, instructions?: string): 
 
 export function importancePrompt(mail: InboundMail): string {
   return [
-    'Ist die Wichtigkeit dieser Support-Anfrage eindeutig eine der drei Stufen?',
-    'Antworte mit genau einer Zeile: P1 oder P2 oder P3.',
-    'P1 ist sehr wichtig. P2 heißt bitte heute noch. P3 heißt bei Gelegenheit.',
-    'Wenn du es nicht eindeutig sagen kannst, antworte mit genau: UNKLAR',
+    'Ist die Wichtigkeit dieser Support-Anfrage eindeutig eine der Stufen?',
+    'Antworte mit genau einer Zeile: P1 oder P2 oder P3 oder P4.',
+    'P1 ist sehr wichtig. P2 heißt wichtig. P3 heißt bei Gelegenheit. P4 heißt nicht eingeordnet.',
+    'Wenn du es nicht eindeutig sagen kannst, antworte mit genau: P4',
     '',
     mailExcerpt(mail),
   ].join('\n');
 }
 
-export function parseMailAnswer(text: string): Omit<LocalMailResult, 'model'> | null {
+export function parseMailAnswer(text: string): ParsedMail | null {
   const lines = text
     .split(/\r?\n/u)
     .map((line) => line.trim())
@@ -94,27 +94,43 @@ export function parseMailAnswer(text: string): Omit<LocalMailResult, 'model'> | 
   const first = lines[0]?.replace(/^[^a-zA-ZäöüÄÖÜ]+|[^a-zA-ZäöüÄÖÜ]+$/gu, '').toLowerCase() ?? '';
   const kind = classWord[first];
   if (!kind) return null;
-  if (kind !== 'support') return { kind, category: null, priority: null };
+  if (kind !== 'support') return { kind, category: null, priority: null, importanceSettled: true };
   let category: string | null = null;
   let priority: Priority | null = null;
+  let importanceSettled = false;
   for (const line of lines.slice(1)) {
     const categoryMatch = /^kategorie\s*:\s*(.+)$/iu.exec(line);
     if (categoryMatch?.[1] && /[\p{L}]/u.test(categoryMatch[1])) {
       category = categoryMatch[1].trim().slice(0, 80);
     }
     const importanceMatch = /^wichtigkeit\s*:\s*(.+)$/iu.exec(line);
-    if (importanceMatch?.[1]) priority = importanceOf(importanceMatch[1]);
+    if (importanceMatch?.[1]) {
+      const read = readImportance(importanceMatch[1]);
+      priority = read.priority;
+      importanceSettled = read.settled;
+    }
   }
-  return { kind, category, priority };
+  return { kind, category, priority, importanceSettled };
 }
 
 export function importanceOf(text: string): Priority | null {
+  return readImportance(text).priority;
+}
+
+export function readImportance(text: string): { priority: Priority | null; settled: boolean } {
   const folded = text.trim().toLowerCase();
-  if (folded === '' || folded === 'unklar') return null;
-  if (/^p1\b/u.test(folded) || folded === 'sehr wichtig') return 'p1';
-  if (/^p2\b/u.test(folded) || folded === 'bitte heute noch') return 'p2';
-  if (/^p3\b/u.test(folded) || folded === 'bei gelegenheit' || folded === 'niedrig') return 'p3';
-  return null;
+  if (folded === '' || folded === 'unklar') return { priority: null, settled: false };
+  if (/^p4\b/u.test(folded) || folded === 'nicht eingeordnet') {
+    return { priority: null, settled: true };
+  }
+  if (/^p1\b/u.test(folded) || folded === 'sehr wichtig') return { priority: 'p1', settled: true };
+  if (/^p2\b/u.test(folded) || folded === 'wichtig' || folded === 'bitte heute noch') {
+    return { priority: 'p2', settled: true };
+  }
+  if (/^p3\b/u.test(folded) || folded === 'bei gelegenheit' || folded === 'niedrig') {
+    return { priority: 'p3', settled: true };
+  }
+  return { priority: null, settled: false };
 }
 
 export async function askOllama(options: {
@@ -137,21 +153,71 @@ export async function askOllama(options: {
   if (first === 'timeout' || first === 'unreachable') return first;
   let parsed = parseMailAnswer(first);
   if (!parsed) {
-    const retry = `${classify}\n\nDie letzte Antwort war nicht lesbar. Antworte jetzt mit genau einem Wort: SUPPORT, ANTWORT, ABSCHLUSS, FREMD oder SPAM.`;
+    const retry = `${classify}\n\nDie letzte Antwort war nicht lesbar. Antworte jetzt mit genau einem Wort: SUPPORT, ANTWORT oder SPAM.`;
     const again = await chat(fetchImpl, base, model, retry, timeoutMs, 'retry');
     options.trace?.push({ kind: 'retry', prompt: retry, answer: shown(again) });
     if (again === 'timeout' || again === 'unreachable') return again;
     parsed = parseMailAnswer(again);
   }
   if (!parsed) return 'unclear';
-  if (parsed.kind === 'support' && !parsed.priority) {
+  if (parsed.kind === 'support' && !parsed.priority && !parsed.importanceSettled) {
     const importanceText = importancePrompt(options.mail);
     const importance = await chat(fetchImpl, base, model, importanceText, timeoutMs, 'importance');
     options.trace?.push({ kind: 'importance', prompt: importanceText, answer: shown(importance) });
     if (importance === 'timeout' || importance === 'unreachable') return importance;
-    parsed = { ...parsed, priority: importanceOf(importance) };
+    const read = readImportance(importance);
+    parsed = { ...parsed, priority: read.priority, importanceSettled: read.settled };
   }
-  return { ...parsed, model };
+  return {
+    kind: parsed.kind,
+    category: parsed.category,
+    priority: parsed.priority,
+    model,
+  };
+}
+
+export async function probeOllamaModel(options: {
+  baseUrl: string;
+  model: string;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+}): Promise<'ok' | 'missing' | 'unreachable'> {
+  const base = options.baseUrl.trim().replace(/\/$/u, '');
+  if (!/^https?:\/\/[^/\s]+/u.test(base) || base.includes('@')) return 'unreachable';
+  const model = options.model.trim();
+  if (model === '') return 'missing';
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  try {
+    const response = await fetchImpl(`${base}/api/tags`, {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) return 'unreachable';
+    const body: unknown = await response.json();
+    const names = modelNames(body);
+    if (names.length === 0) return 'unreachable';
+    return names.some((name) => name === model || name.startsWith(`${model}:`))
+      ? 'ok'
+      : 'missing';
+  } catch {
+    return 'unreachable';
+  }
+}
+
+function modelNames(body: unknown): string[] {
+  if (!body || typeof body !== 'object' || !('models' in body) || !Array.isArray(body.models)) {
+    return [];
+  }
+  return body.models.flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return [];
+    const name =
+      'name' in entry && typeof entry.name === 'string'
+        ? entry.name
+        : 'model' in entry && typeof entry.model === 'string'
+          ? entry.model
+          : '';
+    return name.trim() === '' ? [] : [name.trim()];
+  });
 }
 
 function shown(value: string | 'timeout' | 'unreachable'): string {

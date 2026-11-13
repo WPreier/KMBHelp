@@ -32,8 +32,9 @@ export const messages = {
     name: 'Name',
     reportedPriority: 'Priorität',
     priorityP1: 'Sehr wichtig',
-    priorityP2: 'bitte heute noch',
+    priorityP2: 'wichtig',
     priorityP3: 'bei Gelegenheit',
+    priorityP4: 'nicht eingeordnet',
     priorityHint: 'Die Kanzlei setzt die Priorität nach Frist und Wirkung.',
     priorityUnset: 'Keine Angabe',
     submit: 'Ticket anlegen',
@@ -234,6 +235,8 @@ export const messages = {
     noticesLead:
       'Nur der lokale Admin legt fest, ob eine Meldung ausgelöst wird und welche Kategorie sie hat.',
     configurationTitle: 'Konfiguration',
+    configurationExpand: 'Kategorie aufklappen',
+    configurationCollapse: 'Kategorie zuklappen',
     configurationLead:
       'Jeder Wert kann hier geändert und einzeln geprüft werden. Geheimnisse bleiben unsichtbar. Syslog folgt RFC 5424: der Servername ist der APP-NAME, der Rechnername bleibt der HOSTNAME.',
     configurationSource:
@@ -296,6 +299,14 @@ export const messages = {
     mailTestPrompt: 'Abfragetext',
     mailTestEmail: 'E-Mail',
     mailTestUpload: 'E-Mail-Datei laden',
+    mailTestModel: 'Modell',
+    mailTestModelOk: 'Das Modell ist auf dem KI-Server erreichbar und wurde als Standard gespeichert.',
+    mailTestModelMissing: 'Dieses Modell liegt auf dem KI-Server nicht vor.',
+    mailTestModelDown: 'Der KI-Server antwortet nicht. Prüfe MAILCHECK_AI_URL.',
+    mailTestDropHint:
+      'Ziehe eine Outlook-Mail oder eine .eml-Datei hierher. Der Text wird in das Feld übernommen.',
+    mailTestDropMsg:
+      'Outlook hat die Mail als .msg übergeben. Speichere sie in Outlook als .eml und lege diese Datei hier ab, oder kopiere den Mailtext.',
     mailTestRun: 'Testen',
     mailTestSent: 'An die KI geschickt',
     mailTestAnswer: 'Antwort der KI',
@@ -306,6 +317,7 @@ export const messages = {
     mailboxAdminTitle: 'Helpdesk-Mailbox',
     mailboxAdminLead:
       'Alle Nachrichten im Posteingang, mit den Angaben, die die KI-Prüfung erhält. Der Text in der Tabelle ist maskiert. Ungelesene Zeilen sind fett. G auf dunklem Grund heißt ungelesen, U auf hellem Grund heißt gelesen.',
+    mailboxReload: 'Neu einlesen',
     mailboxTestMail: 'Teste die KI-Schnittstelle mit dieser Mail',
     mailboxToggle: 'Gelesen oder ungelesen markieren',
     mailboxMarkRead: 'Als gelesen markieren',
@@ -417,8 +429,9 @@ export const messages = {
     name: 'Name',
     reportedPriority: 'Priority',
     priorityP1: 'Very important',
-    priorityP2: 'Please still today',
+    priorityP2: 'important',
     priorityP3: 'When convenient',
+    priorityP4: 'not classified',
     priorityHint: 'The firm sets priority from the deadline and the impact.',
     priorityUnset: 'Not specified',
     submit: 'Create ticket',
@@ -618,6 +631,8 @@ export const messages = {
     noticesLead:
       'Only the local admin decides whether a message is raised and which category it has.',
     configurationTitle: 'Configuration',
+    configurationExpand: 'Expand category',
+    configurationCollapse: 'Collapse category',
     configurationLead:
       'Every value can be changed and checked here on its own. Secrets stay invisible. Syslog follows RFC 5424: the server name is the APP-NAME, the machine name stays the HOSTNAME.',
     configurationSource:
@@ -680,6 +695,14 @@ export const messages = {
     mailTestPrompt: 'Query text',
     mailTestEmail: 'Email',
     mailTestUpload: 'Load an email file',
+    mailTestModel: 'Model',
+    mailTestModelOk: 'The model is available on the AI server and was saved as the default.',
+    mailTestModelMissing: 'This model is not present on the AI server.',
+    mailTestModelDown: 'The AI server does not answer. Check MAILCHECK_AI_URL.',
+    mailTestDropHint:
+      'Drop an Outlook mail or an .eml file here. The text is copied into the field.',
+    mailTestDropMsg:
+      'Outlook handed over a .msg file. Save it in Outlook as .eml and drop that file here, or paste the mail text.',
     mailTestRun: 'Test',
     mailTestSent: 'Sent to the model',
     mailTestAnswer: 'Model answer',
@@ -690,6 +713,7 @@ export const messages = {
     mailboxAdminTitle: 'Helpdesk mailbox',
     mailboxAdminLead:
       'Every message in the inbox, with the fields the model check receives. The text in the table is masked. Unread rows are bold. G on a dark ground means unread. U on a light ground means read.',
+    mailboxReload: 'Reload',
     mailboxTestMail: 'Test the model interface with this mail',
     mailboxToggle: 'Mark read or unread',
     mailboxMarkRead: 'Mark as read',
@@ -836,6 +860,14 @@ export const publicErrors = {
   mailNotConnected: {
     de: 'Der Entwurf kann nicht angelegt werden. Microsoft 365 ist nicht verbunden.',
     en: 'The draft cannot be created. Microsoft 365 is not connected.',
+  },
+  mailboxUnavailable: {
+    de: 'Die Helpdesk-Mailbox konnte nicht gelesen werden. Prüfe auf dem Server GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET und GRAPH_MAILBOX, ob das App-Recht Mail.Read für helpdesk@kmbcloud.at gilt, und ob der API-Dienst kmbhelp-api neu gestartet wurde. In /var/lib/kmbhelp/mail.log und error.log steht der Graph-Status.',
+    en: 'The helpdesk mailbox could not be read. On the server check GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET and GRAPH_MAILBOX, that the app has Mail.Read for helpdesk@kmbcloud.at, and that kmbhelp-api was restarted. /var/lib/kmbhelp/mail.log and error.log show the Graph status.',
+  },
+  mailboxNotConfigured: {
+    de: 'Die Helpdesk-Mailbox ist nicht verbunden. Setze GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET und GRAPH_MAILBOX in der Konfiguration, speichere die Werte und starte kmbhelp-api neu.',
+    en: 'The helpdesk mailbox is not connected. Set GRAPH_TENANT_ID, GRAPH_CLIENT_ID, GRAPH_CLIENT_SECRET and GRAPH_MAILBOX in configuration, save them, and restart kmbhelp-api.',
   },
   csrfInvalid: {
     de: 'Die Anfrage konnte nicht bestätigt werden.',

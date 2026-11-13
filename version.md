@@ -1,6 +1,6 @@
 # Version
 
-Aktueller Stand: **V 0.2.18**
+Aktueller Stand: **V 0.2.19**
 
 | | |
 |---|---|
@@ -17,13 +17,17 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 |---|---|---|
 | 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
 | 2 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. Am 07.11.2026 hat er die Minor 2 freigegeben. |
-| 18 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
+| 19 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.19**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.20**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.2.19 — 13.11.2026
+
+Helpdesk-Mailbox zeigt ausführliche Graph-Fehler, Wartecursor und Neu einlesen. Die Mailprüfung antwortet nur noch mit SUPPORT, ANTWORT oder SPAM; Wichtigkeit ist P1 sehr wichtig, P2 wichtig, P3 bei Gelegenheit, P4 nicht eingeordnet. An die KI gehen höchstens 5000 Zeichen der Mail. KI-Mailtest hat Modellauswahl mit Prüfung am Ollama-Server und speichert `MAILCHECK_AI_MODEL`. Mögliche Modelle: `qwen2.5:7b`, `gemma3:4b`, `gemma4:12b`, `gemma4:26b`, `qwen3.8:27b`. Outlook-Drag-and-Drop übernimmt den Mailtext. Prioritätsbezeichnung P2 heißt wichtig. Dokumentation und Betriebsskizze sind angepasst.
 
 ### V 0.2.18 — 13.11.2026
 

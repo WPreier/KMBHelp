@@ -442,7 +442,7 @@ export async function sendAssigneeNotice(
     row.priority === 'p1'
       ? 'Sehr wichtig'
       : row.priority === 'p2'
-        ? 'bitte heute noch'
+        ? 'wichtig'
         : 'bei Gelegenheit';
   const created = new Intl.DateTimeFormat('de-AT', {
     timeZone: 'Europe/Vienna',

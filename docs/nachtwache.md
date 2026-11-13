@@ -51,9 +51,9 @@ proxy_set_header X-Forwarded-For $remote_addr;
 
 ### 2. Eine Mail darf das Modell überreden
 
-Der Worker glaubt der Klasse, die Ollama aus der Mail liest. SUPPORT legt ein Ticket an, ABSCHLUSS schließt das letzte offene Ticket desselben Absenders, FREMD und SPAM werden nur gelesen markiert. Der Absender ist das, was Graph als From liefert. Eine Mail kann im Text um eine bestimmte Klasse bitten. Maskieren ändert diese Bitte nicht.
+Der Worker glaubt der Klasse, die Ollama aus der Mail liest. SUPPORT legt ein Ticket an, ANTWORT hängt an ein bestehendes Ticket, SPAM wird nur gelesen markiert. Der Absender ist das, was Graph als From liefert. Eine Mail kann im Text um eine bestimmte Klasse bitten. Maskieren ändert diese Bitte nicht.
 
-Dagegen hält heute: eine unlesbare oder unerreichbare Antwort erzeugt kein Ticket aus einer Laune, FREMD und SPAM werden kein Ticket, und eine Fehlinterpretation lässt sich als `mail_lesson` merken. Es fehlt ein zweiter Blick, bevor ABSCHLUSS allein aus dem Modell ein Ticket schließt, und eine Obergrenze, wie viele Mails ein Absender am Tag anstoßen darf.
+Dagegen hält heute: eine unlesbare oder unerreichbare Antwort erzeugt kein Ticket aus einer Laune, SPAM wird kein Ticket, und eine Fehlinterpretation lässt sich als `mail_lesson` merken. Es fehlt eine Obergrenze, wie viele Mails ein Absender am Tag anstoßen darf.
 
 ### 3. KI-Mailtest kann das Modell lange belegen
 
@@ -83,7 +83,7 @@ Die App liest und beschreibt das Postfach und kann Entwürfe und Kalendereinträ
 
 ### 8. Ollama steht im eigenen Netz
 
-`MAILCHECK_KI_URL` zeigt auf `http://192.168.191.131:11434`. Wer dieses Netz erreicht, erreicht das Modell und kann dieselben Fragen stellen. KMBHelp prüft den Aufrufer von Ollama nicht, weil Ollama das in dieser Aufstellung nicht verlangt. Dagegen hält das Netz, nicht die App. Eine spätere Härtung wäre, Ollama nur von kmbhelp aus anzunehmen.
+`MAILCHECK_AI_URL` zeigt auf `http://192.168.191.131:11434`. Wer dieses Netz erreicht, erreicht das Modell und kann dieselben Fragen stellen. KMBHelp prüft den Aufrufer von Ollama nicht, weil Ollama das in dieser Aufstellung nicht verlangt. Dagegen hält das Netz, nicht die App. Eine spätere Härtung wäre, Ollama nur von kmbhelp aus anzunehmen.
 
 ### 9. Syslog ist UDP
 
@@ -101,7 +101,7 @@ Kein zusätzlicher Dienst, der Tickettexte entgegennimmt, wird hier freigegeben.
 
 1. Auf dem Server prüfen, dass nginx die beiden Proxy-Köpfe ersetzt und nicht anhängt. Danach die API neu starten ist dafür nicht nötig.
 2. `proxy_read_timeout 300s` in der bestehenden `location /api/`, falls ein Mailtest abreißt.
-3. ABSCHLUSS aus einer Mail nur merken und einen Menschen fragen, bevor das Ticket geschlossen wird.
+3. Eine Obergrenze, wie viele SUPPORT-Mails ein Absender am Tag anstoßen darf.
 4. Eine Obergrenze für KI-Mailtest.
 5. Am Feld Betreff der Satz: keine Mandantennamen.
 6. Das Notfallblatt auf einer Seite.
