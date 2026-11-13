@@ -1,6 +1,6 @@
 # Version
 
-Aktueller Stand: **V 0.2.20**
+Aktueller Stand: **V 0.2.21**
 
 | | |
 |---|---|
@@ -17,18 +17,21 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 |---|---|---|
 | 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
 | 2 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. Am 07.11.2026 hat er die Minor 2 freigegeben. |
-| 20 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
+| 21 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.21**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.22**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
 
+### V 0.2.21 — 13.11.2026
+
+`WORKER_SCHEDULE` Auslieferung ohne Mittagspause: 00:00–08:00 alle 30 Minuten, 08:00–17:00 alle 10 Minuten, 17:00–24:00 alle 30 Minuten. Der Antwortentwurf an den Melder trägt den Betreff KMBHelp Ticket mit Code und Kurzbetreff, den festgelegten Text und die Originalmail als `original.eml`. Dieselbe Datei liegt am Ticket und ist herunterladbar. KI-Mailtest aus der Mailbox öffnet in derselben Seite.
+
 ### V 0.2.20 — 13.11.2026
 
 Die KI-Schnittstelle führt höchstens einen Job gleichzeitig aus; API und Worker warten in einer gemeinsamen Warteschlange. `MAILCHECK_AI_ACTIVE` schaltet den automatischen Mailcheck ein und aus; die Checkbox auf KI-Mailtest speichert den Wert sofort. Freigegebene Modelle sind `gemma4:12b` (Auslieferung), `gemma4:26b` und `qwen3.8:27b`. Ungelesene Mails eines Zyklus werden nacheinander geprüft. nginx/Apache brauchen unter `/api/` Timeouts von mindestens 360 Sekunden für den KI-Mailtest.
-
 ### V 0.2.19 — 13.11.2026
 
 Helpdesk-Mailbox zeigt ausführliche Graph-Fehler, Wartecursor und Neu einlesen. Die Mailprüfung antwortet nur noch mit SUPPORT, ANTWORT oder SPAM; Wichtigkeit ist P1 sehr wichtig, P2 wichtig, P3 bei Gelegenheit, P4 nicht eingeordnet. An die KI gehen höchstens 5000 Zeichen der Mail. KI-Mailtest hat Modellauswahl mit Prüfung am Ollama-Server und speichert `MAILCHECK_AI_MODEL`. Mögliche Modelle: `qwen2.5:7b`, `gemma3:4b`, `gemma4:12b`, `gemma4:26b`, `qwen3.8:27b`. Outlook-Drag-and-Drop übernimmt den Mailtext. Prioritätsbezeichnung P2 heißt wichtig. Dokumentation und Betriebsskizze sind angepasst.

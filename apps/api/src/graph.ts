@@ -4,7 +4,7 @@ export type OutboundMail = {
   to: string;
   subject: string;
   text: string;
-  attachments?: { name: string; contentType: string; content: string }[];
+  attachments?: { name: string; contentType: string; contentBase64: string }[];
 };
 
 export type Mailer = {
@@ -49,6 +49,8 @@ export type Mailbox = {
   markRead(graphId: string): Promise<void>;
   setRead(graphId: string, isRead: boolean): Promise<void>;
   moveToInboxChild(graphId: string, folderName: string): Promise<void>;
+  /** Original MIME including attachments, or null when Graph cannot deliver it. */
+  rawMime(graphId: string): Promise<Uint8Array | null>;
 };
 
 export type CalendarDraft = {
@@ -133,7 +135,7 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
                     '@odata.type': '#microsoft.graph.fileAttachment',
                     name: file.name,
                     contentType: file.contentType,
-                    contentBytes: Buffer.from(file.content, 'utf8').toString('base64'),
+                    contentBytes: file.contentBase64,
                   })),
                 }
               : {}),
@@ -294,7 +296,40 @@ export function mailboxFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = f
     moveToInboxChild(graphId, folderName) {
       return moveToChild(config, fetchImpl, graphId, folderName);
     },
+    rawMime(graphId) {
+      return readRawMime(config, fetchImpl, graphId);
+    },
   };
+}
+
+async function readRawMime(
+  config: GraphEnv | null,
+  fetchImpl: GraphFetch,
+  graphId: string,
+): Promise<Uint8Array | null> {
+  if (!config || graphId.trim() === '' || graphId === 'pasted') return null;
+  const started = Date.now();
+  const detail = `id=${oneLine(graphId)}`;
+  try {
+    const token = await accessToken(config, fetchImpl);
+    const response = await fetchImpl(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/messages/${encodeURIComponent(graphId)}/$value`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    mailboxAccess(
+      config.mailbox,
+      'mime',
+      response.ok ? 'ok' : 'fehler',
+      `${detail} http=${response.status}`,
+      Date.now() - started,
+    );
+    if (!response.ok) return null;
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return bytes.length > 0 ? bytes : null;
+  } catch {
+    mailboxAccess(config.mailbox, 'mime', 'fehler', detail, Date.now() - started);
+    return null;
+  }
 }
 
 const ticketFolderIds = new Map<string, string>();

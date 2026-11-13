@@ -10,6 +10,7 @@ import {
   staffSkill,
   ticket,
   ticketEvent,
+  ticketFile,
   type Database,
 } from '@kmbhelp/db';
 import type { MailCategory, MailCandidate } from './mail-rules.js';
@@ -23,6 +24,7 @@ export type WorkerState = 'not_configured' | 'polling';
 export type StoredMailTicket = {
   id: string;
   number: number;
+  code: string;
   internetMessageId: string;
   assignedStaffId: string | null;
   assigneeEmail: string | null;
@@ -31,6 +33,8 @@ export type StoredMailTicket = {
   subject: string;
   categoryLabel: string;
   body: string;
+  priority: 'p1' | 'p2' | 'p3';
+  createdAt: Date;
 };
 
 export type MailStore = {
@@ -79,6 +83,13 @@ export type MailStore = {
   ensureCategory(label: string): Promise<MailCategory | null>;
   latestOpenFrom(email: string): Promise<{ id: string; number: number } | null>;
   appendReply(ticketId: string, text: string): Promise<void>;
+  hasFile(ticketId: string, name: string): Promise<boolean>;
+  saveFile(input: {
+    ticketId: string;
+    name: string;
+    mediaType: string;
+    contentBase64: string;
+  }): Promise<void>;
 };
 
 export function drizzleMailStore(database: Database): MailStore {
@@ -120,6 +131,7 @@ export function drizzleMailStore(database: Database): MailStore {
         .select({
           id: ticket.id,
           number: ticket.number,
+          code: ticket.code,
           internetMessageId: ticket.internetMessageId,
           assignedStaffId: ticket.assignedStaffId,
           assigneeEmail: ticket.assigneeEmail,
@@ -128,18 +140,27 @@ export function drizzleMailStore(database: Database): MailStore {
           subject: ticket.subject,
           categoryLabel: category.labelDe,
           body: ticket.body,
+          priority: ticket.priority,
+          createdAt: ticket.createdAt,
         })
         .from(ticket)
         .innerJoin(category, eq(ticket.categoryCode, category.code))
         .where(eq(ticket.internetMessageId, internetMessageId));
       const row = rows[0];
       if (!row?.internetMessageId) return null;
+      const priority =
+        row.priority === 'p1' || row.priority === 'p2' || row.priority === 'p3'
+          ? row.priority
+          : 'p3';
       return {
         ...row,
         internetMessageId: row.internetMessageId,
         requesterEmail: row.requesterEmail ?? '',
         requesterName: row.requesterName,
         subject: row.subject,
+        code: row.code?.trim() || '',
+        priority,
+        createdAt: row.createdAt,
       };
     },
     async insertTicket(values) {
@@ -360,6 +381,23 @@ export function drizzleMailStore(database: Database): MailStore {
         ticketId,
         kind: 'satisfaction',
         payload: { satisfaction, reply: reply.slice(0, 4000) },
+      });
+    },
+    async hasFile(ticketId, name) {
+      const rows = await database.db
+        .select({ id: ticketFile.id })
+        .from(ticketFile)
+        .where(and(eq(ticketFile.ticketId, ticketId), eq(ticketFile.name, name)))
+        .limit(1);
+      return Boolean(rows[0]);
+    },
+    async saveFile(input) {
+      if (await this.hasFile(input.ticketId, input.name)) return;
+      await database.db.insert(ticketFile).values({
+        ticketId: input.ticketId,
+        name: input.name,
+        mediaType: input.mediaType,
+        contentBase64: input.contentBase64,
       });
     },
   };

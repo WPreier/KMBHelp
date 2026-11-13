@@ -28,6 +28,7 @@ import {
   type CalendarReader,
   type CalendarWriter,
   type InboundMail,
+  type Mailbox,
   type Mailer,
 } from './graph.js';
 import {
@@ -38,10 +39,12 @@ import {
   impactForGroup,
   pickAssignee,
   publicOriginFromEnv,
+  replySubject,
   replyText,
   reopenText,
   staffTicketPath,
 } from './mail-rules.js';
+import { formatMailSource } from './ollama-mail.js';
 import { writeActivity } from './activity-log.js';
 import { logError } from './file-log.js';
 import { safeErrorText } from './http.js';
@@ -98,7 +101,12 @@ type IngestDeps = {
     | undefined;
   syslog?: ((category: 'informational' | 'warning', message: string) => Promise<void>) | undefined;
   ticketsOnly?: boolean | undefined;
+  mailbox?: Mailbox | undefined;
 };
+
+/** Graph fileAttachment limit for a simple draft create. */
+const draftAttachmentMaxBytes = 3 * 1024 * 1024;
+const originalMailFileName = 'original.eml';
 
 export { readWorkerState };
 
@@ -110,6 +118,7 @@ export async function mailIngestDeps(
 ): Promise<IngestDeps> {
   const store = drizzleMailStore(database);
   const settings = await readCycleSettings(database, env);
+  const mailbox = mailboxFromEnv(env, fetchImpl);
   return {
     store,
     mailer: mailerFromEnv(env, fetchImpl),
@@ -139,6 +148,7 @@ export async function mailIngestDeps(
     smtp: settings.smtp,
     syslog: (category, message) => noteExternal(env, category, message),
     record: (entry) => writeActivity(database, entry, env),
+    mailbox,
   };
 }
 
@@ -257,7 +267,7 @@ export async function ingestMail(
   const existing = await deps.store.byMessageId(mail.internetMessageId);
   if (existing) {
     await ensureCalendar(existing, deps, null);
-    await ensureReply(existing, deps);
+    await ensureReply(existing, deps, mail);
     await notifyAssignee(existing, mail, deps);
     await noteMail(deps, mail, `Gehört schon zu Ticket ${existing.number}.`);
     return 'duplicate';
@@ -327,7 +337,7 @@ export async function ingestMail(
     const raced = await deps.store.byMessageId(mail.internetMessageId);
     if (!raced) return 'retry';
     await ensureCalendar(raced, deps, null);
-    await ensureReply(raced, deps);
+    await ensureReply(raced, deps, mail);
     await notifyAssignee(raced, mail, deps);
     await noteMail(deps, mail, `Gehört schon zu Ticket ${raced.number}.`);
     return 'duplicate';
@@ -374,7 +384,7 @@ export async function ingestMail(
     stored = { ...created, assignedStaffId: assignee.id, assigneeEmail: assignee.email };
     await ensureCalendar(stored, deps, assignee.slot);
   }
-  await ensureReply(stored, deps);
+  await ensureReply(stored, deps, mail);
   await notifyAssignee(stored, mail, deps);
   await notifyOnCall(stored, deps, priority);
   return 'created';
@@ -520,10 +530,12 @@ async function maybeAutoReply(
   });
   const faq = faqs.find((entry) => entry.slug === modelResult.decision.faq_slug);
   if (!gate.close || !faq) return false;
+  const eml = await resolveOriginalEml(mail, deps);
   await deps.mailer.send({
     to: mail.fromEmail,
-    subject: `Ticket ${stored.number}`,
-    text: `${replyText(stored.number, deps.origin, stored.body)}\n${faq.bodyDe}\n`,
+    subject: replySubject(stored.code, stored.subject),
+    text: `${replyFields(stored, deps)}\n${faq.bodyDe}\n`,
+    attachments: emlAttachment(eml),
   });
   await deps.store.addEvent(stored.id, 'reply', { auto: true });
   await deps.store.closeTicket(stored.id);
@@ -580,17 +592,12 @@ async function notifyAssignee(
   if (!stored.assigneeEmail || !deps.mailer.configured) return;
   if (await deps.store.hasEvent(stored.id, 'assignee_mail')) return;
   try {
+    const eml = await archiveOriginalMail(stored, mail, deps);
     await deps.mailer.send({
       to: stored.assigneeEmail,
-      subject: `Ticket ${stored.number}`,
-      text: `Ticket ${stored.number}\n${stored.subject}\n${stored.requesterName ?? ''} ${stored.requesterEmail}\n${deps.origin}${staffTicketPath}/${stored.number}\n\n${stored.body}\n`,
-      attachments: [
-        {
-          name: 'original.txt',
-          contentType: 'text/plain',
-          content: `${mail.subject}\n\n${mail.body}`,
-        },
-      ],
+      subject: replySubject(stored.code, stored.subject),
+      text: `Ticket ${stored.code || stored.number}\n${stored.subject}\n${stored.requesterName ?? ''} ${stored.requesterEmail}\n${deps.origin}${staffTicketPath}/${stored.number}\n\n${stored.body}\n`,
+      attachments: emlAttachment(eml),
     });
     await deps.store.addEvent(stored.id, 'assignee_mail', {});
     await deps.syslog?.('informational', 'external graph assignee-mail');
@@ -604,20 +611,90 @@ async function notifyAssignee(
   }
 }
 
-async function ensureReply(stored: StoredMailTicket, deps: IngestDeps): Promise<void> {
+async function ensureReply(
+  stored: StoredMailTicket,
+  deps: IngestDeps,
+  mail?: InboundMail,
+): Promise<void> {
   if (await deps.store.hasEvent(stored.id, 'reply')) return;
   if (!deps.mailer.configured || !addressPattern.test(stored.requesterEmail)) return;
+  const eml = mail ? await archiveOriginalMail(stored, mail, deps) : null;
   await deps.mailer.send({
     to: stored.requesterEmail,
-    subject: `Ticket ${stored.number}`,
-    text: replyText(stored.number, deps.origin, stored.body),
+    subject: replySubject(stored.code, stored.subject),
+    text: replyFields(stored, deps),
+    attachments: emlAttachment(eml),
   });
   await deps.store.addEvent(stored.id, 'reply', {});
   await note(
     deps,
     `von Helpdesk an ${stored.requesterEmail}`,
-    `Betreff: Ticket ${stored.number}. Antwortentwurf an den Melder angelegt.`,
+    `Betreff: ${replySubject(stored.code, stored.subject)}. Antwortentwurf an den Melder angelegt.`,
   );
+}
+
+function replyFields(stored: StoredMailTicket, deps: IngestDeps): string {
+  return replyText({
+    code: stored.code,
+    number: stored.number,
+    origin: deps.origin,
+    subject: stored.subject,
+    body: stored.body,
+    priority: stored.priority,
+    categoryLabel: stored.categoryLabel,
+    requesterEmail: stored.requesterEmail,
+    requesterName: stored.requesterName,
+    createdAt: stored.createdAt,
+  });
+}
+
+async function archiveOriginalMail(
+  stored: StoredMailTicket,
+  mail: InboundMail,
+  deps: IngestDeps,
+): Promise<Uint8Array | null> {
+  const eml = await resolveOriginalEml(mail, deps);
+  if (!eml) return null;
+  try {
+    if (!(await deps.store.hasFile(stored.id, originalMailFileName))) {
+      await deps.store.saveFile({
+        ticketId: stored.id,
+        name: originalMailFileName,
+        mediaType: 'message/rfc822',
+        contentBase64: Buffer.from(eml).toString('base64'),
+      });
+      await noteMail(deps, mail, `Originalmail als ${originalMailFileName} am Ticket gespeichert.`);
+    }
+  } catch (error) {
+    logError(`mail archive eml: ${safeErrorText(error)}`, process.env);
+  }
+  return eml;
+}
+
+async function resolveOriginalEml(mail: InboundMail, deps: IngestDeps): Promise<Uint8Array | null> {
+  if (deps.mailbox?.configured) {
+    try {
+      const raw = await deps.mailbox.rawMime(mail.graphId);
+      if (raw && raw.length > 0) return raw;
+    } catch (error) {
+      logError(`mail mime: ${safeErrorText(error)}`, process.env);
+    }
+  }
+  const fallback = formatMailSource(mail);
+  return fallback.trim() === '' ? null : new TextEncoder().encode(fallback);
+}
+
+function emlAttachment(
+  eml: Uint8Array | null,
+): { name: string; contentType: string; contentBase64: string }[] | undefined {
+  if (!eml || eml.length === 0 || eml.length > draftAttachmentMaxBytes) return undefined;
+  return [
+    {
+      name: originalMailFileName,
+      contentType: 'message/rfc822',
+      contentBase64: Buffer.from(eml).toString('base64'),
+    },
+  ];
 }
 
 export async function deliverReopen(

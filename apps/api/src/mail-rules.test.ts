@@ -7,6 +7,7 @@ import {
   fallbackCategoryCode,
   firstFreeSlot,
   pickAssignee,
+  replySubject,
   replyText,
   type MailCategory,
 } from './mail-rules.js';
@@ -68,9 +69,25 @@ describe('mail rules', () => {
   });
 
   it('answers with the ticket link and the original mail, without a secret link', () => {
-    const text = replyText(12, 'https://helpdesk.kmbcloud.at', 'Die Meldung geht nicht raus.');
-    expect(text).toContain('Ticket 12');
+    const text = replyText({
+      code: '26-0012',
+      number: 12,
+      origin: 'https://helpdesk.kmbcloud.at',
+      subject: 'Drucker klemmt',
+      body: 'Die Meldung geht nicht raus.',
+      priority: 'p2',
+      categoryLabel: 'Drucker',
+      requesterEmail: 'sender@example.com',
+      requesterName: 'Sender',
+      createdAt: new Date('2026-10-27T08:10:00.000Z'),
+    });
+    expect(replySubject('26-0012', 'Drucker klemmt und Papier fehlt')).toBe(
+      'KMBHelp Ticket "26-0012" (Drucker klemmt und Papier fehlt)',
+    );
+    expect(text).toContain('Hallo,');
+    expect(text).toContain('Ticket ID: 26-0012');
     expect(text).toContain('https://helpdesk.kmbcloud.at/mitarbeit/ticket/12');
+    expect(text).toContain('Wichtigkeit: wichtig');
     expect(text).toContain('Die Meldung geht nicht raus.');
     expect(text.toLowerCase()).not.toContain('token');
     expect(calendarSubject('Drucker klemmt')).toBe('Neues Ticket Drucker klemmt');

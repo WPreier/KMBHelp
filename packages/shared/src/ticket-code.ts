@@ -30,6 +30,7 @@ export const ticketFileExtensions = [
   'txt',
   'csv',
   'md',
+  'eml',
 ] as const;
 
 export function allowedTicketFile(name: string): boolean {

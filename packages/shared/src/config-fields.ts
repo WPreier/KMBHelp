@@ -14,8 +14,7 @@ export const defaultCalendarDelayP2 = '60';
 export const defaultCalendarDelayP3 = '240';
 export const defaultFallbackCategory = 'printer';
 
-export const defaultWorkerSchedule =
-  '00:00-08:00=30,08:00-12:00=10,12:00-12:30=0,12:30-17:00=10,17:00-24:00=30';
+export const defaultWorkerSchedule = '00:00-08:00=30,08:00-17:00=10,17:00-24:00=30';
 
 const shownWhenEmpty: Record<string, string> = {
   CALENDAR_DEFAULT_MINUTES: defaultCalendarMinutes,
@@ -275,9 +274,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'WORKER_SCHEDULE',
     secret: false,
     textDe:
-      'Wann der Worker Microsoft 365 abfragt. Jeder Abschnitt ist von-bis=Minuten, getrennt durch Komma. 0 bedeutet: in diesem Abschnitt nicht abfragen. Standard: 00:00-08:00=30, 08:00-12:00=10, 12:00-12:30=0, 12:30-17:00=10, 17:00-24:00=30. Die Uhr ist SYSLOG_UTC_OFFSET, Winter +01:00.',
+      'Wann der Worker Microsoft 365 abfragt. Jeder Abschnitt ist von-bis=Minuten, getrennt durch Komma. 0 bedeutet: in diesem Abschnitt nicht abfragen. Standard: 00:00-08:00=30, 08:00-17:00=10, 17:00-24:00=30. Die Uhr ist SYSLOG_UTC_OFFSET, Winter +01:00.',
     textEn:
-      'When the worker calls Microsoft 365. Each part is from-to=minutes, separated by commas. 0 means do not call during that part. Default: 00:00-08:00=30, 08:00-12:00=10, 12:00-12:30=0, 12:30-17:00=10, 17:00-24:00=30. The clock is SYSLOG_UTC_OFFSET, winter +01:00.',
+      'When the worker calls Microsoft 365. Each part is from-to=minutes, separated by commas. 0 means do not call during that part. Default: 00:00-08:00=30, 08:00-17:00=10, 17:00-24:00=30. The clock is SYSLOG_UTC_OFFSET, winter +01:00.',
   },
   {
     key: 'ACCESS_LOG_RETENTION_DAYS',
@@ -506,9 +505,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'TICKET_FILE_TYPES',
     secret: false,
     textDe:
-      'Erlaubte Dateiendungen für Ticketdateien, durch Komma getrennt. Leer heißt png, jpg, jpeg, gif, webp, bmp, tif, tiff, pdf, docx, xlsx, pptx, txt, csv, md. Der Inhalt muss zur Endung passen.',
+      'Erlaubte Dateiendungen für Ticketdateien, durch Komma getrennt. Leer heißt png, jpg, jpeg, gif, webp, bmp, tif, tiff, pdf, docx, xlsx, pptx, txt, csv, md, eml. Der Inhalt muss zur Endung passen. Postfachmails speichern original.eml am Ticket.',
     textEn:
-      'Allowed ticket file extensions, separated by commas. Empty means png, jpg, jpeg, gif, webp, bmp, tif, tiff, pdf, docx, xlsx, pptx, txt, csv, md. The content must match the extension.',
+      'Allowed ticket file extensions, separated by commas. Empty means png, jpg, jpeg, gif, webp, bmp, tif, tiff, pdf, docx, xlsx, pptx, txt, csv, md, eml. The content must match the extension. Mailbox mails store original.eml on the ticket.',
   },
   {
     key: 'TICKET_FILE_MAX_BYTES',

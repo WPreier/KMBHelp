@@ -72,8 +72,70 @@ export function ticketLink(number: number, origin: string): string {
   return `${origin}${staffTicketPath}/${number}`;
 }
 
-export function replyText(number: number, origin: string, original: string): string {
-  return `Ticket ${number}\n\nIhre Meldung ist erfasst.\n${ticketLink(number, origin)}\n\nUrsprüngliche Meldung:\n${original.trim()}\n`;
+export type ReplyMailFields = {
+  code: string;
+  number: number;
+  origin: string;
+  subject: string;
+  body: string;
+  priority: 'p1' | 'p2' | 'p3';
+  categoryLabel: string;
+  requesterEmail: string;
+  requesterName: string | null;
+  createdAt: Date;
+};
+
+export function replySubject(code: string, mailSubject: string): string {
+  const id = code.trim() || '—';
+  const clip = mailSubject.trim().slice(0, 50);
+  const tail = clip === '' ? '' : ` (${clip})`;
+  return `KMBHelp Ticket "${id}"${tail}`.slice(0, 200);
+}
+
+export function replyText(fields: ReplyMailFields): string {
+  const id = fields.code.trim() || String(fields.number);
+  const who = fields.requesterName?.trim()
+    ? `${fields.requesterName.trim()} <${fields.requesterEmail}>`
+    : fields.requesterEmail;
+  return [
+    'Hallo,',
+    '',
+    'Sie haben dem helpdesk ein Email geschrieben dass von dieser KI gesteuerten App in ein IT Ticket unter https://helpdesk.kmbcloud.at eingetragen wurde.',
+    '',
+    'mit freundlichen Grüßen Ihr KMB Helpdesk',
+    '',
+    `Ticket ID: ${id}`,
+    `Ticket Link: ${ticketLink(fields.number, fields.origin)}`,
+    `Datum: ${formatReplyDate(fields.createdAt)}`,
+    `Wichtigkeit: ${priorityLabelDe(fields.priority)}`,
+    `Kategorie: ${fields.categoryLabel.trim() || '—'}`,
+    `Absender: ${who}`,
+    `Betreff: ${fields.subject.trim() || 'Ohne Betreff'}`,
+    '',
+    'Zusammenfassung des Tickets',
+    fields.body.trim(),
+  ].join('\n');
+}
+
+function priorityLabelDe(priority: 'p1' | 'p2' | 'p3'): string {
+  if (priority === 'p1') return 'Sehr wichtig';
+  if (priority === 'p2') return 'wichtig';
+  return 'bei Gelegenheit';
+}
+
+function formatReplyDate(at: Date): string {
+  const parts = new Intl.DateTimeFormat('de-AT', {
+    timeZone: 'Europe/Vienna',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(at);
+  const read = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? '';
+  return `${read('day')}.${read('month')}.${read('year')} ${read('hour')}:${read('minute')}`;
 }
 
 export function reopenText(number: number, origin: string): string {

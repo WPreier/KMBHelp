@@ -61,6 +61,7 @@ function memoryStore(faqs: { slug: string; bodyDe: string }[] = []): MailStore &
       const row: StoredMailTicket = {
         id: `ticket-${sequence}`,
         number: sequence,
+        code: `26-${String(sequence).padStart(4, '0')}`,
         internetMessageId: values.internetMessageId,
         assignedStaffId: values.assignedStaffId,
         assigneeEmail: null,
@@ -69,11 +70,15 @@ function memoryStore(faqs: { slug: string; bodyDe: string }[] = []): MailStore &
         subject: values.subject,
         categoryLabel: category?.labelDe ?? values.categoryCode,
         body: values.body,
+        priority: values.priority,
+        createdAt: new Date('2026-10-27T08:10:00.000Z'),
       };
       sequence += 1;
       tickets.push(row);
       return row;
     },
+    hasFile: async () => false,
+    saveFile: async () => undefined,
     async assign(ticketId, staffId) {
       const row = tickets.find((ticket) => ticket.id === ticketId);
       const person = people.find((candidate) => candidate.id === staffId);
@@ -172,7 +177,12 @@ function memoryStore(faqs: { slug: string; bodyDe: string }[] = []): MailStore &
 
 function doubles(): {
   mailer: Mailer & {
-    sent: { to: string; subject: string; text: string; attachments?: { content: string }[] }[];
+    sent: {
+      to: string;
+      subject: string;
+      text: string;
+      attachments?: { name: string; contentBase64: string }[];
+    }[];
   };
   calendar: CalendarReader;
   writer: CalendarWriter & { events: { email: string; subject: string; body: string }[] };
@@ -245,10 +255,19 @@ describe('ingestMail', () => {
     expect(store.tickets).toHaveLength(1);
     expect(store.tickets[0]?.assignedStaffId).toBe('bea');
     expect(ports.mailer.sent).toHaveLength(2);
-    expect(ports.mailer.sent[0]?.text).toContain('https://helpdesk.kmbcloud.at/mitarbeit/ticket/1');
+    expect(ports.mailer.sent[0]?.subject).toContain('KMBHelp Ticket "26-0001"');
+    expect(ports.mailer.sent[0]?.text).toContain('Hallo,');
+    expect(ports.mailer.sent[0]?.text).toContain(
+      'https://helpdesk.kmbcloud.at/mitarbeit/ticket/1',
+    );
     expect(ports.mailer.sent[0]?.text).toContain('Die Meldung geht nicht raus.');
+    expect(ports.mailer.sent[0]?.attachments?.[0]?.name).toBe('original.eml');
     expect(ports.mailer.sent[1]?.to).toBe('bea@example.com');
-    expect(ports.mailer.sent[1]?.attachments?.[0]?.content).toContain('ELDA');
+    expect(
+      Buffer.from(ports.mailer.sent[1]?.attachments?.[0]?.contentBase64 ?? '', 'base64').toString(
+        'utf8',
+      ),
+    ).toContain('ELDA');
     expect(ports.mailer.sent[0]?.text.toLowerCase()).not.toContain('token');
     expect(ports.writer.events).toEqual([
       expect.objectContaining({

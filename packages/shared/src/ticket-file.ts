@@ -4,7 +4,7 @@ export const defaultTicketFileBytes = 10 * 1024 * 1024;
 export const absoluteTicketFileBytes = 32 * 1024 * 1024;
 export const defaultTicketFileTypes = ticketFileExtensions.join(', ');
 
-const textExtensions = new Set(['txt', 'csv', 'md']);
+const textExtensions = new Set(['txt', 'csv', 'md', 'eml']);
 
 export type TicketFilePolicy = {
   extensions: readonly string[];

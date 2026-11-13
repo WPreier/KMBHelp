@@ -950,7 +950,9 @@ function FileTable({
               <td>{formatBytes(row.bytes)}</td>
               <td>{formatWhen(row.at)}</td>
               <td>
-                <a href={row.href}>{copy.fileDownload}</a>
+                <a href={row.href} download>
+                  {copy.fileDownload}
+                </a>
               </td>
               {removable ? <td>{row.action ?? null}</td> : null}
             </tr>

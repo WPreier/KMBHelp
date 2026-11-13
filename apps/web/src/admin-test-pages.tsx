@@ -9,7 +9,7 @@ import {
   type MailTestResult,
 } from '@kmbhelp/shared';
 import { useEffect, useState, type DragEvent, type FormEvent } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { getJson, postJson, RequestFailed } from './api.js';
 import { useLocale } from './locale.js';
 import { ServiceChecks } from './operations-pages.js';
@@ -266,6 +266,7 @@ export function MailTestPage() {
 
 export function MailboxAdminPage() {
   const { copy, lang } = useLocale();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<MailboxRow[] | null>(null);
   const [truncated, setTruncated] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -327,11 +328,7 @@ export function MailboxAdminPage() {
         mailboxMessageSchema.parse,
       );
       sessionStorage.setItem(`kmbhelp-mail-test:${mail.graphId}`, full.source);
-      window.open(
-        `/verwaltung/ki-mailtest?id=${encodeURIComponent(mail.graphId)}`,
-        '_blank',
-        'noopener',
-      );
+      navigate(`/verwaltung/ki-mailtest?id=${encodeURIComponent(mail.graphId)}`);
     } catch (caught) {
       setError(failure(caught, lang, copy.loadFailed));
     } finally {
