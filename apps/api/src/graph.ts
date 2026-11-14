@@ -46,6 +46,8 @@ export type Mailbox = {
   readonly configured: boolean;
   listUnread(limit: number): Promise<InboundMail[]>;
   listInbox(limit: number): Promise<InboxList>;
+  /** Full message body; list responses from Graph can truncate the text. */
+  readMessage(graphId: string): Promise<InboundMail | null>;
   markRead(graphId: string): Promise<void>;
   setRead(graphId: string, isRead: boolean): Promise<void>;
   moveToInboxChild(graphId: string, folderName: string): Promise<void>;
@@ -282,10 +284,18 @@ export function mailboxFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = f
     configured: config !== null,
     async listUnread(limit) {
       const listed = await listFolder(config, fetchImpl, { limit, unreadOnly: true });
-      return listed.messages;
+      const messages: InboundMail[] = [];
+      for (const mail of listed.messages) {
+        const full = await readMessage(config, fetchImpl, mail.graphId);
+        messages.push(full ?? mail);
+      }
+      return messages;
     },
     listInbox(limit) {
       return listFolder(config, fetchImpl, { limit, unreadOnly: false });
+    },
+    readMessage(graphId) {
+      return readMessage(config, fetchImpl, graphId);
     },
     markRead(graphId) {
       return changeRead(config, fetchImpl, graphId, true);
@@ -456,6 +466,41 @@ async function changeRead(
 const messageSelect =
   'id,isRead,internetMessageId,subject,body,from,toRecipients,ccRecipients,receivedDateTime,internetMessageHeaders';
 
+async function readMessage(
+  config: GraphEnv | null,
+  fetchImpl: GraphFetch,
+  graphId: string,
+): Promise<InboundMail | null> {
+  if (!config || graphId.trim() === '' || graphId === 'pasted') return null;
+  const started = Date.now();
+  const detail = `id=${oneLine(graphId)}`;
+  try {
+    const token = await accessToken(config, fetchImpl);
+    const response = await fetchImpl(
+      `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/messages/${encodeURIComponent(graphId)}?$select=${encodeURIComponent(messageSelect)}`,
+      {
+        headers: {
+          authorization: `Bearer ${token}`,
+          Prefer: 'outlook.body-content-type="text"',
+        },
+      },
+    );
+    mailboxAccess(
+      config.mailbox,
+      'nachricht',
+      response.ok ? 'ok' : 'fehler',
+      `${detail} http=${response.status}`,
+      Date.now() - started,
+    );
+    if (!response.ok) return null;
+    const body: unknown = await response.json();
+    return parseInboundMessages({ value: [body] })[0] ?? null;
+  } catch {
+    mailboxAccess(config.mailbox, 'nachricht', 'fehler', detail, Date.now() - started);
+    return null;
+  }
+}
+
 async function listFolder(
   config: GraphEnv | null,
   fetchImpl: GraphFetch,
@@ -484,7 +529,12 @@ async function listFolder(
   const mails: InboundMail[] = [];
   let status = 0;
   while (next !== '' && mails.length < cap) {
-    const response = await fetchImpl(next, { headers: { authorization: `Bearer ${token}` } });
+    const response = await fetchImpl(next, {
+      headers: {
+        authorization: `Bearer ${token}`,
+        Prefer: 'outlook.body-content-type="text"',
+      },
+    });
     status = response.status;
     if (!response.ok) {
       mailboxAccess(

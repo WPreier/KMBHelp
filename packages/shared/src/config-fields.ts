@@ -346,9 +346,25 @@ export const configFields: readonly ConfigField[] = [
     key: 'MAILCHECK_AI_ACTIVE',
     secret: false,
     textDe:
-      'Automatischer Mailcheck über die lokale KI. on (Auslieferung) lässt den Worker Mails prüfen. off stoppt ihn vor der nächsten Mail und zwischen den KI-Schritten; der manuelle KI-Mailtest bleibt nutzbar. Es läuft höchstens ein KI-Job gleichzeitig.',
+      'Automatischer Mailcheck über OpenRouter oder die lokale KI. on (Auslieferung) lässt den Worker Mails prüfen. off stoppt ihn vor der nächsten Mail und zwischen den KI-Schritten; der manuelle KI-Mailtest bleibt nutzbar. Es läuft höchstens ein KI-Job gleichzeitig.',
     textEn:
-      'Automatic mail check through the local model. on (default) lets the worker review mail. off stops it before the next mail and between model steps; the manual model mail test stays usable. At most one model job runs at a time.',
+      'Automatic mail check through OpenRouter or the local model. on (default) lets the worker review mail. off stops it before the next mail and between model steps; the manual model mail test stays usable. At most one model job runs at a time.',
+  },
+  {
+    key: 'OPENROUTER_API_KEY',
+    secret: true,
+    textDe:
+      'API-Schlüssel für OpenRouter. Zusammen mit OPENROUTER_MODEL leitet die Mailprüfung Anfragen an openrouter.ai statt an den lokalen Ollama-Server. Der Schlüssel liegt nur in der lokalen Geheimdatei, nie in Git. Leer heißt: weiter Ollama.',
+    textEn:
+      'API key for OpenRouter. Together with OPENROUTER_MODEL, mail review sends requests to openrouter.ai instead of the local Ollama server. The key lives only in the local secrets file, never in git. Empty means keep using Ollama.',
+  },
+  {
+    key: 'OPENROUTER_MODEL',
+    secret: false,
+    textDe:
+      'OpenRouter-Modellname für die Mailprüfung, zum Beispiel google/gemma-3-12b-it. Nur wirksam, wenn OPENROUTER_API_KEY gesetzt ist. Dann gehen maskierte Mailausschnitte an OpenRouter (außerhalb des lokalen Netzes). Leer heißt: Ollama mit MAILCHECK_AI_*.',
+    textEn:
+      'OpenRouter model id for mail review, for example google/gemma-3-12b-it. Only active when OPENROUTER_API_KEY is set. Masked mail excerpts then leave the local network to OpenRouter. Empty means Ollama with MAILCHECK_AI_*.',
   },
   {
     key: 'MAIL_ERROR_TO',

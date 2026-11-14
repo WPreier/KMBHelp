@@ -135,6 +135,40 @@ describe('local mail review', () => {
     expect(calls).toHaveLength(1);
   });
 
+  it('uses OpenRouter chat completions when an API key is set', async () => {
+    const urls: string[] = [];
+    const answered = await askOllama({
+      baseUrl: 'http://192.168.191.131:11434',
+      model: 'google/gemma-3-12b-it',
+      openRouterApiKey: 'test-key',
+      mail,
+      fetchImpl: async (input, init) => {
+        urls.push(String(input));
+        const headers = init?.headers as Record<string, string> | undefined;
+        expect(headers?.authorization).toBe('Bearer test-key');
+        return new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: 'SUPPORT\nKATEGORIE: Drucker\nWICHTIGKEIT: P3',
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      },
+    });
+    expect(answered).toEqual({
+      kind: 'support',
+      category: 'Drucker',
+      priority: 'p3',
+      model: 'google/gemma-3-12b-it',
+    });
+    expect(urls[0]).toContain('openrouter.ai/api/v1/chat/completions');
+  });
+
   it('asks again when the importance is missing and stops at five minutes', async () => {
     const calls: string[] = [];
     const answered = await askOllama({

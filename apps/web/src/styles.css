@@ -1089,12 +1089,14 @@ button[aria-pressed='true'] {
 }
 
 .mail-box {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: min(70vh, 36rem);
+  border: 1px solid var(--line);
 }
 
 .mail-box table {
-  width: 100%;
-  min-width: 720px;
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
 }
 
@@ -1113,6 +1115,46 @@ button[aria-pressed='true'] {
 .mailbox-actions {
   display: flex;
   gap: 6px;
+}
+
+.mailbox-from {
+  max-width: 9rem;
+  min-width: 6rem;
+}
+
+.mailbox-from .mailbox-cell-scroll {
+  max-height: 3.2em;
+}
+
+.mailbox-date {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.mailbox-subject {
+  min-width: 12rem;
+  max-width: 18rem;
+}
+
+.mailbox-body {
+  min-width: 28rem;
+  max-width: 42rem;
+  width: 42%;
+}
+
+.mailbox-subject .mailbox-cell-scroll {
+  max-height: 3.2em;
+}
+
+.mailbox-body .mailbox-cell-scroll {
+  max-height: 8.5em;
+}
+
+.mailbox-cell-scroll {
+  overflow: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  line-height: 1.4;
 }
 
 .read-toggle.is-unread {

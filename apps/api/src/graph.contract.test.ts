@@ -83,6 +83,14 @@ describe('graph contract payloads', () => {
       calls.push({ url, method, body });
       if (url.includes('/oauth2/v2.0/token')) return json({ access_token: 'token' });
       if (url.includes('/messages?')) return json(recordedList);
+      if (
+        url.includes('/messages/') &&
+        !url.includes('/$value') &&
+        !url.includes('/move') &&
+        !url.endsWith('/mailFolders/drafts/messages')
+      ) {
+        return json(recordedList.value[0]);
+      }
       if (url.endsWith('/mailFolders/drafts/messages')) {
         return json({ id: 'draft-1', isDraft: true }, 201);
       }

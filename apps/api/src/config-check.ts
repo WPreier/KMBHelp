@@ -479,6 +479,35 @@ export async function checkConfigField(
           'MAILCHECK_AI_ACTIVE must be empty, on or off.',
         );
   }
+  if (key === 'OPENROUTER_MODEL') {
+    const model = value.trim();
+    const keySet = (next.OPENROUTER_API_KEY?.trim() ?? '') !== '';
+    if (model === '') {
+      return line(
+        key,
+        'ok',
+        keySet
+          ? 'OPENROUTER_MODEL fehlt; die Mailprüfung bleibt bei Ollama.'
+          : 'Kein OpenRouter-Modell; die Mailprüfung nutzt Ollama.',
+        keySet
+          ? 'OPENROUTER_MODEL is empty; mail review stays on Ollama.'
+          : 'No OpenRouter model; mail review uses Ollama.',
+      );
+    }
+    return keySet
+      ? line(
+          key,
+          'ok',
+          `Mailprüfung über OpenRouter mit ${model}.`,
+          `Mail review via OpenRouter with ${model}.`,
+        )
+      : line(
+          key,
+          'warning',
+          'OPENROUTER_MODEL ist gesetzt, aber OPENROUTER_API_KEY fehlt.',
+          'OPENROUTER_MODEL is set but OPENROUTER_API_KEY is missing.',
+        );
+  }
   if (key === 'MAILCHECK_AI_MODEL' || key === 'SEARCH_MODEL_NAME') {
     const model = value.trim();
     if (key === 'SEARCH_MODEL_NAME' && model === '') {

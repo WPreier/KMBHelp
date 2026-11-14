@@ -302,7 +302,10 @@ export const messages = {
     mailTestModel: 'Modell',
     mailTestModelOk: 'Das Modell ist auf dem KI-Server erreichbar und wurde als Standard gespeichert.',
     mailTestModelMissing: 'Dieses Modell liegt auf dem KI-Server nicht vor.',
-    mailTestModelDown: 'Der KI-Server antwortet nicht. Prüfe MAILCHECK_AI_URL.',
+    mailTestModelDown: 'Der KI-Server antwortet nicht. Prüfe MAILCHECK_AI_URL oder OPENROUTER_API_KEY.',
+    mailTestProviderOllama: 'Anbieter: lokaler Ollama-Server (MAILCHECK_AI_URL).',
+    mailTestProviderOpenRouter:
+      'Anbieter: OpenRouter. Maskierte Mailausschnitte verlassen das lokale Netz. Modell unter OPENROUTER_MODEL.',
     mailTestAutoActive: 'Automatischer Mail Check aktiv',
     mailTestAutoHint:
       'Schaltet den Worker-Mailcheck sofort um. Aus stoppt vor der nächsten Mail und zwischen den KI-Schritten. Der manuelle Test auf dieser Seite bleibt möglich.',
@@ -319,7 +322,7 @@ export const messages = {
     mailTestKindImportance: 'Wichtigkeit',
     mailboxAdminTitle: 'Helpdesk-Mailbox',
     mailboxAdminLead:
-      'Alle Nachrichten im Posteingang, mit den Angaben, die die KI-Prüfung erhält. Der Text in der Tabelle ist maskiert. Ungelesene Zeilen sind fett. G auf dunklem Grund heißt ungelesen, U auf hellem Grund heißt gelesen.',
+      'Alle Nachrichten im Posteingang: Absender, Datum als dd.MM HH:mm, Betreff und höchstens 800 Zeichen Text. Der Text ist maskiert. Ungelesene Zeilen sind fett. G auf dunklem Grund heißt ungelesen, U auf hellem Grund heißt gelesen.',
     mailboxReload: 'Neu einlesen',
     mailboxTestMail: 'Teste die KI-Schnittstelle mit dieser Mail',
     mailboxToggle: 'Gelesen oder ungelesen markieren',
@@ -701,7 +704,10 @@ export const messages = {
     mailTestModel: 'Model',
     mailTestModelOk: 'The model is available on the AI server and was saved as the default.',
     mailTestModelMissing: 'This model is not present on the AI server.',
-    mailTestModelDown: 'The AI server does not answer. Check MAILCHECK_AI_URL.',
+    mailTestModelDown: 'The AI server does not answer. Check MAILCHECK_AI_URL or OPENROUTER_API_KEY.',
+    mailTestProviderOllama: 'Provider: local Ollama server (MAILCHECK_AI_URL).',
+    mailTestProviderOpenRouter:
+      'Provider: OpenRouter. Masked mail excerpts leave the local network. Model is OPENROUTER_MODEL.',
     mailTestAutoActive: 'Automatic mail check active',
     mailTestAutoHint:
       'Switches the worker mail check immediately. Off stops before the next mail and between model steps. The manual test on this page stays available.',
@@ -718,7 +724,7 @@ export const messages = {
     mailTestKindImportance: 'Importance',
     mailboxAdminTitle: 'Helpdesk mailbox',
     mailboxAdminLead:
-      'Every message in the inbox, with the fields the model check receives. The text in the table is masked. Unread rows are bold. G on a dark ground means unread. U on a light ground means read.',
+      'Every message in the inbox: sender, date as dd.MM HH:mm, subject and at most 800 characters of text. The text is masked. Unread rows are bold. G on a dark ground means unread. U on a light ground means read.',
     mailboxReload: 'Reload',
     mailboxTestMail: 'Test the model interface with this mail',
     mailboxToggle: 'Mark read or unread',

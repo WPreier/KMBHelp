@@ -5,6 +5,7 @@ export const mailTestPromptSchema = z
     prompt: z.string(),
     model: z.string(),
     models: z.array(z.string()),
+    provider: z.enum(['ollama', 'openrouter']),
     active: z.boolean(),
   })
   .strict();

@@ -33,11 +33,45 @@ import {
   defaultOllamaUrl,
   formatMailSource,
   mailcheckAiActive,
+  mailcheckProvider,
   parsePastedMail,
   probeOllamaModel,
   type MailAsk,
   type MailExchange,
 } from './ollama-mail.js';
+
+function openRouterKey(env: NodeJS.ProcessEnv): string {
+  return env.OPENROUTER_API_KEY?.trim() ?? '';
+}
+
+function openRouterModel(env: NodeJS.ProcessEnv): string {
+  return env.OPENROUTER_MODEL?.trim() ?? '';
+}
+
+function mailTestTarget(env: NodeJS.ProcessEnv): {
+  provider: 'ollama' | 'openrouter';
+  model: string;
+  models: string[];
+  openRouterApiKey: string | undefined;
+} {
+  const provider = mailcheckProvider(env);
+  if (provider === 'openrouter') {
+    const model = openRouterModel(env);
+    return {
+      provider,
+      model,
+      models: model === '' ? [] : [model],
+      openRouterApiKey: openRouterKey(env),
+    };
+  }
+  const model = resolveMailcheckModel(env.MAILCHECK_AI_MODEL);
+  return {
+    provider,
+    model,
+    models: [...mailcheckModels],
+    openRouterApiKey: undefined,
+  };
+}
 
 const missingMail = {
   de: 'Die E-Mail fehlt.',
@@ -68,10 +102,12 @@ export function registerAdminTests(
 
   app.get('/api/v1/admin/mail-test', async (request) => {
     await administrator(request, false);
+    const target = mailTestTarget(env);
     return mailTestPromptSchema.parse({
       prompt: classificationInstructions(),
-      model: resolveMailcheckModel(env.MAILCHECK_AI_MODEL),
-      models: [...mailcheckModels],
+      model: target.model,
+      models: target.models,
+      provider: target.provider,
       active: mailcheckAiActive(env.MAILCHECK_AI_ACTIVE),
     });
   });
@@ -84,12 +120,17 @@ export function registerAdminTests(
     const mail = parsePastedMail(parsed.data.email);
     const trace: MailExchange[] = [];
     const started = Date.now();
-    const model = resolveMailcheckModel(
-      parsed.data.model?.trim() || env.MAILCHECK_AI_MODEL || defaultOllamaModel,
-    );
+    const target = mailTestTarget(env);
+    const model =
+      target.provider === 'openrouter'
+        ? parsed.data.model?.trim() || target.model
+        : resolveMailcheckModel(
+            parsed.data.model?.trim() || env.MAILCHECK_AI_MODEL || defaultOllamaModel,
+          );
     const result = await askOllama({
       baseUrl: env.MAILCHECK_AI_URL?.trim() || defaultOllamaUrl,
       model,
+      openRouterApiKey: target.openRouterApiKey,
       mail,
       instructions: parsed.data.prompt.trim() === '' ? undefined : parsed.data.prompt,
       trace,
@@ -118,7 +159,8 @@ export function registerAdminTests(
         en: 'The selected model is invalid.',
       });
     }
-    if (!isMailcheckModel(parsed.data.model)) {
+    const provider = mailcheckProvider(env);
+    if (provider === 'ollama' && !isMailcheckModel(parsed.data.model)) {
       throw new PublicError(400, 'invalid_input', {
         de: `Das Modell ${parsed.data.model} ist nicht freigegeben. Erlaubt sind ${mailcheckModels.join(', ')}.`,
         en: `The model ${parsed.data.model} is not allowed. Permitted: ${mailcheckModels.join(', ')}.`,
@@ -127,36 +169,50 @@ export function registerAdminTests(
     const probed = await probeOllamaModel({
       baseUrl: env.MAILCHECK_AI_URL?.trim() || defaultOllamaUrl,
       model: parsed.data.model,
+      openRouterApiKey: provider === 'openrouter' ? openRouterKey(env) : undefined,
       fetchImpl: options.fetchImpl,
     });
     if (probed === 'unreachable') {
       throw new PublicError(503, 'model_unreachable', {
-        de: 'Der KI-Server antwortet nicht. Prüfe MAILCHECK_AI_URL.',
-        en: 'The AI server does not answer. Check MAILCHECK_AI_URL.',
+        de:
+          provider === 'openrouter'
+            ? 'OpenRouter antwortet nicht. Prüfe OPENROUTER_API_KEY und die Netzverbindung.'
+            : 'Der KI-Server antwortet nicht. Prüfe MAILCHECK_AI_URL.',
+        en:
+          provider === 'openrouter'
+            ? 'OpenRouter does not answer. Check OPENROUTER_API_KEY and network access.'
+            : 'The AI server does not answer. Check MAILCHECK_AI_URL.',
       });
     }
     if (probed === 'missing') {
       throw new PublicError(404, 'model_missing', {
-        de: `Das Modell ${parsed.data.model} liegt auf dem KI-Server nicht vor. Lade es dort mit ollama pull ${parsed.data.model}.`,
-        en: `The model ${parsed.data.model} is not present on the AI server. Pull it there with ollama pull ${parsed.data.model}.`,
+        de:
+          provider === 'openrouter'
+            ? `Das Modell ${parsed.data.model} ist bei OpenRouter nicht verfügbar.`
+            : `Das Modell ${parsed.data.model} liegt auf dem KI-Server nicht vor. Lade es dort mit ollama pull ${parsed.data.model}.`,
+        en:
+          provider === 'openrouter'
+            ? `The model ${parsed.data.model} is not available on OpenRouter.`
+            : `The model ${parsed.data.model} is not present on the AI server. Pull it there with ollama pull ${parsed.data.model}.`,
       });
     }
     if (!options.database) {
       throw new PublicError(503, 'database_down', publicErrors.databaseDown);
     }
+    const configKey = provider === 'openrouter' ? 'OPENROUTER_MODEL' : 'MAILCHECK_AI_MODEL';
     try {
-      await saveConfigValue(options.database, 'MAILCHECK_AI_MODEL', parsed.data.model);
+      await saveConfigValue(options.database, configKey, parsed.data.model);
     } catch (error) {
       throw new PublicError(500, 'config_save_failed', {
         de: `Das Modell konnte nicht gespeichert werden: ${error instanceof Error ? error.message : 'unbekannt'}.`,
         en: `The model could not be saved: ${error instanceof Error ? error.message : 'unknown'}.`,
       });
     }
-    env.MAILCHECK_AI_MODEL = parsed.data.model;
+    env[configKey] = parsed.data.model;
     await writeActivity(options.database, {
       actor: actor.email,
       kind: 'mail',
-      target: 'MAILCHECK_AI_MODEL',
+      target: configKey,
       detail: parsed.data.model,
       ip: clientAddress(request),
     }).catch(() => undefined);
@@ -262,7 +318,10 @@ export function registerAdminTests(
   });
 }
 
-function messageRow(mail: InboundMail) {
+/** Preview length for the mailbox list table; full text stays on the single-message route. */
+const mailboxListBodyMax = 800;
+
+function messageRow(mail: InboundMail, bodyMax = mailboxListBodyMax) {
   return {
     graphId: mail.graphId,
     fromName: mail.fromName,
@@ -274,19 +333,21 @@ function messageRow(mail: InboundMail) {
     internetMessageId: mail.internetMessageId,
     inReplyTo: mail.inReplyTo ?? '',
     references: mail.references ?? '',
-    body: maskPersonalData(mail.body).slice(0, mailcheckInputMax),
+    body: maskPersonalData(mail.body).slice(0, bodyMax),
     unread: mail.unread,
   };
 }
 
 function messageView(mail: InboundMail) {
-  return { ...messageRow(mail), source: formatMailSource(mail) };
+  return { ...messageRow(mail, mailcheckInputMax), source: formatMailSource(mail) };
 }
 
 async function findInInbox(box: Mailbox, graphId: string): Promise<InboundMail> {
   if (!box.configured) {
     throw new PublicError(503, 'mailbox_not_configured', publicErrors.mailboxNotConfigured);
   }
+  const full = await box.readMessage(graphId);
+  if (full) return full;
   const mail = (await box.listInbox(inboxListCap)).messages.find(
     (item) => item.graphId === graphId,
   );

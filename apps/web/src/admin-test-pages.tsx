@@ -45,6 +45,7 @@ export function MailTestPage() {
   const [email, setEmail] = useState('');
   const [model, setModel] = useState('');
   const [models, setModels] = useState<string[]>([]);
+  const [provider, setProvider] = useState<'ollama' | 'openrouter'>('ollama');
   const [active, setActive] = useState(true);
   const [result, setResult] = useState<MailTestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export function MailTestPage() {
         setPrompt(loaded.prompt);
         setModel(loaded.model);
         setModels(loaded.models);
+        setProvider(loaded.provider);
         setActive(loaded.active);
       })
       .catch((caught: unknown) => {
@@ -158,6 +160,9 @@ export function MailTestPage() {
         mailTestModelResultSchema.parse,
       );
       setModel(saved.model);
+      setModels((current) =>
+        current.includes(saved.model) ? current : [saved.model, ...current],
+      );
       setNote(lang === 'de' ? saved.textDe : saved.textEn);
     } catch (caught) {
       setError(failure(caught, lang, copy.mailTestModelDown));
@@ -200,20 +205,32 @@ export function MailTestPage() {
         {copy.mailTestAutoActive}
       </label>
       <p>{copy.mailTestAutoHint}</p>
+      <p>
+        {provider === 'openrouter' ? copy.mailTestProviderOpenRouter : copy.mailTestProviderOllama}
+      </p>
       <form onSubmit={(event) => void onTest(event)}>
         <label>
           {copy.mailTestModel}
-          <select
-            value={model}
-            disabled={pending || models.length === 0}
-            onChange={(event) => void onModelChange(event.target.value)}
-          >
-            {models.map((entry) => (
-              <option key={entry} value={entry}>
-                {entry}
-              </option>
-            ))}
-          </select>
+          {provider === 'openrouter' ? (
+            <input
+              value={model}
+              disabled={pending}
+              onChange={(event) => setModel(event.target.value)}
+              onBlur={(event) => void onModelChange(event.target.value.trim())}
+            />
+          ) : (
+            <select
+              value={model}
+              disabled={pending || models.length === 0}
+              onChange={(event) => void onModelChange(event.target.value)}
+            >
+              {models.map((entry) => (
+                <option key={entry} value={entry}>
+                  {entry}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
         <label>
           {copy.mailTestPrompt}
@@ -382,13 +399,8 @@ export function MailboxAdminPage() {
               <tr>
                 <th>{copy.mailTestRun}</th>
                 <th>{copy.mailboxFrom}</th>
-                <th>{copy.mailboxTo}</th>
-                <th>{copy.mailboxCc}</th>
                 <th>{copy.mailboxDate}</th>
                 <th>{copy.mailboxSubject}</th>
-                <th>{copy.mailboxMessageId}</th>
-                <th>{copy.mailboxReply}</th>
-                <th>{copy.mailboxReferences}</th>
                 <th>{copy.mailboxBody}</th>
               </tr>
             </thead>
@@ -421,15 +433,18 @@ export function MailboxAdminPage() {
                       {mail.unread ? 'G' : 'U'}
                     </button>
                   </td>
-                  <td>{mail.fromName ? `${mail.fromName} <${mail.fromEmail}>` : mail.fromEmail}</td>
-                  <td>{mail.to}</td>
-                  <td>{mail.cc}</td>
-                  <td>{mail.sentAt}</td>
-                  <td>{mail.subject}</td>
-                  <td>{mail.internetMessageId}</td>
-                  <td>{mail.inReplyTo}</td>
-                  <td>{mail.references}</td>
-                  <td>{mail.body}</td>
+                  <td className="mailbox-from">
+                    <div className="mailbox-cell-scroll">
+                      {mail.fromName ? `${mail.fromName} <${mail.fromEmail}>` : mail.fromEmail}
+                    </div>
+                  </td>
+                  <td className="mailbox-date">{formatMailboxDate(mail.sentAt)}</td>
+                  <td className="mailbox-subject">
+                    <div className="mailbox-cell-scroll">{mail.subject}</div>
+                  </td>
+                  <td className="mailbox-body">
+                    <div className="mailbox-cell-scroll">{mail.body}</div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -438,6 +453,24 @@ export function MailboxAdminPage() {
       ) : null}
     </section>
   );
+}
+
+function formatMailboxDate(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed === '') return '';
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return trimmed;
+  const parts = new Intl.DateTimeFormat('de-AT', {
+    timeZone: 'Europe/Vienna',
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? '';
+  return `${pick('day')}.${pick('month')} ${pick('hour')}:${pick('minute')}`;
 }
 
 function failure(caught: unknown, lang: 'de' | 'en', fallback: string): string {

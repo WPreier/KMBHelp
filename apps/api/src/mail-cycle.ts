@@ -135,9 +135,13 @@ export async function mailIngestDeps(
     autoReplyCategories: autoReplyAllowlist(settings.autoReplyCategories),
     askMail: async (mail) => {
       if (!(await readMailcheckAiActive(database, env))) return 'unreachable';
+      const openRouterKey = env.OPENROUTER_API_KEY?.trim() ?? '';
+      const openRouterModel = settings.openRouterModel;
+      const useOpenRouter = openRouterKey !== '' && openRouterModel !== '';
       return askOllama({
         baseUrl: settings.ollamaUrl,
-        model: settings.ollamaModel,
+        model: useOpenRouter ? openRouterModel : settings.ollamaModel,
+        openRouterApiKey: useOpenRouter ? openRouterKey : undefined,
         mail,
         fetchImpl,
         env,
@@ -803,6 +807,7 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     'MAILCHECK_AI_URL',
     'MAILCHECK_AI_MODEL',
     'MAILCHECK_AI_ACTIVE',
+    'OPENROUTER_MODEL',
     'MAIL_ERROR_TO',
     'MAIL_SMTP_SERVER',
     'MAIL_SMTP_PORT',
@@ -853,6 +858,7 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     ollamaUrl: value('MAILCHECK_AI_URL', defaultOllamaUrl),
     ollamaModel: resolveMailcheckModel(value('MAILCHECK_AI_MODEL', defaultOllamaModel)),
     ollamaActive: mailcheckAiActive(value('MAILCHECK_AI_ACTIVE', 'on')),
+    openRouterModel: value('OPENROUTER_MODEL', ''),
     mailErrorTo: value('MAIL_ERROR_TO', defaultMailErrorTo),
     digestFlag: value('MAIL_NOTICE_DIGEST', ''),
     digestHour: value('MAIL_NOTICE_DIGEST_HOUR', '7'),
