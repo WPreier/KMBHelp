@@ -1,10 +1,21 @@
 import { z } from 'zod';
 
+export const openRouterModelOptionSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    promptCostPerMillion: z.number().nonnegative(),
+  })
+  .strict();
+
 export const mailTestPromptSchema = z
   .object({
     prompt: z.string(),
     model: z.string(),
     models: z.array(z.string()),
+    openRouterModel: z.string(),
+    openRouterModels: z.array(openRouterModelOptionSchema),
+    openRouterReady: z.boolean(),
     provider: z.enum(['ollama', 'openrouter']),
     active: z.boolean(),
   })
@@ -23,7 +34,22 @@ export const mailTestRequestSchema = z
 
 export const mailTestModelRequestSchema = z
   .object({
-    model: z.string().trim().min(1).max(200),
+    model: z.string().trim().max(200),
+    provider: z.enum(['ollama', 'openrouter']),
+  })
+  .strict();
+
+export const mailTestPromptSaveSchema = z
+  .object({
+    prompt: z.string().max(mailTestPromptMax),
+  })
+  .strict();
+
+export const mailTestPromptSaveResultSchema = z
+  .object({
+    prompt: z.string(),
+    textDe: z.string(),
+    textEn: z.string(),
   })
   .strict();
 

@@ -17,6 +17,7 @@ import {
   defaultFallbackCategory,
   defaultWorkerSchedule,
   resolveMailcheckModel,
+  resolveMailcheckPrompt,
   resolvePriority,
   type Priority,
 } from '@kmbhelp/shared';
@@ -143,6 +144,7 @@ export async function mailIngestDeps(
         model: useOpenRouter ? openRouterModel : settings.ollamaModel,
         openRouterApiKey: useOpenRouter ? openRouterKey : undefined,
         mail,
+        instructions: settings.mailcheckPrompt,
         fetchImpl,
         env,
         continueWhen: () => readMailcheckAiActive(database, env),
@@ -400,8 +402,11 @@ async function askLocal(
 ): Promise<LocalMailResult | 'timeout' | 'retry' | 'declined'> {
   if (!deps.askMail) return 'retry';
   const asked = await deps.askMail(mail);
-  const level = asked === 'timeout' || asked === 'unreachable' ? 'warning' : 'informational';
-  if (asked === 'unreachable') {
+  const level =
+    asked === 'timeout' || asked === 'unreachable' || asked === 'rate_limited'
+      ? 'warning'
+      : 'informational';
+  if (asked === 'unreachable' || asked === 'rate_limited') {
     await tellMail(
       deps,
       mail,
@@ -807,6 +812,7 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     'MAILCHECK_AI_URL',
     'MAILCHECK_AI_MODEL',
     'MAILCHECK_AI_ACTIVE',
+    'MAILCHECK_AI_PROMPT',
     'OPENROUTER_MODEL',
     'MAIL_ERROR_TO',
     'MAIL_SMTP_SERVER',
@@ -858,6 +864,7 @@ async function readCycleSettings(database: Database, env: NodeJS.ProcessEnv) {
     ollamaUrl: value('MAILCHECK_AI_URL', defaultOllamaUrl),
     ollamaModel: resolveMailcheckModel(value('MAILCHECK_AI_MODEL', defaultOllamaModel)),
     ollamaActive: mailcheckAiActive(value('MAILCHECK_AI_ACTIVE', 'on')),
+    mailcheckPrompt: resolveMailcheckPrompt(value('MAILCHECK_AI_PROMPT', '')),
     openRouterModel: value('OPENROUTER_MODEL', ''),
     mailErrorTo: value('MAIL_ERROR_TO', defaultMailErrorTo),
     digestFlag: value('MAIL_NOTICE_DIGEST', ''),

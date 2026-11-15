@@ -86,6 +86,8 @@ describe('local mail review', () => {
     expect(prompt).toContain('SUPPORT');
     expect(prompt).toContain('ANTWORT');
     expect(prompt).toContain('SPAM');
+    expect(prompt).toContain('SPAM ist alles andere');
+    expect(prompt).toContain('P4 alles andere');
     expect(prompt).not.toContain('ABSCHLUSS');
     expect(prompt).not.toContain('FREMD');
     expect(prompt).not.toContain('1234');

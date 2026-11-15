@@ -197,6 +197,9 @@ export {
   mailTestModelResultSchema,
   mailTestActiveRequestSchema,
   mailTestActiveResultSchema,
+  mailTestPromptSaveSchema,
+  mailTestPromptSaveResultSchema,
+  openRouterModelOptionSchema,
   mailTestPromptMax,
   mailTestEmailMax,
   type MailboxMessage,
@@ -235,6 +238,10 @@ export {
   resolveMailcheckModel,
   type MailcheckModel,
 } from './mailcheck-models.js';
+export {
+  defaultMailcheckPrompt,
+  resolveMailcheckPrompt,
+} from './mailcheck-prompt.js';
 export {
   adminAccessSchema,
   adminPasswordSchema,

@@ -479,6 +479,21 @@ export async function checkConfigField(
           'MAILCHECK_AI_ACTIVE must be empty, on or off.',
         );
   }
+  if (key === 'MAILCHECK_AI_PROMPT') {
+    return value.trim() === ''
+      ? line(
+          key,
+          'ok',
+          'Leer: der mitgelieferte SUPPORT/ANTWORT/SPAM-Auftrag gilt.',
+          'Empty: the built-in SUPPORT/ANTWORT/SPAM instruction applies.',
+        )
+      : line(
+          key,
+          'ok',
+          'Eigener Abfragetext für die Mailprüfung ist gesetzt.',
+          'A custom mail-check query text is set.',
+        );
+  }
   if (key === 'OPENROUTER_MODEL') {
     const model = value.trim();
     const keySet = (next.OPENROUTER_API_KEY?.trim() ?? '') !== '';

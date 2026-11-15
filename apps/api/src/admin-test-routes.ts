@@ -14,11 +14,14 @@ import {
   mailTestModelRequestSchema,
   mailTestModelResultSchema,
   mailTestPromptMax,
+  mailTestPromptSaveResultSchema,
+  mailTestPromptSaveSchema,
   mailTestPromptSchema,
   mailTestRequestSchema,
   mailTestResultSchema,
   publicErrors,
   resolveMailcheckModel,
+  resolveMailcheckPrompt,
 } from '@kmbhelp/shared';
 import type { ZodError } from 'zod';
 import { requireAdministrator } from './auth.js';
@@ -28,7 +31,6 @@ import { inboxListCap, mailboxFromEnv, type InboundMail, type Mailbox } from './
 import { clientAddress, PublicError } from './http.js';
 import {
   askOllama,
-  classificationInstructions,
   defaultOllamaModel,
   defaultOllamaUrl,
   formatMailSource,
@@ -39,6 +41,7 @@ import {
   type MailAsk,
   type MailExchange,
 } from './ollama-mail.js';
+import { listOpenRouterTextModels } from './openrouter-models.js';
 
 function openRouterKey(env: NodeJS.ProcessEnv): string {
   return env.OPENROUTER_API_KEY?.trim() ?? '';
@@ -48,29 +51,8 @@ function openRouterModel(env: NodeJS.ProcessEnv): string {
   return env.OPENROUTER_MODEL?.trim() ?? '';
 }
 
-function mailTestTarget(env: NodeJS.ProcessEnv): {
-  provider: 'ollama' | 'openrouter';
-  model: string;
-  models: string[];
-  openRouterApiKey: string | undefined;
-} {
-  const provider = mailcheckProvider(env);
-  if (provider === 'openrouter') {
-    const model = openRouterModel(env);
-    return {
-      provider,
-      model,
-      models: model === '' ? [] : [model],
-      openRouterApiKey: openRouterKey(env),
-    };
-  }
-  const model = resolveMailcheckModel(env.MAILCHECK_AI_MODEL);
-  return {
-    provider,
-    model,
-    models: [...mailcheckModels],
-    openRouterApiKey: undefined,
-  };
+function mailcheckPrompt(env: NodeJS.ProcessEnv): string {
+  return resolveMailcheckPrompt(env.MAILCHECK_AI_PROMPT);
 }
 
 const missingMail = {
@@ -102,12 +84,30 @@ export function registerAdminTests(
 
   app.get('/api/v1/admin/mail-test', async (request) => {
     await administrator(request, false);
-    const target = mailTestTarget(env);
+    const key = openRouterKey(env);
+    const openRouterReady = key !== '';
+    let openRouterModels: { id: string; name: string; promptCostPerMillion: number }[] = [];
+    if (openRouterReady) {
+      try {
+        openRouterModels = await listOpenRouterTextModels({
+          apiKey: key,
+          fetchImpl: options.fetchImpl,
+          env,
+        });
+      } catch {
+        openRouterModels = [];
+      }
+    }
+    const selectedOpenRouter = openRouterModel(env);
+    const provider = mailcheckProvider(env);
     return mailTestPromptSchema.parse({
-      prompt: classificationInstructions(),
-      model: target.model,
-      models: target.models,
-      provider: target.provider,
+      prompt: mailcheckPrompt(env),
+      model: resolveMailcheckModel(env.MAILCHECK_AI_MODEL),
+      models: [...mailcheckModels],
+      openRouterModel: selectedOpenRouter,
+      openRouterModels,
+      openRouterReady,
+      provider,
       active: mailcheckAiActive(env.MAILCHECK_AI_ACTIVE),
     });
   });
@@ -120,24 +120,32 @@ export function registerAdminTests(
     const mail = parsePastedMail(parsed.data.email);
     const trace: MailExchange[] = [];
     const started = Date.now();
-    const target = mailTestTarget(env);
+    const provider = mailcheckProvider(env);
+    const instructions =
+      parsed.data.prompt.trim() === '' ? mailcheckPrompt(env) : parsed.data.prompt.trim();
+    if (options.database && instructions !== mailcheckPrompt(env)) {
+      await saveConfigValue(options.database, 'MAILCHECK_AI_PROMPT', instructions).catch(
+        () => undefined,
+      );
+      env.MAILCHECK_AI_PROMPT = instructions;
+    }
     const model =
-      target.provider === 'openrouter'
-        ? parsed.data.model?.trim() || target.model
+      provider === 'openrouter'
+        ? parsed.data.model?.trim() || openRouterModel(env)
         : resolveMailcheckModel(
             parsed.data.model?.trim() || env.MAILCHECK_AI_MODEL || defaultOllamaModel,
           );
     const result = await askOllama({
       baseUrl: env.MAILCHECK_AI_URL?.trim() || defaultOllamaUrl,
       model,
-      openRouterApiKey: target.openRouterApiKey,
+      openRouterApiKey: provider === 'openrouter' ? openRouterKey(env) : undefined,
       mail,
-      instructions: parsed.data.prompt.trim() === '' ? undefined : parsed.data.prompt,
+      instructions,
       trace,
       fetchImpl: options.fetchImpl,
     });
     const seconds = Number(((Date.now() - started) / 1000).toFixed(1));
-    const text = describeAsk(result);
+    const text = describeAsk(result, provider);
     if (options.database) {
       await writeActivity(options.database, {
         actor: actor.email,
@@ -150,6 +158,42 @@ export function registerAdminTests(
     return mailTestResultSchema.parse({ seconds, exchanges: trace, ...text });
   });
 
+  app.post('/api/v1/admin/mail-test/prompt', async (request) => {
+    const actor = await administrator(request, true);
+    const parsed = mailTestPromptSaveSchema.safeParse(request.body);
+    if (!parsed.success) {
+      throw new PublicError(400, 'invalid_input', {
+        de: 'Der Abfragetext ist ungültig.',
+        en: 'The query text is invalid.',
+      });
+    }
+    if (!options.database) {
+      throw new PublicError(503, 'database_down', publicErrors.databaseDown);
+    }
+    const stored = resolveMailcheckPrompt(parsed.data.prompt);
+    try {
+      await saveConfigValue(options.database, 'MAILCHECK_AI_PROMPT', stored);
+    } catch (error) {
+      throw new PublicError(500, 'config_save_failed', {
+        de: `Der Abfragetext konnte nicht gespeichert werden: ${error instanceof Error ? error.message : 'unbekannt'}.`,
+        en: `The query text could not be saved: ${error instanceof Error ? error.message : 'unknown'}.`,
+      });
+    }
+    env.MAILCHECK_AI_PROMPT = stored;
+    await writeActivity(options.database, {
+      actor: actor.email,
+      kind: 'mail',
+      target: 'MAILCHECK_AI_PROMPT',
+      detail: 'Abfragetext gespeichert',
+      ip: clientAddress(request),
+    }).catch(() => undefined);
+    return mailTestPromptSaveResultSchema.parse({
+      prompt: stored,
+      textDe: 'Der Abfragetext wurde gespeichert.',
+      textEn: 'The query text was saved.',
+    });
+  });
+
   app.post('/api/v1/admin/mail-test/model', async (request) => {
     const actor = await administrator(request, true);
     const parsed = mailTestModelRequestSchema.safeParse(request.body);
@@ -159,11 +203,36 @@ export function registerAdminTests(
         en: 'The selected model is invalid.',
       });
     }
-    const provider = mailcheckProvider(env);
+    const provider = parsed.data.provider;
+    if (provider === 'openrouter' && parsed.data.model === '') {
+      if (!options.database) {
+        throw new PublicError(503, 'database_down', publicErrors.databaseDown);
+      }
+      await saveConfigValue(options.database, 'OPENROUTER_MODEL', '');
+      env.OPENROUTER_MODEL = '';
+      await writeActivity(options.database, {
+        actor: actor.email,
+        kind: 'mail',
+        target: 'OPENROUTER_MODEL',
+        detail: '',
+        ip: clientAddress(request),
+      }).catch(() => undefined);
+      return mailTestModelResultSchema.parse({
+        model: resolveMailcheckModel(env.MAILCHECK_AI_MODEL),
+        textDe: 'OpenRouter ist aus. Die Mailprüfung nutzt wieder das lokale Modell.',
+        textEn: 'OpenRouter is off. Mail review uses the local model again.',
+      });
+    }
     if (provider === 'ollama' && !isMailcheckModel(parsed.data.model)) {
       throw new PublicError(400, 'invalid_input', {
         de: `Das Modell ${parsed.data.model} ist nicht freigegeben. Erlaubt sind ${mailcheckModels.join(', ')}.`,
         en: `The model ${parsed.data.model} is not allowed. Permitted: ${mailcheckModels.join(', ')}.`,
+      });
+    }
+    if (provider === 'openrouter' && openRouterKey(env) === '') {
+      throw new PublicError(400, 'invalid_input', {
+        de: 'OPENROUTER_API_KEY fehlt. Ohne Schlüssel bleibt die lokale KI aktiv.',
+        en: 'OPENROUTER_API_KEY is missing. Without a key the local model stays active.',
       });
     }
     const probed = await probeOllamaModel({
@@ -202,6 +271,10 @@ export function registerAdminTests(
     const configKey = provider === 'openrouter' ? 'OPENROUTER_MODEL' : 'MAILCHECK_AI_MODEL';
     try {
       await saveConfigValue(options.database, configKey, parsed.data.model);
+      if (provider === 'ollama' && openRouterModel(env) !== '') {
+        await saveConfigValue(options.database, 'OPENROUTER_MODEL', '');
+        env.OPENROUTER_MODEL = '';
+      }
     } catch (error) {
       throw new PublicError(500, 'config_save_failed', {
         de: `Das Modell konnte nicht gespeichert werden: ${error instanceof Error ? error.message : 'unbekannt'}.`,
@@ -392,15 +465,34 @@ function mailTestInputError(error: ZodError): PublicError {
   });
 }
 
-function describeAsk(result: MailAsk): { textDe: string; textEn: string } {
+function describeAsk(result: MailAsk, provider: 'ollama' | 'openrouter'): {
+  textDe: string;
+  textEn: string;
+} {
   if (result === 'timeout') {
     return {
       textDe: 'Die Abfrage hat das Zeitlimit erreicht.',
       textEn: 'The query reached the time limit.',
     };
   }
+  if (result === 'rate_limited') {
+    return {
+      textDe:
+        'OpenRouter meldet zu viele Anfragen (HTTP 429), oft bei kostenlosen Modellen. Warte kurz oder wähle ein anderes Modell.',
+      textEn:
+        'OpenRouter reports too many requests (HTTP 429), often on free models. Wait a moment or choose another model.',
+    };
+  }
   if (result === 'unreachable') {
-    return { textDe: 'Ollama ist nicht erreichbar.', textEn: 'Ollama cannot be reached.' };
+    return provider === 'openrouter'
+      ? {
+          textDe: 'OpenRouter ist nicht erreichbar oder hat die Anfrage abgelehnt.',
+          textEn: 'OpenRouter cannot be reached or rejected the request.',
+        }
+      : {
+          textDe: 'Ollama ist nicht erreichbar.',
+          textEn: 'Ollama cannot be reached.',
+        };
   }
   if (result === 'unclear') {
     return { textDe: 'Die Antwort war nicht lesbar.', textEn: 'The answer could not be read.' };

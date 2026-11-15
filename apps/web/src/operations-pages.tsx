@@ -131,6 +131,7 @@ function ConfigField({ entry }: { entry: ConfigurationReport['entries'][number] 
     entry.key === 'ADMIN_IP_ALLOWLIST' ||
     entry.key === 'WORKER_SCHEDULE' ||
     entry.key === 'MAIL_AI_PROMPT' ||
+    entry.key === 'MAILCHECK_AI_PROMPT' ||
     entry.key === 'INTERNAL_MAIL_DOMAINS';
 
   async function run(

@@ -85,6 +85,7 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `INTERNAL_MAIL_DOMAINS` | `kmb-steuerberatung.at,ght.at,koller-rohrschach.at` | Frühere Absenderliste. Die Mailprüfung sperrt damit niemanden mehr. |
 | `MAILCHECK_AI_URL` | `http://192.168.191.131:11434` | Lokaler Ollama-Server. Eine Abfrage wartet höchstens 5 Minuten. |
 | `MAILCHECK_AI_MODEL` | `gemma4:12b` | Modellname für die Mailprüfung. Möglich: `gemma4:12b`, `gemma4:26b`, `qwen3.8:27b`. An die KI geht immer nur eine Anfrage gleichzeitig. |
+| `MAILCHECK_AI_PROMPT` | mitgelieferter SUPPORT/ANTWORT/SPAM-Text | Abfragetext für Mailprüfung und KI-Mailtest. Leer nutzt die Auslieferung. |
 | `OPENROUTER_API_KEY` | leer | Geheimnis. Zusammen mit `OPENROUTER_MODEL` leitet die Mailprüfung an OpenRouter statt Ollama. |
 | `OPENROUTER_MODEL` | leer | OpenRouter-Modell-ID. Leer oder ohne Schlüssel: Ollama bleibt aktiv. |
 | `MAIL_ERROR_TO` | `helpdesk@ppc.at` | Empfänger der Fehlermail über Graph, wenn eine Abfrage zu lange dauert. Die Mail wird verschickt. |

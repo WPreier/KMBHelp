@@ -1083,6 +1083,29 @@ button[aria-pressed='true'] {
   min-height: 18rem;
 }
 
+.mail-test-active {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.mail-test-active span {
+  flex: 0 1 auto;
+}
+
+.mail-test-active-check {
+  width: 0.85rem;
+  height: 0.85rem;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.mail-test-prompt {
+  min-height: 10rem;
+}
+
 .exchange {
   white-space: pre-wrap;
   overflow-wrap: anywhere;

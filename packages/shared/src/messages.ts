@@ -299,13 +299,19 @@ export const messages = {
     mailTestPrompt: 'Abfragetext',
     mailTestEmail: 'E-Mail',
     mailTestUpload: 'E-Mail-Datei laden',
-    mailTestModel: 'Modell',
+    mailTestModel: 'Lokales Modell',
+    mailTestModelOpenRouter: 'OpenRouter-Modell',
+    mailTestModelOpenRouterOff: 'Lokal (Ollama)',
+    mailTestModelOpenRouterHint:
+      'Liste einmal täglich von OpenRouter, textoptimiert, sortiert nach Kosten pro Million Input-Tokens. Ohne OPENROUTER_API_KEY bleibt die Liste leer.',
+    mailTestModelCost: '{cost} $/M',
     mailTestModelOk: 'Das Modell ist auf dem KI-Server erreichbar und wurde als Standard gespeichert.',
     mailTestModelMissing: 'Dieses Modell liegt auf dem KI-Server nicht vor.',
     mailTestModelDown: 'Der KI-Server antwortet nicht. Prüfe MAILCHECK_AI_URL oder OPENROUTER_API_KEY.',
     mailTestProviderOllama: 'Anbieter: lokaler Ollama-Server (MAILCHECK_AI_URL).',
     mailTestProviderOpenRouter:
-      'Anbieter: OpenRouter. Maskierte Mailausschnitte verlassen das lokale Netz. Modell unter OPENROUTER_MODEL.',
+      'Anbieter: OpenRouter. Maskierte Mailausschnitte verlassen das lokale Netz.',
+    mailTestPromptSaved: 'Der Abfragetext wurde gespeichert.',
     mailTestAutoActive: 'Automatischer Mail Check aktiv',
     mailTestAutoHint:
       'Schaltet den Worker-Mailcheck sofort um. Aus stoppt vor der nächsten Mail und zwischen den KI-Schritten. Der manuelle Test auf dieser Seite bleibt möglich.',
@@ -701,13 +707,19 @@ export const messages = {
     mailTestPrompt: 'Query text',
     mailTestEmail: 'Email',
     mailTestUpload: 'Load an email file',
-    mailTestModel: 'Model',
+    mailTestModel: 'Local model',
+    mailTestModelOpenRouter: 'OpenRouter model',
+    mailTestModelOpenRouterOff: 'Local (Ollama)',
+    mailTestModelOpenRouterHint:
+      'List refreshed once per day from OpenRouter, text-optimized, sorted by cost per million input tokens. Without OPENROUTER_API_KEY the list stays empty.',
+    mailTestModelCost: '{cost} $/M',
     mailTestModelOk: 'The model is available on the AI server and was saved as the default.',
     mailTestModelMissing: 'This model is not present on the AI server.',
     mailTestModelDown: 'The AI server does not answer. Check MAILCHECK_AI_URL or OPENROUTER_API_KEY.',
     mailTestProviderOllama: 'Provider: local Ollama server (MAILCHECK_AI_URL).',
     mailTestProviderOpenRouter:
-      'Provider: OpenRouter. Masked mail excerpts leave the local network. Model is OPENROUTER_MODEL.',
+      'Provider: OpenRouter. Masked mail excerpts leave the local network.',
+    mailTestPromptSaved: 'The query text was saved.',
     mailTestAutoActive: 'Automatic mail check active',
     mailTestAutoHint:
       'Switches the worker mail check immediately. Off stops before the next mail and between model steps. The manual test on this page stays available.',

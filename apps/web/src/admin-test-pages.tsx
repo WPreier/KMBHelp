@@ -3,6 +3,7 @@ import {
   mailboxMessageSchema,
   mailTestActiveResultSchema,
   mailTestModelResultSchema,
+  mailTestPromptSaveResultSchema,
   mailTestPromptSchema,
   mailTestResultSchema,
   type MailboxRow,
@@ -42,9 +43,15 @@ export function MailTestPage() {
   const [params] = useSearchParams();
   const mailId = params.get('id') ?? '';
   const [prompt, setPrompt] = useState('');
+  const [savedPrompt, setSavedPrompt] = useState('');
   const [email, setEmail] = useState('');
   const [model, setModel] = useState('');
   const [models, setModels] = useState<string[]>([]);
+  const [openRouterModel, setOpenRouterModel] = useState('');
+  const [openRouterModels, setOpenRouterModels] = useState<
+    { id: string; name: string; promptCostPerMillion: number }[]
+  >([]);
+  const [openRouterReady, setOpenRouterReady] = useState(false);
   const [provider, setProvider] = useState<'ollama' | 'openrouter'>('ollama');
   const [active, setActive] = useState(true);
   const [result, setResult] = useState<MailTestResult | null>(null);
@@ -60,8 +67,12 @@ export function MailTestPage() {
       .then((loaded) => {
         if (cancelled) return;
         setPrompt(loaded.prompt);
+        setSavedPrompt(loaded.prompt);
         setModel(loaded.model);
         setModels(loaded.models);
+        setOpenRouterModel(loaded.openRouterModel);
+        setOpenRouterModels(loaded.openRouterModels);
+        setOpenRouterReady(loaded.openRouterReady);
         setProvider(loaded.provider);
         setActive(loaded.active);
       })
@@ -113,12 +124,17 @@ export function MailTestPage() {
     setResult(null);
     document.body.classList.add('wait');
     try {
+      if (prompt.trim() !== savedPrompt.trim()) {
+        await savePrompt(prompt);
+      }
+      const activeModel = provider === 'openrouter' ? openRouterModel || model : model;
       const loaded = await postJson(
         '/api/v1/admin/mail-test',
-        { prompt, email, model },
+        { prompt, email, model: activeModel },
         mailTestResultSchema.parse,
       );
       setResult(loaded);
+      setSavedPrompt(prompt);
     } catch (caught) {
       setError(failure(caught, lang, copy.loadFailed));
     } finally {
@@ -147,7 +163,32 @@ export function MailTestPage() {
     }
   }
 
-  async function onModelChange(next: string) {
+  async function savePrompt(next: string) {
+    const saved = await postJson(
+      '/api/v1/admin/mail-test/prompt',
+      { prompt: next },
+      mailTestPromptSaveResultSchema.parse,
+    );
+    setPrompt(saved.prompt);
+    setSavedPrompt(saved.prompt);
+    setNote(lang === 'de' ? saved.textDe : saved.textEn);
+  }
+
+  async function onPromptBlur() {
+    if (prompt.trim() === savedPrompt.trim()) return;
+    setPending(true);
+    setError(null);
+    setNote(null);
+    try {
+      await savePrompt(prompt);
+    } catch (caught) {
+      setError(failure(caught, lang, copy.loadFailed));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onLocalModelChange(next: string) {
     if (next === '' || next === model) return;
     setPending(true);
     setError(null);
@@ -156,13 +197,12 @@ export function MailTestPage() {
     try {
       const saved = await postJson(
         '/api/v1/admin/mail-test/model',
-        { model: next },
+        { model: next, provider: 'ollama' },
         mailTestModelResultSchema.parse,
       );
       setModel(saved.model);
-      setModels((current) =>
-        current.includes(saved.model) ? current : [saved.model, ...current],
-      );
+      setOpenRouterModel('');
+      setProvider('ollama');
       setNote(lang === 'de' ? saved.textDe : saved.textEn);
     } catch (caught) {
       setError(failure(caught, lang, copy.mailTestModelDown));
@@ -170,6 +210,49 @@ export function MailTestPage() {
       document.body.classList.remove('wait');
       setPending(false);
     }
+  }
+
+  async function onOpenRouterModelChange(next: string) {
+    if (next === openRouterModel) return;
+    setPending(true);
+    setError(null);
+    setNote(null);
+    document.body.classList.add('wait');
+    try {
+      const saved = await postJson(
+        '/api/v1/admin/mail-test/model',
+        { model: next, provider: 'openrouter' },
+        mailTestModelResultSchema.parse,
+      );
+      if (next === '') {
+        setOpenRouterModel('');
+        setProvider('ollama');
+        setModel(saved.model);
+      } else {
+        setOpenRouterModel(saved.model);
+        setProvider('openrouter');
+      }
+      setNote(lang === 'de' ? saved.textDe : saved.textEn);
+    } catch (caught) {
+      setError(failure(caught, lang, copy.mailTestModelDown));
+    } finally {
+      document.body.classList.remove('wait');
+      setPending(false);
+    }
+  }
+
+  function openRouterLabel(entry: {
+    id: string;
+    name: string;
+    promptCostPerMillion: number;
+  }): string {
+    const cost = copy.mailTestModelCost.replace(
+      '{cost}',
+      entry.promptCostPerMillion < 0.01
+        ? entry.promptCostPerMillion.toFixed(4)
+        : entry.promptCostPerMillion.toFixed(2),
+    );
+    return `${entry.id} — ${cost}`;
   }
 
   async function onFile(file: File | undefined) {
@@ -195,14 +278,15 @@ export function MailTestPage() {
   return (
     <section>
       <h2>{copy.mailTestTitle}</h2>
-      <label>
+      <label className="mail-test-active">
+        <span>{copy.mailTestAutoActive}</span>
         <input
+          className="mail-test-active-check"
           type="checkbox"
           checked={active}
           disabled={pendingActive}
           onChange={(event) => void onActiveChange(event.target.checked)}
-        />{' '}
-        {copy.mailTestAutoActive}
+        />
       </label>
       <p>{copy.mailTestAutoHint}</p>
       <p>
@@ -211,30 +295,46 @@ export function MailTestPage() {
       <form onSubmit={(event) => void onTest(event)}>
         <label>
           {copy.mailTestModel}
-          {provider === 'openrouter' ? (
-            <input
-              value={model}
-              disabled={pending}
-              onChange={(event) => setModel(event.target.value)}
-              onBlur={(event) => void onModelChange(event.target.value.trim())}
-            />
-          ) : (
-            <select
-              value={model}
-              disabled={pending || models.length === 0}
-              onChange={(event) => void onModelChange(event.target.value)}
-            >
-              {models.map((entry) => (
-                <option key={entry} value={entry}>
-                  {entry}
-                </option>
-              ))}
-            </select>
-          )}
+          <select
+            value={model}
+            disabled={pending || models.length === 0}
+            onChange={(event) => void onLocalModelChange(event.target.value)}
+          >
+            {models.map((entry) => (
+              <option key={entry} value={entry}>
+                {entry}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
+          {copy.mailTestModelOpenRouter}
+          <select
+            value={openRouterModel}
+            disabled={pending || !openRouterReady}
+            onChange={(event) => void onOpenRouterModelChange(event.target.value)}
+          >
+            <option value="">{copy.mailTestModelOpenRouterOff}</option>
+            {openRouterModels.map((entry) => (
+              <option key={entry.id} value={entry.id}>
+                {openRouterLabel(entry)}
+              </option>
+            ))}
+            {openRouterModel !== '' &&
+            !openRouterModels.some((entry) => entry.id === openRouterModel) ? (
+              <option value={openRouterModel}>{openRouterModel}</option>
+            ) : null}
+          </select>
+        </label>
+        <p>{copy.mailTestModelOpenRouterHint}</p>
+        <label>
           {copy.mailTestPrompt}
-          <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} />
+          <textarea
+            className="mail-test-prompt"
+            value={prompt}
+            onChange={(event) => setPrompt(event.target.value)}
+            onBlur={() => void onPromptBlur()}
+          />
         </label>
         <label>
           {copy.mailTestUpload}

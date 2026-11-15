@@ -1,5 +1,10 @@
 import { maskPersonalData } from '@kmbhelp/ai';
-import { defaultMailcheckModel, mailcheckInputMax, type Priority } from '@kmbhelp/shared';
+import {
+  defaultMailcheckModel,
+  mailcheckInputMax,
+  resolveMailcheckPrompt,
+  type Priority,
+} from '@kmbhelp/shared';
 import { enqueueFileLog } from './file-log.js';
 import type { InboundMail } from './graph.js';
 import { withOllamaJob } from './ollama-gate.js';
@@ -27,7 +32,12 @@ export type LocalMailResult = {
   model: string;
 };
 
-export type MailAsk = LocalMailResult | 'timeout' | 'unreachable' | 'unclear';
+export type MailAsk =
+  | LocalMailResult
+  | 'timeout'
+  | 'unreachable'
+  | 'rate_limited'
+  | 'unclear';
 
 export type MailExchange = {
   kind: 'classify' | 'retry' | 'importance';
@@ -62,23 +72,8 @@ export function mailExcerpt(mail: InboundMail): string {
     .slice(0, mailcheckInputMax);
 }
 
-export function classificationInstructions(): string {
-  return [
-    'Lies diese E-Mail. Antworte mit einem dieser Wörter:',
-    'SUPPORT',
-    'ANTWORT',
-    'SPAM',
-    '',
-    'SUPPORT ist eine neue Support-Anfrage von einem Kunden.',
-    'ANTWORT ist eine Antwort auf ein bestehendes Ticket.',
-    'SPAM ist Spam, Werbung, ein Newsletter oder eine automatische Nachricht.',
-    '',
-    'Nur wenn die erste Zeile SUPPORT ist, schreibe danach:',
-    'KATEGORIE: eine kurze Bezeichnung der Anfrage',
-    'WICHTIGKEIT: P1 oder P2 oder P3, und nur wenn die Wichtigkeit eindeutig ist.',
-    'P1 ist sehr wichtig. P2 heißt wichtig. P3 heißt bei Gelegenheit.',
-    'Wenn die Wichtigkeit nicht eindeutig ist, schreibe P4',
-  ].join('\n');
+export function classificationInstructions(stored?: string | undefined): string {
+  return resolveMailcheckPrompt(stored);
 }
 
 export function classificationPrompt(mail: InboundMail, instructions?: string): string {
@@ -201,14 +196,14 @@ async function runAskOllama(options: {
   const classify = classificationPrompt(options.mail, options.instructions);
   const first = await chat(fetchImpl, target, classify, timeoutMs, 'classify');
   options.trace?.push({ kind: 'classify', prompt: classify, answer: shown(first) });
-  if (first === 'timeout' || first === 'unreachable') return first;
+  if (first === 'timeout' || first === 'unreachable' || first === 'rate_limited') return first;
   let parsed = parseMailAnswer(first);
   if (!parsed) {
     if (!(await stillActive(options.continueWhen))) return 'unreachable';
     const retry = `${classify}\n\nDie letzte Antwort war nicht lesbar. Antworte jetzt mit genau einem Wort: SUPPORT, ANTWORT oder SPAM.`;
     const again = await chat(fetchImpl, target, retry, timeoutMs, 'retry');
     options.trace?.push({ kind: 'retry', prompt: retry, answer: shown(again) });
-    if (again === 'timeout' || again === 'unreachable') return again;
+    if (again === 'timeout' || again === 'unreachable' || again === 'rate_limited') return again;
     parsed = parseMailAnswer(again);
   }
   if (!parsed) return 'unclear';
@@ -217,7 +212,13 @@ async function runAskOllama(options: {
     const importanceText = importancePrompt(options.mail);
     const importance = await chat(fetchImpl, target, importanceText, timeoutMs, 'importance');
     options.trace?.push({ kind: 'importance', prompt: importanceText, answer: shown(importance) });
-    if (importance === 'timeout' || importance === 'unreachable') return importance;
+    if (
+      importance === 'timeout' ||
+      importance === 'unreachable' ||
+      importance === 'rate_limited'
+    ) {
+      return importance;
+    }
     const read = readImportance(importance);
     parsed = { ...parsed, priority: read.priority, importanceSettled: read.settled };
   }
@@ -330,7 +331,7 @@ function openRouterModelIds(body: unknown): string[] {
   });
 }
 
-function shown(value: string | 'timeout' | 'unreachable'): string {
+function shown(value: string | 'timeout' | 'unreachable' | 'rate_limited'): string {
   return value;
 }
 
@@ -347,7 +348,7 @@ async function chat(
   prompt: string,
   timeoutMs: number,
   kind: 'classify' | 'retry' | 'importance',
-): Promise<string | 'timeout' | 'unreachable'> {
+): Promise<string | 'timeout' | 'unreachable' | 'rate_limited'> {
   const started = Date.now();
   try {
     const response =
@@ -376,7 +377,7 @@ async function chat(
           });
     if (!response.ok) {
       noteModel(target, kind, prompt, '', response.status, Date.now() - started);
-      return 'unreachable';
+      return response.status === 429 ? 'rate_limited' : 'unreachable';
     }
     const body: unknown = await response.json();
     const content =

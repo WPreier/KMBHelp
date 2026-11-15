@@ -1,3 +1,4 @@
+import { defaultMailcheckPrompt } from './mailcheck-prompt.js';
 import { defaultAiProvider, defaultInternalMailDomains, defaultMailPrompt } from './mail-prompt.js';
 import { defaultTicketFileBytes, defaultTicketFileTypes } from './ticket-file.js';
 
@@ -31,6 +32,7 @@ const shownWhenEmpty: Record<string, string> = {
   MAILCHECK_AI_URL: 'http://192.168.191.131:11434',
   MAILCHECK_AI_MODEL: 'gemma4:12b',
   MAILCHECK_AI_ACTIVE: 'on',
+  MAILCHECK_AI_PROMPT: defaultMailcheckPrompt,
   MAIL_ERROR_TO: 'helpdesk@ppc.at',
   MAIL_SMTP_SERVER: '127.0.0.1',
   MAIL_SMTP_PORT: '25',
@@ -349,6 +351,14 @@ export const configFields: readonly ConfigField[] = [
       'Automatischer Mailcheck über OpenRouter oder die lokale KI. on (Auslieferung) lässt den Worker Mails prüfen. off stoppt ihn vor der nächsten Mail und zwischen den KI-Schritten; der manuelle KI-Mailtest bleibt nutzbar. Es läuft höchstens ein KI-Job gleichzeitig.',
     textEn:
       'Automatic mail check through OpenRouter or the local model. on (default) lets the worker review mail. off stops it before the next mail and between model steps; the manual model mail test stays usable. At most one model job runs at a time.',
+  },
+  {
+    key: 'MAILCHECK_AI_PROMPT',
+    secret: false,
+    textDe:
+      'Abfragetext für die Mailprüfung und den KI-Mailtest. Leer nutzt den mitgelieferten SUPPORT/ANTWORT/SPAM-Auftrag. Eine Änderung auf der Seite KI-Mailtest speichert diesen Eintrag.',
+    textEn:
+      'Query text for mail review and the model mail test. Empty uses the built-in SUPPORT/ANTWORT/SPAM instruction. A change on the model mail test page stores this field.',
   },
   {
     key: 'OPENROUTER_API_KEY',
