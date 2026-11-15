@@ -9,6 +9,7 @@ import {
   classificationPrompt,
   formatMailSource,
   importanceOf,
+  listOllamaModels,
   mailcheckAiActive,
   mailcheckInputMax,
   mailExcerpt,
@@ -249,5 +250,16 @@ describe('local mail review', () => {
       if (previous === undefined) delete process.env.ACTIVITY_LOG_FILE;
       else process.env.ACTIVITY_LOG_FILE = previous;
     }
+  });
+
+  it('lists model names from Ollama /api/tags', async () => {
+    const names = await listOllamaModels({
+      baseUrl: 'http://192.168.191.131:11434',
+      fetchImpl: async () =>
+        Response.json({
+          models: [{ name: 'qwen3.8:27b' }, { name: 'gemma4:12b' }, { model: 'gemma4:26b' }],
+        }),
+    });
+    expect(names).toEqual(['gemma4:12b', 'gemma4:26b', 'qwen3.8:27b']);
   });
 });

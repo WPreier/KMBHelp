@@ -13,5 +13,6 @@ export function isMailcheckModel(value: string): value is MailcheckModel {
 
 export function resolveMailcheckModel(value: string | undefined): string {
   const trimmed = value?.trim() ?? '';
-  return isMailcheckModel(trimmed) ? trimmed : defaultMailcheckModel;
+  if (trimmed !== '') return trimmed;
+  return defaultMailcheckModel;
 }

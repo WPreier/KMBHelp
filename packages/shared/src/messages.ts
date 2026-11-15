@@ -300,6 +300,8 @@ export const messages = {
     mailTestEmail: 'E-Mail',
     mailTestUpload: 'E-Mail-Datei laden',
     mailTestModel: 'Lokales Modell',
+    mailTestModelLocalHint:
+      'Liste kommt von Ollama unter MAILCHECK_AI_URL (/api/tags). Der Abfragetext steht in MAILCHECK_AI_PROMPT (nicht MAIL_AI_PROMPT).',
     mailTestModelOpenRouter: 'OpenRouter-Modell',
     mailTestModelOpenRouterOff: 'Lokal (Ollama)',
     mailTestModelOpenRouterHint:
@@ -708,6 +710,8 @@ export const messages = {
     mailTestEmail: 'Email',
     mailTestUpload: 'Load an email file',
     mailTestModel: 'Local model',
+    mailTestModelLocalHint:
+      'List comes from Ollama at MAILCHECK_AI_URL (/api/tags). The query text is MAILCHECK_AI_PROMPT (not MAIL_AI_PROMPT).',
     mailTestModelOpenRouter: 'OpenRouter model',
     mailTestModelOpenRouterOff: 'Local (Ollama)',
     mailTestModelOpenRouterHint:

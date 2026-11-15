@@ -2,7 +2,6 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { maskPersonalData } from '@kmbhelp/ai';
 import type { Database } from '@kmbhelp/db';
 import {
-  isMailcheckModel,
   mailboxListSchema,
   mailboxMessageSchema,
   mailboxReadSchema,
@@ -34,6 +33,7 @@ import {
   defaultOllamaModel,
   defaultOllamaUrl,
   formatMailSource,
+  listOllamaModels,
   mailcheckAiActive,
   mailcheckProvider,
   parsePastedMail,
@@ -98,12 +98,22 @@ export function registerAdminTests(
         openRouterModels = [];
       }
     }
+    const ollamaUrl = env.MAILCHECK_AI_URL?.trim() || defaultOllamaUrl;
+    const selectedLocal = resolveMailcheckModel(env.MAILCHECK_AI_MODEL);
+    let localModels = await listOllamaModels({
+      baseUrl: ollamaUrl,
+      fetchImpl: options.fetchImpl,
+    });
+    if (localModels.length === 0) localModels = [...mailcheckModels];
+    if (selectedLocal !== '' && !localModels.includes(selectedLocal)) {
+      localModels = [selectedLocal, ...localModels];
+    }
     const selectedOpenRouter = openRouterModel(env);
     const provider = mailcheckProvider(env);
     return mailTestPromptSchema.parse({
       prompt: mailcheckPrompt(env),
-      model: resolveMailcheckModel(env.MAILCHECK_AI_MODEL),
-      models: [...mailcheckModels],
+      model: selectedLocal,
+      models: localModels,
       openRouterModel: selectedOpenRouter,
       openRouterModels,
       openRouterReady,
@@ -223,10 +233,10 @@ export function registerAdminTests(
         textEn: 'OpenRouter is off. Mail review uses the local model again.',
       });
     }
-    if (provider === 'ollama' && !isMailcheckModel(parsed.data.model)) {
+    if (provider === 'ollama' && parsed.data.model.trim() === '') {
       throw new PublicError(400, 'invalid_input', {
-        de: `Das Modell ${parsed.data.model} ist nicht freigegeben. Erlaubt sind ${mailcheckModels.join(', ')}.`,
-        en: `The model ${parsed.data.model} is not allowed. Permitted: ${mailcheckModels.join(', ')}.`,
+        de: 'Das lokale Modell fehlt.',
+        en: 'The local model is missing.',
       });
     }
     if (provider === 'openrouter' && openRouterKey(env) === '') {

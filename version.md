@@ -1,6 +1,6 @@
 # Version
 
-Aktueller Stand: **V 0.2.23**
+Aktueller Stand: **V 0.2.24**
 
 | | |
 |---|---|
@@ -17,13 +17,17 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 |---|---|---|
 | 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
 | 2 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. Am 07.11.2026 hat er die Minor 2 freigegeben. |
-| 23 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
+| 24 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.24**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.25**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.2.24 — 15.11.2026
+
+KI-Mailtest holt die lokalen Modelle von Ollama unter `MAILCHECK_AI_URL` (`/api/tags`). Der Abfragetext bleibt `MAILCHECK_AI_PROMPT`; `MAIL_AI_PROMPT` ist nur der alte JA/NEIN-Auftrag für Suche. Doppelter Konfigurationseintrag in `ConfigDefaults.md` entfernt. Beliebige installierte Ollama-Namen sind speicherbar.
 
 ### V 0.2.23 — 15.11.2026
 

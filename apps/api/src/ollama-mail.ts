@@ -304,6 +304,28 @@ async function stillActive(continueWhen?: (() => Promise<boolean>) | undefined):
   }
 }
 
+/** Names of models installed on the Ollama server at baseUrl. */
+export async function listOllamaModels(options: {
+  baseUrl: string;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+}): Promise<string[]> {
+  const base = options.baseUrl.trim().replace(/\/$/u, '');
+  if (!/^https?:\/\/[^/\s]+/u.test(base) || base.includes('@')) return [];
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? 15_000;
+  try {
+    const response = await fetchImpl(`${base}/api/tags`, {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) return [];
+    const body: unknown = await response.json();
+    return [...new Set(modelNames(body))].sort((left, right) => left.localeCompare(right));
+  } catch {
+    return [];
+  }
+}
+
 function modelNames(body: unknown): string[] {
   if (!body || typeof body !== 'object' || !('models' in body) || !Array.isArray(body.models)) {
     return [];

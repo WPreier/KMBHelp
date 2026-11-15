@@ -434,18 +434,23 @@ export async function checkConfigField(
       return line(
         key,
         'ok',
-        'Leer verwendet den eingebauten Auftrag mit JA und NEIN.',
-        'Empty uses the built-in instruction with JA and NEIN.',
+        'Leer: JA/NEIN-Auftrag für Suche. Mailprüfung nutzt MAILCHECK_AI_PROMPT.',
+        'Empty: JA/NEIN instruction for search. Mail review uses MAILCHECK_AI_PROMPT.',
       );
     }
     const upper = value.toUpperCase();
     return upper.includes('JA') && upper.includes('NEIN')
-      ? line(key, 'ok', 'Der Auftrag nennt JA und NEIN.', 'The instruction names JA and NEIN.')
+      ? line(
+          key,
+          'ok',
+          'JA/NEIN-Auftrag (Suche). Abfragetext der Mailprüfung: MAILCHECK_AI_PROMPT.',
+          'JA/NEIN instruction (search). Mail-check query text: MAILCHECK_AI_PROMPT.',
+        )
       : line(
           key,
           'warning',
-          'Der Auftrag soll JA und NEIN enthalten.',
-          'The instruction should contain JA and NEIN.',
+          'Der Auftrag soll JA und NEIN enthalten. Für die Mailprüfung gilt MAILCHECK_AI_PROMPT.',
+          'The instruction should contain JA and NEIN. Mail review uses MAILCHECK_AI_PROMPT.',
         );
   }
   if (key === 'MAILCHECK_AI_URL') {
@@ -534,6 +539,14 @@ export async function checkConfigField(
       );
     }
     const chosen = model || 'gemma4:12b';
+    if (key === 'MAILCHECK_AI_MODEL') {
+      return line(
+        key,
+        'ok',
+        `Lokales Modell ${chosen}. Die Auswahlliste kommt von MAILCHECK_AI_URL.`,
+        `Local model ${chosen}. The selection list comes from MAILCHECK_AI_URL.`,
+      );
+    }
     const listed = mailcheckModels.join(', ');
     return isMailcheckModel(chosen)
       ? line(key, 'ok', `Das Modell heißt ${chosen}.`, `The model is named ${chosen}.`)

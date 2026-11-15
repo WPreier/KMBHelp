@@ -84,8 +84,9 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `SEARCH_AI_PROVIDER` | `grok` | Nur der Name. Erlaubt sind grok, gemini, deepseek, other. Die Adresse ist `SEARCH_AI_ENDPOINT`. |
 | `INTERNAL_MAIL_DOMAINS` | `kmb-steuerberatung.at,ght.at,koller-rohrschach.at` | Frühere Absenderliste. Die Mailprüfung sperrt damit niemanden mehr. |
 | `MAILCHECK_AI_URL` | `http://192.168.191.131:11434` | Lokaler Ollama-Server. Eine Abfrage wartet höchstens 5 Minuten. |
-| `MAILCHECK_AI_MODEL` | `gemma4:12b` | Modellname für die Mailprüfung. Möglich: `gemma4:12b`, `gemma4:26b`, `qwen3.8:27b`. An die KI geht immer nur eine Anfrage gleichzeitig. |
-| `MAILCHECK_AI_PROMPT` | mitgelieferter SUPPORT/ANTWORT/SPAM-Text | Abfragetext für Mailprüfung und KI-Mailtest. Leer nutzt die Auslieferung. |
+| `MAILCHECK_AI_MODEL` | `gemma4:12b` | Lokales Ollama-Modell. Die Auswahlliste auf KI-Mailtest kommt von `MAILCHECK_AI_URL` (`/api/tags`). |
+| `MAILCHECK_AI_PROMPT` | mitgelieferter SUPPORT/ANTWORT/SPAM-Text | Abfragetext für Mailprüfung und KI-Mailtest. Leer nutzt die Auslieferung. Nicht verwechseln mit `MAIL_AI_PROMPT`. |
+| `MAIL_AI_PROMPT` | JA/NEIN-Auftrag | Alter Auftrag für Suche/Kenntnisse. Die Mailprüfung nutzt ihn nicht. |
 | `OPENROUTER_API_KEY` | leer | Geheimnis. Zusammen mit `OPENROUTER_MODEL` leitet die Mailprüfung an OpenRouter statt Ollama. |
 | `OPENROUTER_MODEL` | leer | OpenRouter-Modell-ID. Leer oder ohne Schlüssel: Ollama bleibt aktiv. |
 | `MAIL_ERROR_TO` | `helpdesk@ppc.at` | Empfänger der Fehlermail über Graph, wenn eine Abfrage zu lange dauert. Die Mail wird verschickt. |
@@ -97,7 +98,6 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `MAIL_SMTP_TO` | `helpdesk@ppc.at` | Empfänger, wenn Graph die Fehlermail oder die Tagesmail nicht verschickt. |
 | `MAIL_NOTICE_DIGEST` | leer | Tagesmail mit offenen Warnungen. Leer gilt in Produktion. `on` überall, `off` aus. |
 | `MAIL_NOTICE_DIGEST_HOUR` | `7` | Stunde in der Uhr `SYSLOG_UTC_OFFSET`. Ein Versuch am Tag. |
-| `MAIL_AI_PROMPT` | eingebauter JA/NEIN-Auftrag | Früherer Auftrag. Die Mailprüfung nutzt ihn nicht mehr. |
 | `ACTIVITY_LOG_FILE` | `%LOCALAPPDATA%\kmbhelp\activity.log` | Seitenprotokoll. Im selben Verzeichnis liegen `error.log` und `mail.log`. Auf dem Server `/var/lib/kmbhelp/`. |
 | `SEARCH_AI_ENDPOINT` | leer | https-Adresse für Suche und Kenntnisprüfung. Die Mailprüfung nutzt `MAILCHECK_AI_URL`. Ohne EU-Region, Schlüssel und AVV kein Aufruf. |
 | `SEARCH_AI_REGION` | leer | Muss als EU-Verarbeitung erkennbar sein. Eine US-Region sperrt den Aufruf. |

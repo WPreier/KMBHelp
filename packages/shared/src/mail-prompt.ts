@@ -7,21 +7,12 @@ export type AiProviderName = (typeof aiProviderNames)[number];
 export const defaultInternalMailDomains =
   'kmb-steuerberatung.at,ght.at,koller-rohrschach.at';
 
+/** Legacy JA/NEIN prompt for search/knowledge paths — not used by the mail check. */
 export const defaultMailPrompt = [
-  'Lies diese E-Mail. Antworte mit einem dieser Wörter:',
-  'SUPPORT',
-  'ANTWORT',
-  'SPAM',
-  '',
-  'SUPPORT ist eine neue Support-Anfrage von einem Kunden.',
-  'ANTWORT ist eine Antwort auf ein bestehendes Ticket.',
-  'SPAM ist Spam, Werbung, ein Newsletter oder eine automatische Nachricht.',
-  '',
-  'Nur wenn die erste Zeile SUPPORT ist, schreibe danach:',
-  'KATEGORIE: eine kurze Bezeichnung der Anfrage',
-  'WICHTIGKEIT: P1 oder P2 oder P3, und nur wenn die Wichtigkeit eindeutig ist.',
-  'P1 ist sehr wichtig. P2 heißt wichtig. P3 heißt bei Gelegenheit.',
-  'Wenn die Wichtigkeit nicht eindeutig ist, schreibe P4',
+  'Ist das eine Support-Anfrage an das Helpdesk?',
+  'Antworte mit genau einem Wort: JA oder NEIN.',
+  'JA heißt: neue Support-Anfrage.',
+  'NEIN heißt: keine neue Support-Anfrage.',
 ].join('\n');
 
 const domainPattern = /^[a-z0-9.-]+\.[a-z]{2,}$/u;

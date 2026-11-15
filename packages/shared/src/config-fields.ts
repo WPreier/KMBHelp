@@ -340,9 +340,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'MAILCHECK_AI_MODEL',
     secret: false,
     textDe:
-      'Name des lokalen Modells für die Mailprüfung. Möglich: gemma4:12b, gemma4:26b, qwen3.8:27b. Auslieferung gemma4:12b. An die KI geht immer nur eine Anfrage gleichzeitig; der Zyklus arbeitet die ungelesenen Mails nacheinander ab.',
+      'Name des lokalen Ollama-Modells für die Mailprüfung. Die Liste auf KI-Mailtest kommt von MAILCHECK_AI_URL (/api/tags). Auslieferung gemma4:12b. An die KI geht immer nur eine Anfrage gleichzeitig.',
     textEn:
-      'Name of the local model for mail review. Allowed: gemma4:12b, gemma4:26b, qwen3.8:27b. The delivered value is gemma4:12b. The model gets only one request at a time; the cycle processes unread mail one after another.',
+      'Name of the local Ollama model for mail review. The list on the model mail test comes from MAILCHECK_AI_URL (/api/tags). The delivered value is gemma4:12b. The model gets only one request at a time.',
   },
   {
     key: 'MAILCHECK_AI_ACTIVE',
@@ -447,9 +447,9 @@ export const configFields: readonly ConfigField[] = [
     key: 'MAIL_AI_PROMPT',
     secret: false,
     textDe:
-      'Vorgabe-Text SUPPORT/ANTWORT/SPAM mit Wichtigkeit P1–P4. Die laufende Mailprüfung nimmt denselben Auftrag aus dem Worker; dieses Feld dient der Konfiguration und älteren Pfaden.',
+      'Alter JA/NEIN-Auftrag für Suche und Kenntnisprüfung. Nicht für die Mailprüfung. Der Abfragetext der Mailprüfung steht in MAILCHECK_AI_PROMPT und auf der Seite KI-Mailtest.',
     textEn:
-      'Default SUPPORT/ANTWORT/SPAM text with importance P1–P4. Live mail review uses the same instruction from the worker; this field serves configuration and older paths.',
+      'Legacy JA/NEIN instruction for search and skill review. Not used for mail review. The mail-check query text is MAILCHECK_AI_PROMPT and the model mail test page.',
   },
   {
     key: 'SEARCH_AI_ENDPOINT',

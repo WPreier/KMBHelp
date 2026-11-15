@@ -307,6 +307,7 @@ export function MailTestPage() {
             ))}
           </select>
         </label>
+        <p>{copy.mailTestModelLocalHint}</p>
         <label>
           {copy.mailTestModelOpenRouter}
           <select
