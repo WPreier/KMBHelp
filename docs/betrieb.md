@@ -1,6 +1,6 @@
 # Betrieb
 
-Diese Seite ist für den Admin, der `helpdesk.kmbcloud.at` laufen lässt. Die erste Einrichtung steht in `docs/installation-linux.md`. Die Firewall setzt die Kanzlei nach den Firmenvorgaben. Diese Seite enthält keine iptables-Regeln.
+Diese Seite ist für den Admin, der `helpdesk.kmbcloud.at` laufen lässt. Die erste Einrichtung steht in `docs/installation-linux.md`. Einen eigenen Ollama-Rechner mit `gemma4:12b` und `qwen3.8:27b` und die Anbindung über `MAILCHECK_AI_URL` beschreibt `docs/ollama-debian.md`. Die Firewall setzt die Kanzlei nach den Firmenvorgaben. Diese Seite enthält keine iptables-Regeln.
 
 ## Dienste
 
@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.2.24`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.2.25`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 

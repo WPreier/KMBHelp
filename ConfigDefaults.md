@@ -83,7 +83,7 @@ Jeder Eintrag hat eine kurze Erklärung, ein Feld zum Ändern und einen eigenen 
 | `ACCESS_LOG_RETENTION_DAYS` | `90` | Danach löscht der Review-Lauf die IP-Zeilen in `access_log`. `activity_log` bleibt. |
 | `SEARCH_AI_PROVIDER` | `grok` | Nur der Name. Erlaubt sind grok, gemini, deepseek, other. Die Adresse ist `SEARCH_AI_ENDPOINT`. |
 | `INTERNAL_MAIL_DOMAINS` | `kmb-steuerberatung.at,ght.at,koller-rohrschach.at` | Frühere Absenderliste. Die Mailprüfung sperrt damit niemanden mehr. |
-| `MAILCHECK_AI_URL` | `http://192.168.191.131:11434` | Lokaler Ollama-Server. Eine Abfrage wartet höchstens 5 Minuten. |
+| `MAILCHECK_AI_URL` | `http://192.168.191.131:11434` | Lokaler Ollama-Server. Eine Abfrage wartet höchstens 5 Minuten. Neuer Host: `docs/ollama-debian.md`. |
 | `MAILCHECK_AI_MODEL` | `gemma4:12b` | Lokales Ollama-Modell. Die Auswahlliste auf KI-Mailtest kommt von `MAILCHECK_AI_URL` (`/api/tags`). |
 | `MAILCHECK_AI_PROMPT` | mitgelieferter SUPPORT/ANTWORT/SPAM-Text | Abfragetext für Mailprüfung und KI-Mailtest. Leer nutzt die Auslieferung. Nicht verwechseln mit `MAIL_AI_PROMPT`. |
 | `MAIL_AI_PROMPT` | JA/NEIN-Auftrag | Alter Auftrag für Suche/Kenntnisse. Die Mailprüfung nutzt ihn nicht. |

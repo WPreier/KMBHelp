@@ -1,6 +1,6 @@
 # Installation auf Linux
 
-Diese Anleitung gilt für einen frischen Debian-Rechner, der `helpdesk.kmbcloud.at` ausliefert. nginx und Apache sind Alternativen. Docker ist keine Voraussetzung. Die Beispiele verwenden die Platzhalteradresse `192.0.2.10`. Vor dem Start durch die interne Adresse dieses Servers ersetzen. Die Betriebsskizze liegt in `docs/betriebsskizze.drawio`. Der laufende Betrieb steht in `docs/betrieb.md`.
+Diese Anleitung gilt für einen frischen Debian-Rechner, der `helpdesk.kmbcloud.at` ausliefert. nginx und Apache sind Alternativen. Docker ist keine Voraussetzung. Die Beispiele verwenden die Platzhalteradresse `192.0.2.10`. Vor dem Start durch die interne Adresse dieses Servers ersetzen. Die Betriebsskizze liegt in `docs/betriebsskizze.drawio`. Der laufende Betrieb steht in `docs/betrieb.md`. Der Ollama-Rechner für die Mailprüfung ist ein eigener Host; Einrichtung und Anbindung stehen in `docs/ollama-debian.md`.
 
 ## Größe
 
