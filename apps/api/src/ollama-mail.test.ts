@@ -241,11 +241,44 @@ describe('local mail review', () => {
         },
         fetchImpl,
       ).listUnread(10);
+      const full = await mailboxFromEnv(
+        {
+          GRAPH_TENANT_ID: 'tenant',
+          GRAPH_CLIENT_ID: 'client',
+          GRAPH_CLIENT_SECRET: 'secret',
+          GRAPH_MAILBOX: 'helpdesk@kmbcloud.at',
+        },
+        async (input) => {
+          const url = String(input);
+          if (url.includes('/oauth2/v2.0/token')) {
+            return Response.json({ access_token: 'token' });
+          }
+          if (url.includes('/messages/AAMkLongGraphId')) {
+            return Response.json({
+              id: 'AAMkLongGraphId',
+              internetMessageId: '<once@example.com>',
+              subject: 'Drucker klemmt',
+              body: { contentType: 'Text', content: 'Fach 2 ist leer.' },
+              from: { emailAddress: { address: 'sender@example.com', name: 'Sender' } },
+              receivedDateTime: '2026-10-29T08:00:00Z',
+              isRead: false,
+            });
+          }
+          return Response.json({ value: [] });
+        },
+      ).readMessage('AAMkLongGraphId');
+      expect(full?.fromEmail).toBe('sender@example.com');
       await flushFileLogs();
       const ki = await readFile(join(directory, 'ki.log'), 'utf8');
       const model = await readFile(join(directory, 'mail.log'), 'utf8');
       expect(ki).toContain('gemma4:12b');
       expect(model).toContain('helpdesk@kmbcloud.at');
+      expect(model).toMatch(/ok \d+ms http=200 ungelesen anzahl=0/);
+      expect(model).toMatch(
+        /ok \d+ms http=200 absender=sender@example\.com datum=29\.10\.2026 09:00 betreff=Drucker klemmt/,
+      );
+      expect(model).not.toContain('AAMkLongGraphId');
+      expect(model).not.toMatch(/Message-ID/iu);
     } finally {
       if (previous === undefined) delete process.env.ACTIVITY_LOG_FILE;
       else process.env.ACTIVITY_LOG_FILE = previous;

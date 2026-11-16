@@ -47,7 +47,7 @@ sudo systemctl restart kmbhelp-api kmbhelp-worker
 
 ## Version
 
-Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.2.25`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
+Der Stand steht in `version.md` im Projektroot. Auf dem Server ist das `/opt/kmbhelp/version.md`. Die Fassung heißt `V 0.2.26`: Major, Minor, Patch. Jedes Update auf `kmbhelp` erhöht den Patch und bekommt im selben Commit einen Abschnitt mit Datum, Commit und einer Zusammenfassung. Die Minor-Stelle steigt nur, wenn Wolfgang das ausdrücklich sagt. Die Major-Stelle steigt erst, wenn der Kunde tatsächlich mit KMBHelp arbeitet. Die `version` in `package.json` ist keine Kundenfassung.
 
  Geheimnisse stehen in `/etc/kmbhelp/kmbhelp.env`, nicht im Repository. Die Datei wird beim Aktualisieren nicht überschrieben. `pnpm db:migrate` liest die Datenbank-URL daraus, wenn sie in `.env` fehlt. nginx und Apache unter `/etc` bleiben ebenfalls unberührt. Der Platzhalter `192.0.2.10` und ein leeres `SESSION_SECRET` überstehen ein Update.
 
@@ -199,7 +199,7 @@ Nach einer echten Erneuerung den Webserver neu laden: `sudo systemctl reload ngi
 journalctl -u kmbhelp-api -u kmbhelp-worker --since today
 ```
 
-Jede Aktion schreibt zusätzlich eine Zeile in die Tabelle `activity_log` und, je nach Art, nach `activity.log`, `error.log`, `mail.log` oder `ki.log` im selben Verzeichnis. `mail.log` nennt jeden Graph-Zugriff auf `helpdesk@kmbcloud.at`. `ki.log` nennt jede Anfrage an kmblmt1 mit Modell, Dauer, Status, Antwort und maskiertem Auftrag. Die Seite `/verwaltung/protokoll` zeigt die vier Dateien getrennt, jede mit Titel und Tabelle. Von steht auf sieben Tage vor heute, Bis auf heute, beide nebeneinander, in der Form `dd.MM.yyyy`. Neben jeder Tabelle liegen `Als CSV` und `Als PDF` für genau diese Datei. In Aktivität, Fehler und Mail steht der Meldungstext nicht. In `ki.log` steht der maskierte Auftrag. Die Tabelle `activity_log` bleibt über `GET /api/v1/staff/activity` erreichbar.
+Jede Aktion schreibt zusätzlich eine Zeile in die Tabelle `activity_log` und, je nach Art, nach `activity.log`, `error.log`, `mail.log` oder `ki.log` im selben Verzeichnis. `mail.log` nennt jeden Graph-Zugriff auf `helpdesk@kmbcloud.at` mit Ergebnis, Antwortzeit, danach `http=200` oder `http=fehler` bzw. dem Statuscode, und bei einer einzelnen Nachricht Absender, Datum/Zeit und Betreff — ohne Message-ID und ohne Graph-ID. `ki.log` nennt jede Anfrage an kmblmt1 mit Modell, Dauer, Status, Antwort und maskiertem Auftrag. Die Seite `/verwaltung/protokoll` zeigt die vier Dateien getrennt, jede mit Titel und Tabelle. Von steht auf sieben Tage vor heute, Bis auf heute, beide nebeneinander, in der Form `dd.MM.yyyy`. Neben jeder Tabelle liegen `Als CSV` und `Als PDF` für genau diese Datei. In Aktivität, Fehler und Mail steht der Meldungstext nicht. In `ki.log` steht der maskierte Auftrag. Die Tabelle `activity_log` bleibt über `GET /api/v1/staff/activity` erreichbar.
 
 Syslog geht an den Server aus der Konfiguration, Auslieferung `192.168.191.215` Port `514` UDP.
 

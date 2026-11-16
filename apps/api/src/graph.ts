@@ -113,12 +113,16 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
     async send(mail) {
       if (!config) throw new Error('mail not configured');
       const started = Date.now();
-      const detail = `an=${oneLine(mail.to)} betreff=${oneLine(mail.subject)}`;
+      const fields = {
+        from: config.mailbox,
+        subject: mail.subject,
+        detail: `an=${oneLine(mail.to)}`,
+      };
       let token: string;
       try {
         token = await accessToken(config, fetchImpl);
       } catch (error) {
-        mailboxAccess(config.mailbox, 'entwurf', 'fehler', detail, Date.now() - started);
+        mailboxAccess(config.mailbox, 'entwurf', 'fehler', Date.now() - started, fields);
         throw error;
       }
       const response = await fetchImpl(
@@ -144,13 +148,10 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
           }),
         },
       );
-      mailboxAccess(
-        config.mailbox,
-        'entwurf',
-        response.ok ? 'ok' : 'fehler',
-        `${detail} http=${response.status}`,
-        Date.now() - started,
-      );
+      mailboxAccess(config.mailbox, 'entwurf', response.ok ? 'ok' : 'fehler', Date.now() - started, {
+        ...fields,
+        http: response.status,
+      });
       if (!response.ok) throw new Error('graph draft failed');
       const created: unknown = await response.json().catch(() => null);
       if (
@@ -165,12 +166,16 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
     async deliver(mail) {
       if (!config) throw new Error('mail not configured');
       const started = Date.now();
-      const detail = `an=${oneLine(mail.to)} betreff=${oneLine(mail.subject)}`;
+      const fields = {
+        from: config.mailbox,
+        subject: mail.subject,
+        detail: `an=${oneLine(mail.to)}`,
+      };
       let token: string;
       try {
         token = await accessToken(config, fetchImpl);
       } catch (error) {
-        mailboxAccess(config.mailbox, 'versand', 'fehler', detail, Date.now() - started);
+        mailboxAccess(config.mailbox, 'versand', 'fehler', Date.now() - started, fields);
         throw error;
       }
       const response = await fetchImpl(
@@ -188,13 +193,10 @@ export function mailerFromEnv(env: NodeJS.ProcessEnv, fetchImpl: GraphFetch = fe
           }),
         },
       );
-      mailboxAccess(
-        config.mailbox,
-        'versand',
-        response.ok ? 'ok' : 'fehler',
-        `${detail} http=${response.status}`,
-        Date.now() - started,
-      );
+      mailboxAccess(config.mailbox, 'versand', response.ok ? 'ok' : 'fehler', Date.now() - started, {
+        ...fields,
+        http: response.status,
+      });
       if (!response.ok) throw new Error('graph send failed');
     },
   };
@@ -210,12 +212,12 @@ export function calendarFromEnv(
     async availability(email, at) {
       if (!config) return [];
       const started = Date.now();
-      const detail = `kalender=${oneLine(email)}`;
+      const fields = { detail: `kalender=${oneLine(email)}` };
       let token: string;
       try {
         token = await accessToken(config, fetchImpl);
       } catch (error) {
-        mailboxAccess(config.mailbox, 'kalender', 'fehler', detail, Date.now() - started);
+        mailboxAccess(config.mailbox, 'kalender', 'fehler', Date.now() - started, fields);
         throw error;
       }
       const start = new Date(at.getTime() - (at.getTime() % 86_400_000));
@@ -237,8 +239,8 @@ export function calendarFromEnv(
         config.mailbox,
         'kalender',
         response.ok ? 'ok' : 'fehler',
-        `${detail} http=${response.status}`,
         Date.now() - started,
+        { ...fields, http: response.status },
       );
       if (!response.ok) throw new Error('graph calendar failed');
       const parsed: unknown = await response.json();
@@ -319,25 +321,20 @@ async function readRawMime(
 ): Promise<Uint8Array | null> {
   if (!config || graphId.trim() === '' || graphId === 'pasted') return null;
   const started = Date.now();
-  const detail = `id=${oneLine(graphId)}`;
   try {
     const token = await accessToken(config, fetchImpl);
     const response = await fetchImpl(
       `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(config.mailbox)}/messages/${encodeURIComponent(graphId)}/$value`,
       { headers: { authorization: `Bearer ${token}` } },
     );
-    mailboxAccess(
-      config.mailbox,
-      'mime',
-      response.ok ? 'ok' : 'fehler',
-      `${detail} http=${response.status}`,
-      Date.now() - started,
-    );
+    mailboxAccess(config.mailbox, 'mime', response.ok ? 'ok' : 'fehler', Date.now() - started, {
+      http: response.status,
+    });
     if (!response.ok) return null;
     const bytes = new Uint8Array(await response.arrayBuffer());
     return bytes.length > 0 ? bytes : null;
   } catch {
-    mailboxAccess(config.mailbox, 'mime', 'fehler', detail, Date.now() - started);
+    mailboxAccess(config.mailbox, 'mime', 'fehler', Date.now() - started);
     return null;
   }
 }
@@ -352,7 +349,7 @@ async function moveToChild(
 ): Promise<void> {
   if (!config) throw new Error('mail not configured');
   const started = Date.now();
-  const detail = `ordner=${oneLine(folderName)} id=${oneLine(graphId)}`;
+  const fields = { detail: `ordner=${oneLine(folderName)}` };
   let token: string;
   try {
     token = await accessToken(config, fetchImpl);
@@ -369,13 +366,13 @@ async function moveToChild(
       config.mailbox,
       'verschoben',
       response.ok ? 'ok' : 'fehler',
-      `${detail} http=${response.status}`,
       Date.now() - started,
+      { ...fields, http: response.status },
     );
     if (!response.ok) throw new Error('graph move failed');
   } catch (error) {
     if (!(error instanceof Error) || error.message !== 'graph move failed') {
-      mailboxAccess(config.mailbox, 'verschoben', 'fehler', detail, Date.now() - started);
+      mailboxAccess(config.mailbox, 'verschoben', 'fehler', Date.now() - started, fields);
     }
     throw error;
   }
@@ -437,12 +434,11 @@ async function changeRead(
   if (!config) throw new Error('mail not configured');
   const started = Date.now();
   const action = isRead ? 'gelesen' : 'ungelesen';
-  const detail = `id=${oneLine(graphId)}`;
   let token: string;
   try {
     token = await accessToken(config, fetchImpl);
   } catch (error) {
-    mailboxAccess(config.mailbox, action, 'fehler', detail, Date.now() - started);
+    mailboxAccess(config.mailbox, action, 'fehler', Date.now() - started);
     throw error;
   }
   const response = await fetchImpl(
@@ -453,13 +449,9 @@ async function changeRead(
       body: JSON.stringify({ isRead }),
     },
   );
-  mailboxAccess(
-    config.mailbox,
-    action,
-    response.ok ? 'ok' : 'fehler',
-    `${detail} http=${response.status}`,
-    Date.now() - started,
-  );
+  mailboxAccess(config.mailbox, action, response.ok ? 'ok' : 'fehler', Date.now() - started, {
+    http: response.status,
+  });
   if (!response.ok) throw new Error('graph read failed');
 }
 
@@ -473,7 +465,6 @@ async function readMessage(
 ): Promise<InboundMail | null> {
   if (!config || graphId.trim() === '' || graphId === 'pasted') return null;
   const started = Date.now();
-  const detail = `id=${oneLine(graphId)}`;
   try {
     const token = await accessToken(config, fetchImpl);
     const response = await fetchImpl(
@@ -485,18 +476,23 @@ async function readMessage(
         },
       },
     );
-    mailboxAccess(
-      config.mailbox,
-      'nachricht',
-      response.ok ? 'ok' : 'fehler',
-      `${detail} http=${response.status}`,
-      Date.now() - started,
-    );
-    if (!response.ok) return null;
+    if (!response.ok) {
+      mailboxAccess(config.mailbox, 'nachricht', 'fehler', Date.now() - started, {
+        http: response.status,
+      });
+      return null;
+    }
     const body: unknown = await response.json();
-    return parseInboundMessages({ value: [body] })[0] ?? null;
+    const mail = parseInboundMessages({ value: [body] })[0] ?? null;
+    mailboxAccess(config.mailbox, 'nachricht', 'ok', Date.now() - started, {
+      http: response.status,
+      from: mail?.fromEmail,
+      sentAt: mail?.sentAt,
+      subject: mail?.subject,
+    });
+    return mail;
   } catch {
-    mailboxAccess(config.mailbox, 'nachricht', 'fehler', detail, Date.now() - started);
+    mailboxAccess(config.mailbox, 'nachricht', 'fehler', Date.now() - started);
     return null;
   }
 }
@@ -513,7 +509,9 @@ async function listFolder(
   try {
     token = await accessToken(config, fetchImpl);
   } catch (error) {
-    mailboxAccess(config.mailbox, 'posteingang', 'fehler', label, Date.now() - started);
+    mailboxAccess(config.mailbox, 'posteingang', 'fehler', Date.now() - started, {
+      detail: label,
+    });
     throw error;
   }
   const ceiling = options.unreadOnly ? 200 : inboxListCap;
@@ -537,13 +535,10 @@ async function listFolder(
     });
     status = response.status;
     if (!response.ok) {
-      mailboxAccess(
-        config.mailbox,
-        'posteingang',
-        'fehler',
-        `${label} http=${response.status}`,
-        Date.now() - started,
-      );
+      mailboxAccess(config.mailbox, 'posteingang', 'fehler', Date.now() - started, {
+        http: response.status,
+        detail: label,
+      });
       throw new Error('graph list failed');
     }
     const body: unknown = await response.json();
@@ -552,13 +547,10 @@ async function listFolder(
   }
   const truncated = mails.length > cap || next !== '';
   const shown = mails.slice(0, cap);
-  mailboxAccess(
-    config.mailbox,
-    'posteingang',
-    'ok',
-    `${label} anzahl=${shown.length} http=${status}`,
-    Date.now() - started,
-  );
+  mailboxAccess(config.mailbox, 'posteingang', 'ok', Date.now() - started, {
+    http: status,
+    detail: `${label} anzahl=${shown.length}`,
+  });
   return { messages: shown, truncated };
 }
 
@@ -568,17 +560,55 @@ function nextPage(body: unknown): string {
   return typeof link === 'string' && link.startsWith('https://graph.microsoft.com/') ? link : '';
 }
 
+type MailLogExtra = {
+  http?: number | string;
+  detail?: string;
+  from?: string;
+  sentAt?: string;
+  subject?: string;
+};
+
 function mailboxAccess(
   mailbox: string,
   action: string,
   outcome: 'ok' | 'fehler',
-  detail: string,
   ms: number,
+  extra: MailLogExtra = {},
 ): void {
+  const http =
+    extra.http !== undefined && String(extra.http).trim() !== ''
+      ? String(extra.http).trim()
+      : outcome === 'fehler'
+        ? 'fehler'
+        : '';
+  const parts = [
+    `${outcome} ${Math.max(0, Math.round(ms))}ms`,
+    http === '' ? '' : `http=${http}`,
+    extra.from?.trim() ? `absender=${oneLine(extra.from)}` : '',
+    extra.sentAt?.trim() ? `datum=${oneLine(mailLogDate(extra.sentAt))}` : '',
+    extra.subject?.trim() ? `betreff=${oneLine(extra.subject)}` : '',
+    extra.detail?.trim() ? oneLine(extra.detail) : '',
+  ].filter((part) => part !== '');
   enqueueFileLog(
     'mail',
-    `${new Date().toISOString()}\tgraph\t${action}\t${oneLine(mailbox)}\t${outcome} ${ms}ms ${oneLine(detail)}`,
+    `${new Date().toISOString()}\tgraph\t${action}\t${oneLine(mailbox)}\t${parts.join(' ')}`,
   );
+}
+
+function mailLogDate(value: string): string {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return value.trim().slice(0, 40);
+  return new Intl.DateTimeFormat('de-AT', {
+    timeZone: 'Europe/Vienna',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+    .format(new Date(parsed))
+    .replace(',', '');
 }
 
 function oneLine(value: string): string {
