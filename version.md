@@ -1,10 +1,10 @@
 # Version
 
-Aktueller Stand: **V 0.2.26**
+Aktueller Stand: **V 0.2.27**
 
 | | |
 |---|---|
-| Datum | 16.11.2026 |
+| Datum | 20.11.2026 |
 | Commit | dieser Stand, Branch `phase/12-haerten` |
 | Branch | `phase/12-haerten` |
 | Datei auf dem Server | `/opt/kmbhelp/version.md` |
@@ -17,13 +17,17 @@ Die Fassung wird `V 0.1.1` geschrieben. Die drei Stellen sind Major, Minor und P
 |---|---|---|
 | 0 | Major | Erst wenn der Kunde tatsächlich mit KMBHelp arbeitet. |
 | 2 | Minor | Nur wenn Wolfgang das ausdrücklich sagt. Am 07.11.2026 hat er die Minor 2 freigegeben. |
-| 26 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
+| 27 | Patch | Bei jedem Update, das auf den Server `kmbhelp` kommt. Der Patchstand läuft weiter und beginnt nicht wieder bei 0. |
 
-Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.27**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
+Ein Update ist ein Commit, der auf `kmbhelp` eingespielt wird. Im selben Commit steht der neue Abschnitt in dieser Datei. Die nächste Änderung wird **V 0.2.28**. Die Minor-Stelle bleibt 2, bis Wolfgang eine weitere Minor freigibt. Die Major-Stelle bleibt 0, bis der Kunde damit arbeitet. Die erste Major danach heißt **V 1.0.0**.
 
 Gezählt wird nur diese Datei. Die `version` in `package.json` bleibt `0.0.0` und ist keine Kundenfassung.
 
 ## Änderungen
+
+### V 0.2.27 — 20.11.2026
+
+Auf der Ticketseite bleibt die ursprüngliche Meldung unveränderbar; die Bearbeitung und Mail-Antworten liegen in `working_markdown`. Bestätigungsboxen stehen am Auslöser, mit dem Text oben und Ja/Nein nebeneinander.
 
 ### V 0.2.26 — 16.11.2026
 

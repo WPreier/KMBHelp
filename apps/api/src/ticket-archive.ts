@@ -101,7 +101,7 @@ export function ticketTexts(input: {
     '',
     '## Bearbeitung',
     '',
-    input.workingMarkdown?.trim() || input.body,
+    input.workingMarkdown?.trim() || '',
     '',
     '## Dateien',
     '',

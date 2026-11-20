@@ -361,14 +361,15 @@ export function drizzleMailStore(database: Database): MailStore {
     },
     async appendReply(ticketId, text) {
       const rows = await database.db
-        .select({ body: ticket.body })
+        .select({ workingMarkdown: ticket.workingMarkdown })
         .from(ticket)
         .where(eq(ticket.id, ticketId))
         .limit(1);
-      const current = rows[0]?.body ?? '';
+      const current = rows[0]?.workingMarkdown ?? '';
+      const next = `${current}${current.trim() === '' ? '' : '\n\n---\n'}${text}`.slice(0, 20_000);
       await database.db
         .update(ticket)
-        .set({ body: `${current}\n\n---\n${text}`.slice(0, 20_000), updatedAt: new Date() })
+        .set({ workingMarkdown: next, updatedAt: new Date() })
         .where(eq(ticket.id, ticketId));
       await this.addEvent(ticketId, 'mail_reply', { bytes: text.length });
     },

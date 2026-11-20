@@ -17,14 +17,7 @@ import {
   ticketWorkSchema,
   type TicketPage,
 } from '@kmbhelp/shared';
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type DragEvent,
-  type ReactNode,
-} from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { deleteJson, getJson, postJson, RequestFailed } from './api.js';
 import { impactLabel, priorityLabel } from './format.js';
@@ -238,7 +231,6 @@ export function TicketWikiPage() {
   const surface = useRef<HTMLDivElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -296,31 +288,31 @@ export function TicketWikiPage() {
     surface.current.innerHTML = renderMarkdownHtml(draft.current);
   }, [loaded, code, reloadToken]);
 
-  useLayoutEffect(() => {
-    const dialog = dialogRef.current;
-    const drop = dropRef.current;
-    if (!dialog || !confirming || !drop) return;
-    const place = () => {
-      const viewHeight = document.documentElement.clientHeight;
-      let rect = drop.getBoundingClientRect();
-      if (rect.bottom > viewHeight - 8 || rect.top < 0) {
-        drop.scrollIntoView({ block: 'center' });
-        rect = drop.getBoundingClientRect();
-      }
-      dialog.style.bottom = `${Math.max(0, viewHeight - rect.bottom)}px`;
-    };
-    place();
-    const frame = window.requestAnimationFrame(() => {
-      place();
-    });
-    window.addEventListener('resize', place);
-    window.addEventListener('scroll', place, true);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener('resize', place);
-      window.removeEventListener('scroll', place, true);
-    };
-  }, [confirming]);
+  function confirmMessage(): string {
+    if (confirming === 'delete') return copy.confirmDelete;
+    if (confirming === 'ask') return copy.confirmAsk;
+    if (confirming === 'assignee') return copy.confirmAssignee;
+    if (confirming === 'priority') return copy.confirmPriority;
+    if (confirming === 'close') return copy.confirmFinish;
+    if (confirming === 'text') return `${copy.saveText}?`;
+    return `${copy.addFile}?`;
+  }
+
+  function acceptConfirm() {
+    const kind = confirming;
+    setConfirming(null);
+    if (kind === 'text') void saveText();
+    if (kind === 'file') void storeFile();
+    if (kind === 'delete') void removeFile();
+    if (kind === 'ask') void askAssignee();
+    if (kind === 'assignee' && pendingAssignee.current) {
+      void changeAssignee(pendingAssignee.current);
+    }
+    if (kind === 'priority' && pendingPriority.current) {
+      void changePriority(pendingPriority.current);
+    }
+    if (kind === 'close') void finishTicket();
+  }
 
   async function saveText(): Promise<boolean> {
     try {
@@ -567,16 +559,17 @@ export function TicketWikiPage() {
               ) : (
                 header.assigneeEmail
               )}
+              {confirming === 'ask' || confirming === 'assignee' ? (
+                <InlineConfirm
+                  message={confirmMessage()}
+                  yesLabel={copy.confirmYes}
+                  noLabel={copy.confirmNo}
+                  onYes={acceptConfirm}
+                  onNo={() => setConfirming(null)}
+                />
+              ) : null}
             </dd>
           </div>
-          {staff ? (
-            <div>
-              <dt>{copy.firstDescription}</dt>
-              <dd>
-                <textarea className="ticket-description" rows={3} readOnly value={first} />
-              </dd>
-            </div>
-          ) : null}
           <div>
             <dt>{copy.dueOn}</dt>
             <dd>{header.dueOn ? isoDateToDisplay(header.dueOn) : copy.noDue}</dd>
@@ -608,6 +601,15 @@ export function TicketWikiPage() {
               ) : (
                 priorityLabel(header.priority, copy)
               )}
+              {confirming === 'priority' ? (
+                <InlineConfirm
+                  message={confirmMessage()}
+                  yesLabel={copy.confirmYes}
+                  noLabel={copy.confirmNo}
+                  onYes={acceptConfirm}
+                  onNo={() => setConfirming(null)}
+                />
+              ) : null}
             </dd>
           </div>
           {staff ? (
@@ -620,6 +622,20 @@ export function TicketWikiPage() {
             <div>
               <dt>{copy.lastEditor}</dt>
               <dd>{lastEditor || copy.notYet}</dd>
+            </div>
+          ) : null}
+          {staff ? (
+            <div className="ticket-original-block">
+              <dt>{copy.firstDescription}</dt>
+              <dd>
+                <textarea
+                  className="ticket-original"
+                  rows={6}
+                  readOnly
+                  value={first}
+                  aria-label={copy.firstDescription}
+                />
+              </dd>
             </div>
           ) : null}
         </dl>
@@ -680,6 +696,15 @@ export function TicketWikiPage() {
               </Hint>
             </span>
           </div>
+          {confirming === 'text' || confirming === 'close' ? (
+            <InlineConfirm
+              message={confirmMessage()}
+              yesLabel={copy.confirmYes}
+              noLabel={copy.confirmNo}
+              onYes={acceptConfirm}
+              onNo={() => setConfirming(null)}
+            />
+          ) : null}
           {notice ? <p>{notice}</p> : null}
           <div className="format-bar">
             <Hint text={copy.formatHeadingTitle}>
@@ -755,13 +780,14 @@ export function TicketWikiPage() {
               </button>
             </Hint>
           </div>
+          <p className="ticket-work-label">{copy.workDescription}</p>
           <div
             ref={surface}
             className="wiki wysiwyg"
             contentEditable={frozen ? 'false' : 'true'}
             role="textbox"
             aria-multiline="true"
-            aria-label={copy.ticketHeading}
+            aria-label={copy.workDescription}
             suppressContentEditableWarning
           />
           <p>{copy.fileHint}</p>
@@ -787,6 +813,15 @@ export function TicketWikiPage() {
               event.target.value = '';
             }}
           />
+          {confirming === 'file' ? (
+            <InlineConfirm
+              message={confirmMessage()}
+              yesLabel={copy.confirmYes}
+              noLabel={copy.confirmNo}
+              onYes={acceptConfirm}
+              onNo={() => setConfirming(null)}
+            />
+          ) : null}
           {fileError ? <p role="alert">{fileError}</p> : null}
           <FileTable
             rows={files.map((file) => ({
@@ -811,50 +846,47 @@ export function TicketWikiPage() {
               ),
             }))}
           />
+          {confirming === 'delete' ? (
+            <InlineConfirm
+              message={confirmMessage()}
+              yesLabel={copy.confirmYes}
+              noLabel={copy.confirmNo}
+              onYes={acceptConfirm}
+              onNo={() => setConfirming(null)}
+            />
+          ) : null}
           {history ? <pre className="ticket-history">{history}</pre> : null}
         </>
       ) : null}
-      {confirming ? (
-        <div ref={dialogRef} className="confirm" role="dialog">
-          <p>
-            {confirming === 'delete'
-              ? copy.confirmDelete
-              : confirming === 'ask'
-                ? copy.confirmAsk
-                : confirming === 'assignee'
-                  ? copy.confirmAssignee
-                  : confirming === 'priority'
-                    ? copy.confirmPriority
-                    : confirming === 'close'
-                      ? copy.confirmFinish
-                      : `${confirming === 'text' ? copy.saveText : copy.addFile}?`}
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              const kind = confirming;
-              setConfirming(null);
-              if (kind === 'text') void saveText();
-              if (kind === 'file') void storeFile();
-              if (kind === 'delete') void removeFile();
-              if (kind === 'ask') void askAssignee();
-              if (kind === 'assignee' && pendingAssignee.current) {
-                void changeAssignee(pendingAssignee.current);
-              }
-              if (kind === 'priority' && pendingPriority.current) {
-                void changePriority(pendingPriority.current);
-              }
-              if (kind === 'close') void finishTicket();
-            }}
-          >
-            {copy.confirmYes}
-          </button>
-          <button type="button" onClick={() => setConfirming(null)}>
-            {copy.confirmNo}
-          </button>
-        </div>
-      ) : null}
     </>
+  );
+}
+
+function InlineConfirm({
+  message,
+  yesLabel,
+  noLabel,
+  onYes,
+  onNo,
+}: {
+  message: string;
+  yesLabel: string;
+  noLabel: string;
+  onYes: () => void;
+  onNo: () => void;
+}) {
+  return (
+    <div className="confirm confirm-inline" role="dialog">
+      <p>{message}</p>
+      <div className="form-actions">
+        <button type="button" onClick={onYes}>
+          {yesLabel}
+        </button>
+        <button type="button" onClick={onNo}>
+          {noLabel}
+        </button>
+      </div>
+    </div>
   );
 }
 

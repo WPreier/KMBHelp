@@ -122,7 +122,7 @@ export function registerTicketPages(
     if (!row) throw new PublicError(404, 'not_found', publicErrors.notFound);
     return ticketWorkSchema.parse({
       body: row.body,
-      workingMarkdown: row.workingMarkdown ?? row.body,
+      workingMarkdown: row.workingMarkdown ?? '',
       requesterName: row.requesterName,
       updatedAt: row.updatedAt.toISOString(),
       lastEditor: row.lastEditor,
@@ -144,7 +144,7 @@ export function registerTicketPages(
     return archiveIndexSchema.parse({
       code: row.code,
       archived: false,
-      markdown: row.workingMarkdown ?? row.body,
+      markdown: row.workingMarkdown ?? '',
       files: files.map((file) => ({
         name: file.name,
         bytes: file.bytes,
@@ -293,7 +293,7 @@ export function registerTicketPages(
     const parsed = ticketMarkdownSchema.safeParse(request.body);
     if (!parsed.success) throw new PublicError(400, 'invalid_input', publicErrors.invalidInput);
     const row = await openRow(options.db(), request.params.code);
-    const previous = row.workingMarkdown ?? row.body;
+    const previous = row.workingMarkdown ?? '';
     const stamp = await touchTicket(options.db(), request, row.id, options.now(), {
       workingMarkdown: parsed.data.markdown,
     });

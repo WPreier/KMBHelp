@@ -241,6 +241,35 @@ textarea.ticket-description {
   overflow: auto;
 }
 
+.ticket-facts .ticket-original-block {
+  display: block;
+}
+
+.ticket-facts .ticket-original-block dt {
+  margin-bottom: 0.35rem;
+}
+
+.ticket-facts .ticket-original-block dd {
+  margin: 0;
+}
+
+textarea.ticket-original {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: calc(1.5em * 6 + 22px);
+  max-height: 40vh;
+  resize: none;
+  overflow: auto;
+  background: var(--table-odd);
+  color: inherit;
+}
+
+.ticket-work-label {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
 .ticket-history {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -676,6 +705,31 @@ fieldset.check-list input {
   color: var(--ink);
   padding: 16px;
   max-width: min(28rem, calc(100vw - 32px));
+}
+
+.confirm.confirm-inline {
+  position: static;
+  left: auto;
+  transform: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  margin: 8px 0 0;
+  width: 100%;
+  max-width: min(28rem, 100%);
+  box-sizing: border-box;
+}
+
+.confirm.confirm-inline .form-actions {
+  margin-top: 0;
+  gap: 8px;
+}
+
+.confirm.confirm-inline .form-actions button {
+  min-width: 4.5rem;
+  width: auto;
+  flex: 0 0 auto;
 }
 
 .confirm::backdrop {

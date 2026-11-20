@@ -153,9 +153,12 @@ function memoryStore(faqs: { slug: string; bodyDe: string }[] = []): MailStore &
       return row ? { id: row.id, number: row.number } : null;
     },
     async appendReply(ticketId, text) {
-      const row = tickets.find((ticket) => ticket.id === ticketId);
+      const row = tickets.find((ticket) => ticket.id === ticketId) as
+        | (StoredMailTicket & { workingMarkdown?: string })
+        | undefined;
       if (!row) return;
-      row.body = `${row.body}\n\n---\n${text}`;
+      const current = row.workingMarkdown ?? '';
+      row.workingMarkdown = `${current}${current.trim() === '' ? '' : '\n\n---\n'}${text}`;
       events.push({
         id: `event-${events.length + 1}`,
         ticketId,
@@ -552,7 +555,10 @@ describe('ingestMail', () => {
       },
     );
     expect(reply).toBe('declined');
-    expect(store.tickets[0]?.body).toContain('AW: Ticket 1');
+    expect(
+      (store.tickets[0] as StoredMailTicket & { workingMarkdown?: string }).workingMarkdown,
+    ).toContain('AW: Ticket 1');
+    expect(store.tickets[0]?.body).toBe('Die Meldung geht nicht raus.');
     const closed = await ingestMail(
       { ...mail, fromEmail: 'other@example.com', internetMessageId: '<other@example.com>' },
       base,
